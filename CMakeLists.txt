@@ -16,6 +16,7 @@ enable_testing()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -55,10 +56,10 @@ find_package(OpenCV)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+  ${GTEST_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${VENDOR_DIR}/gcem/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
-set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp)
+set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp)
 
 set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${OpenCV_LIBS})
 
