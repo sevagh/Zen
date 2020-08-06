@@ -48,7 +48,7 @@ else()
   message("GTest: OFF")
 endif()
 
-find_package(OpenCV)
+find_package(FFTS)
 
 # ------------------------------------------------------------------------------#
 # LIBS
@@ -56,12 +56,12 @@ find_package(OpenCV)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${VENDOR_DIR}/gcem/include)
+  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/gcem/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${OpenCV_LIBS})
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${FFTS_LIBRARY})
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -111,7 +111,7 @@ endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  rhythm_toolkit_example(medianfilter)
+  #rhythm_toolkit_example(medianfilter)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()

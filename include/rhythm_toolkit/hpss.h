@@ -4,7 +4,7 @@
 #include "window.h"
 #include <cstddef>
 #include <stdexcept>
-#include <opencv2/core/mat.hpp>
+#include <vector>
 
 /*
  * Adaptation of Real-Time HPSS
@@ -31,13 +31,16 @@ namespace hpss {
 		std::size_t hop;
 		float beta;
 		float eps;
+		std::size_t l_harm;
 		std::size_t l_perc;
+		std::size_t stft_width;
 		window::Window win;
 
 		std::vector<float> last_percussive_result;
-		cv::Mat sliding_stft; // 1D STFT "matrix" on which to apply median filtering and IFFT
-		cv::Mat s_half_mag; // to always store the half magnitude of the stft here
-		cv::Mat percussive;
+		std::vector<std::vector<float>> sliding_stft; // 1D sliding STFT matrix on which to apply median filtering and IFFT
+		std::vector<std::vector<float>> s_half_mag;
+		std::vector<std::vector<float>> harmonic;
+		std::vector<std::vector<float>> percussive;
 
 		HPSS(float fs, std::size_t nwin, std::size_t nfft, std::size_t hop, float beta)
 		    : fs(fs)
@@ -46,13 +49,17 @@ namespace hpss {
 		    , hop(hop)
 		    , beta(beta)
 		    , eps(std::numeric_limits<float>::epsilon())
+		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
+		    , stft_width(std::size_t(ceilf(l_harm/2)))
 		    , win(window::Window(window::WindowType::VonHann, nwin))
 		    , last_percussive_result(std::vector<float>(hop))
-		    , sliding_stft(cv::Mat::zeros(1, nfft, CV_32F))
-		    , s_half_mag(cv::Mat::zeros(1, nfft, CV_32F))
-		    , percussive(cv::Mat::zeros(1, nfft, CV_32F)){
-			    l_perc += (1 - (l_perc % 2)); // make sure it's odd
+		    , sliding_stft(std::vector<std::vector<float>>(stft_width, std::vector<float>(nfft)))
+		    , s_half_mag(std::vector<std::vector<float>>(stft_width, std::vector<float>(nfft)))
+		    , harmonic(std::vector<std::vector<float>>(stft_width, std::vector<float>(nfft)))
+		    , percussive(std::vector<std::vector<float>>(stft_width, std::vector<float>(nfft))){
+			    l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
+			    l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
 		    };
 
 		// sensible defaults
