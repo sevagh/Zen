@@ -6,8 +6,9 @@
 int main(int argc, char** argv)
 {
 	rhythm_toolkit::hello_world();
-	auto hpss = rhythm_toolkit::hpss::HPSS();
-	hpss.do_work();
+	auto hpss = rhythm_toolkit::hpss::HPSS(48000.0);
+	std::vector<float> fake_data(512);
+	hpss.process_current_hop(fake_data);
 	std::cout << cv::getBuildInformation() << std::endl;
 	return 0;
 }
