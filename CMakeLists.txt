@@ -48,7 +48,26 @@ else()
   message("GTest: OFF")
 endif()
 
-find_package(FFTS)
+find_package(FFTS REQUIRED)
+
+find_package(OpenMP REQUIRED)
+
+# ------------------------------------------------------------------------------#
+# INCLUDE DIRS
+# ------------------------------------------------------------------------------#
+
+include_directories(
+  "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
+  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src)
+
+# ------------------------------------------------------------------------------#
+# VENDORED LIBS
+# ------------------------------------------------------------------------------#
+
+set(MF2D_SOURCES ${VENDOR_DIR}/mf2d/src/filter.cc)
+
+add_library(mf2d SHARED ${MF2D_SOURCES})
+target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 # ------------------------------------------------------------------------------#
 # LIBS
@@ -56,7 +75,7 @@ find_package(FFTS)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/gcem/include)
+  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp)
@@ -71,7 +90,7 @@ else()
   add_library(rhythm_toolkit SHARED ${RHYTHM_TOOLKIT_SOURCES})
 endif()
 
-target_link_libraries(rhythm_toolkit ${SOUNDIO_LIBRARY} ${STK_LIBRARY})
+target_link_libraries(rhythm_toolkit ${SOUNDIO_LIBRARY} ${STK_LIBRARY} mf2d)
 
 # ------------------------------------------------------------------------------#
 # CLANG-TIDY
