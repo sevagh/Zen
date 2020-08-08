@@ -1,0 +1,8 @@
+find_path(Nyquist_INCLUDE_DIR NAMES libnyquist/Common.h)
+
+find_library(Nyquist_LIBRARY NAMES libnyquist)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Nyquist DEFAULT_MSG Nyquist_LIBRARY Nyquist_INCLUDE_DIR)
+
+mark_as_advanced(Nyquist_INCLUDE_DIR Nyquist_LIBRARY)

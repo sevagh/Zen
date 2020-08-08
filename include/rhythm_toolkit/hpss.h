@@ -39,6 +39,7 @@ namespace hpss {
 		std::size_t l_perc;
 		std::size_t stft_width;
 		window::Window win;
+		float cola_divide_factor;
 
 		// use 1d vectors for 2d
 		std::vector<std::complex<float>> sliding_stft; // 1D sliding STFT
@@ -66,6 +67,9 @@ namespace hpss {
 		std::vector<float> harmonic_out;
 		std::vector<float> percussive_out;
 
+		std::vector<float> harmonic_out_hop;
+		std::vector<float> percussive_out_hop;
+
 		ffts_plan_t* fft_forward;
 		ffts_plan_t* fft_backward;
 
@@ -84,6 +88,7 @@ namespace hpss {
 		    , l_perc(roundf(500 / (fs / nfft)))
 		    , stft_width(std::size_t(ceilf(l_harm / 2)))
 		    , win(window::Window(window::WindowType::VonHann, nwin))
+		    , cola_divide_factor(0.0f)
 		    , sliding_stft(std::vector<std::complex<float>>(stft_width * nfft))
 		    , curr_fft(std::vector<std::complex<float>>(nfft))
 		    , harmonic_fft(std::vector<std::complex<float>>(nfft))
@@ -99,11 +104,19 @@ namespace hpss {
 		    , percussive_out_im(std::vector<std::complex<float>>(nfft))
 		    , harmonic_out(std::vector<float>(nwin))
 		    , percussive_out(std::vector<float>(nwin))
+		    , harmonic_out_hop(std::vector<float>(hop))
+		    , percussive_out_hop(std::vector<float>(hop))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
+
 			fft_forward = ffts_init_1d(nfft, FFTS_FORWARD);
 			fft_backward = ffts_init_1d(nfft, FFTS_BACKWARD);
+
+			for (std::size_t i = 0; i < nwin; ++i) {
+				cola_divide_factor += win.window[i]*win.window[i];
+			}
+			cola_divide_factor /= nfft/2;
 		};
 
 		// sensible defaults

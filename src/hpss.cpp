@@ -1,5 +1,4 @@
 #include "rhythm_toolkit/hpss.h"
-#include <iostream>
 
 // uses a locally vendored copy of
 // https://github.com/suomela/mf2d/blob/master/src/filter.h for median filtering
@@ -9,8 +8,6 @@
 
 void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
 {
-	std::cout << "hpss doing work" << std::endl;
-
 	// append latest hop samples e.g.
 	//     input = input[hop:] + current_hop
 	std::rotate(input.begin(), input.begin() + hop, input.end());
@@ -86,6 +83,12 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	ffts_execute(fft_backward, harmonic_fft.data(), harmonic_out_im.data());
 	ffts_execute(fft_backward, percussive_fft.data(), percussive_out_im.data());
 
+	// modify it by the window for COLA compliance
+	for (std::size_t i = 0; i < nfft; ++i) {
+		harmonic_fft[i] = harmonic_fft[i] / cola_divide_factor;
+		percussive_fft[i] = percussive_fft[i] / cola_divide_factor;
+	}
+
 	// store only the real parts
 	// only half fft matters
 	std::transform(harmonic_out_im.begin(), harmonic_out_im.begin() + nwin,
@@ -98,6 +101,4 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	    percussive_out_im.begin(), percussive_out_im.begin() + nwin,
 	    percussive_out.begin(),
 	    [](std::complex<float> cplx) -> float { return std::real(cplx); });
-
-	std::cout << "hpss finished for current hop!" << std::endl;
 }

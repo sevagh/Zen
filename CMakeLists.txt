@@ -41,16 +41,11 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include(FindPkgConfig)
 
-find_package(GTest)
-if(GTest_FOUND)
-  message("GTest: ON")
-else()
-  message("GTest: OFF")
-endif()
-
+find_package(GTest REQUIRED)
+find_package(gflags REQUIRED)
 find_package(FFTS REQUIRED)
-
 find_package(OpenMP REQUIRED)
+find_package(Nyquist REQUIRED)
 
 # ------------------------------------------------------------------------------#
 # INCLUDE DIRS
@@ -75,7 +70,7 @@ target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src)
+  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp)
@@ -121,16 +116,12 @@ endif()
 
 function(rhythm_toolkit_example name)
   add_executable(example_${name} example/${name}.cpp)
-  target_link_libraries(example_${name} ${RHYTHM_TOOLKIT_DEPS})
-endfunction()
-function(rhythm_toolkit_c_example name)
-  add_executable(example_${name} example/${name}.c)
-  target_link_libraries(example_${name} ${RHYTHM_TOOLKIT_DEPS})
+  target_link_libraries(example_${name} ${RHYTHM_TOOLKIT_DEPS} gflags libnyquist libwavpack libopus)
 endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  #rhythm_toolkit_example(medianfilter)
+  rhythm_toolkit_example(wav_hpss)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
@@ -151,9 +142,7 @@ install(FILES include/rhythm_toolkit.h DESTINATION include/rhythm_toolkit)
 # TESTS
 # ------------------------------------------------------------------------------#
 
-if(GTEST_FOUND)
-  set(RHYTHM_TOOLKIT_TESTS_DEPS ${RHYTHM_TOOLKIT_DEPS} gtest gtest_main pthread)
-endif()
+set(RHYTHM_TOOLKIT_TESTS_DEPS ${RHYTHM_TOOLKIT_DEPS} gtest gtest_main pthread)
 
 find_program(VALGRIND_EXEC "valgrind")
 if(VALGRIND_EXEC)
@@ -164,19 +153,17 @@ else()
 endif()
 
 function(rhythm_toolkit_gtest name)
-  if(GTEST_FOUND)
-    add_executable(test_${name} test/${name}.cpp)
-    target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS})
-    target_compile_definitions(test_${name} PUBLIC UNIT_TESTS)
+  add_executable(test_${name} test/${name}.cpp)
+  target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS})
+  target_compile_definitions(test_${name} PUBLIC UNIT_TESTS)
 
-    add_test(test_${name} ${BIN_DIR}/test_${name})
-    set_tests_properties(test_${name} PROPERTIES LABELS "test")
+  add_test(test_${name} ${BIN_DIR}/test_${name})
+  set_tests_properties(test_${name} PROPERTIES LABELS "test")
 
-    if(VALGRIND_EXEC)
-      add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS}
-               ${BIN_DIR}/test_${name})
-      set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
-    endif()
+  if(VALGRIND_EXEC)
+    add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS}
+             ${BIN_DIR}/test_${name})
+    set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
   endif()
 endfunction()
 
