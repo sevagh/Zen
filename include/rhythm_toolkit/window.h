@@ -3,8 +3,8 @@
 
 #include <array>
 #include <cstddef>
-#include <vector>
 #include <math.h>
+#include <vector>
 
 namespace rhythm_toolkit {
 namespace window {
