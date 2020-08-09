@@ -8,8 +8,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include <iostream>
-
 /*
  * Adaptation of Real-Time HPSS
  *     https://github.com/sevagh/Real-Time-HPSS
@@ -35,17 +33,18 @@ namespace hpss {
 		std::size_t hop;
 		float beta;
 		float eps;
-		std::size_t l_harm;
-		std::size_t l_perc;
+		int l_harm;
+		int l_perc;
 		std::size_t stft_width;
 		window::Window win;
-		float cola_divide_factor;
+		float COLA_factor; // see https://www.mathworks.com/help/signal/ref/iscola.html
 
 		// use 1d vectors for 2d
 		std::vector<std::complex<float>> sliding_stft; // 1D sliding STFT
 		                                               // matrix on which to
 		                                               // apply median
 		                                               // filtering and IFFT
+
 		std::vector<std::complex<float>> curr_fft;     // store the fft of the
 		                                               // current frame
 		std::vector<std::complex<float>> harmonic_fft;
@@ -54,11 +53,14 @@ namespace hpss {
 		std::vector<float> harmonic_matrix;
 		std::vector<float> percussive_matrix;
 
-		std::vector<int> harmonic_mask;
-		std::vector<int> percussive_mask;
+		std::vector<float> harmonic_mask;
+		std::vector<float> percussive_mask;
 
 		std::vector<float> input;
 		std::vector<float> input_windowed;
+
+		std::vector<float> harmonic_out_raw;
+		std::vector<float> percussive_out_raw;
 
 		std::vector<float> harmonic_out;
 		std::vector<float> percussive_out;
@@ -82,36 +84,39 @@ namespace hpss {
 		    , eps(std::numeric_limits<float>::epsilon())
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
-		    , stft_width(std::size_t(ceilf(l_harm / 2)))
+		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
 		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
-		    , cola_divide_factor(0.0f)
+		    , COLA_factor(0.0f)
 		    , sliding_stft(
-		          std::vector<std::complex<float>>(stft_width * (nwin + 1)))
-		    , curr_fft(std::vector<std::complex<float>>(nwin + 1))
-		    , harmonic_fft(std::vector<std::complex<float>>(nwin + 1))
-		    , percussive_fft(std::vector<std::complex<float>>(nwin + 1))
-		    , s_half_mag(std::vector<float>(stft_width * (nwin + 1)))
-		    , harmonic_matrix(std::vector<float>(stft_width * (nwin + 1)))
-		    , percussive_matrix(std::vector<float>(stft_width * (nwin + 1)))
-		    , harmonic_mask(std::vector<int>(stft_width * (nwin + 1)))
-		    , percussive_mask(std::vector<int>(stft_width * (nwin + 1)))
+		          std::vector<std::complex<float>>(stft_width * nfft))
+		    , curr_fft(std::vector<std::complex<float>>(nfft))
+		    , harmonic_fft(std::vector<std::complex<float>>(nfft))
+		    , percussive_fft(std::vector<std::complex<float>>(nfft))
+		    , s_half_mag(std::vector<float>(stft_width * nwin))
+		    , harmonic_matrix(std::vector<float>(stft_width * nwin))
+		    , percussive_matrix(std::vector<float>(stft_width * nwin))
+		    , harmonic_mask(std::vector<float>(stft_width * nwin))
+		    , percussive_mask(std::vector<float>(stft_width * nwin))
 		    , input(std::vector<float>(nwin))
 		    , input_windowed(std::vector<float>(nwin))
-		    , harmonic_out(std::vector<float>(nfft))
-		    , percussive_out(std::vector<float>(nfft))
+		    , harmonic_out_raw(std::vector<float>(nfft))
+		    , percussive_out_raw(std::vector<float>(nfft))
+		    , harmonic_out(std::vector<float>(nwin))
+		    , percussive_out(std::vector<float>(nwin))
 		    , harmonic_out_hop(std::vector<float>(hop))
 		    , percussive_out_hop(std::vector<float>(hop))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
 
-			fft_forward = ffts_init_1d_real(nfft, FFTS_FORWARD);
-			fft_backward = ffts_init_1d_real(nfft, FFTS_BACKWARD);
+			fft_forward = ffts_init_1d(nfft, FFTS_FORWARD);
+			fft_backward = ffts_init_1d(nfft, FFTS_BACKWARD);
 
+			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
-				cola_divide_factor += win.window[i] * win.window[i];
+				COLA_factor += win.window[i] * win.window[i];
 			}
-			cola_divide_factor /= nfft / 2;
+			COLA_factor = nfft / COLA_factor;
 		};
 
 		// sensible defaults

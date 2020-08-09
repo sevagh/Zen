@@ -24,7 +24,11 @@ namespace window {
 		{
 			switch (window_type) {
 			default: // only implement a von Hann window for now
-				auto N = ( float )(window_size - 1);
+
+				// typically this would be "window_size-1"
+				// but we want the behavior of a matlab 'periodic' hann
+				// vs. the default 'symm' hann
+				auto N = ( float )(window_size);
 
 				for (std::size_t n = 0; n < window_size; ++n) {
 					window[n] = sqrtf(

@@ -98,6 +98,21 @@ main(int argc, char **argv)
 		n += FLAGS_hop;
 	}
 
+	const auto [percussive_min, percussive_max] = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
+	const auto [harmonic_min, harmonic_max] = std::minmax_element(std::begin(harmonic_out), std::end(harmonic_out));
+
+	float real_perc_max = std::max(std::abs(*percussive_min), *percussive_max);
+	float real_harm_max = std::max(std::abs(*harmonic_min), *harmonic_max);
+
+	// normalize between -1.0 and 1.0
+	for (std::size_t i = 0; i < audio.size(); ++i) {
+		percussive_out[i] /= real_perc_max;
+		harmonic_out[i] /= real_harm_max;
+
+		std::cout << "percussive " << i << " " << percussive_out[i] << std::endl;
+		std::cout << "harmonic " << i << " " << harmonic_out[i] << std::endl;
+	}
+
 	nqr::EncoderParams encoder_params{
 		1,
 		nqr::PCMFormat::PCM_FLT,
