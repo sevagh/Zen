@@ -12,7 +12,7 @@ namespace window {
 	static constexpr float PI = 3.14159265359F;
 
 	enum WindowType {
-		VonHann,
+		SqrtVonHann,
 	};
 
 	class Window {
@@ -27,7 +27,8 @@ namespace window {
 				auto N = ( float )(window_size - 1);
 
 				for (std::size_t n = 0; n < window_size; ++n) {
-					window[n] = 0.5F * (1.0F - cosf(2.0F * PI * (n / N)));
+					window[n] = sqrtf(
+					    0.5F * (1.0F - cosf(2.0F * PI * ( float )n / N)));
 				}
 			}
 		}

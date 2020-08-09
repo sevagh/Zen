@@ -60,10 +60,6 @@ namespace hpss {
 		std::vector<float> input;
 		std::vector<float> input_windowed;
 
-		// intermediate complex results of ifft
-		std::vector<std::complex<float>> harmonic_out_im;
-		std::vector<std::complex<float>> percussive_out_im;
-
 		std::vector<float> harmonic_out;
 		std::vector<float> percussive_out;
 
@@ -87,36 +83,35 @@ namespace hpss {
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
 		    , stft_width(std::size_t(ceilf(l_harm / 2)))
-		    , win(window::Window(window::WindowType::VonHann, nwin))
+		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
 		    , cola_divide_factor(0.0f)
-		    , sliding_stft(std::vector<std::complex<float>>(stft_width * nfft))
-		    , curr_fft(std::vector<std::complex<float>>(nfft))
-		    , harmonic_fft(std::vector<std::complex<float>>(nfft))
-		    , percussive_fft(std::vector<std::complex<float>>(nfft))
-		    , s_half_mag(std::vector<float>(stft_width * nfft))
-		    , harmonic_matrix(std::vector<float>(stft_width * nfft))
-		    , percussive_matrix(std::vector<float>(stft_width * nfft))
-		    , harmonic_mask(std::vector<int>(stft_width * nfft))
-		    , percussive_mask(std::vector<int>(stft_width * nfft))
+		    , sliding_stft(
+		          std::vector<std::complex<float>>(stft_width * (nwin + 1)))
+		    , curr_fft(std::vector<std::complex<float>>(nwin + 1))
+		    , harmonic_fft(std::vector<std::complex<float>>(nwin + 1))
+		    , percussive_fft(std::vector<std::complex<float>>(nwin + 1))
+		    , s_half_mag(std::vector<float>(stft_width * (nwin + 1)))
+		    , harmonic_matrix(std::vector<float>(stft_width * (nwin + 1)))
+		    , percussive_matrix(std::vector<float>(stft_width * (nwin + 1)))
+		    , harmonic_mask(std::vector<int>(stft_width * (nwin + 1)))
+		    , percussive_mask(std::vector<int>(stft_width * (nwin + 1)))
 		    , input(std::vector<float>(nwin))
 		    , input_windowed(std::vector<float>(nwin))
-		    , harmonic_out_im(std::vector<std::complex<float>>(nfft))
-		    , percussive_out_im(std::vector<std::complex<float>>(nfft))
-		    , harmonic_out(std::vector<float>(nwin))
-		    , percussive_out(std::vector<float>(nwin))
+		    , harmonic_out(std::vector<float>(nfft))
+		    , percussive_out(std::vector<float>(nfft))
 		    , harmonic_out_hop(std::vector<float>(hop))
 		    , percussive_out_hop(std::vector<float>(hop))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
 
-			fft_forward = ffts_init_1d(nfft, FFTS_FORWARD);
-			fft_backward = ffts_init_1d(nfft, FFTS_BACKWARD);
+			fft_forward = ffts_init_1d_real(nfft, FFTS_FORWARD);
+			fft_backward = ffts_init_1d_real(nfft, FFTS_BACKWARD);
 
 			for (std::size_t i = 0; i < nwin; ++i) {
-				cola_divide_factor += win.window[i]*win.window[i];
+				cola_divide_factor += win.window[i] * win.window[i];
 			}
-			cola_divide_factor /= nfft/2;
+			cola_divide_factor /= nfft / 2;
 		};
 
 		// sensible defaults
@@ -135,10 +130,13 @@ namespace hpss {
 
 		std::vector<float>& peek_separated_percussive()
 		{
-			return percussive_out;
+			return percussive_out_hop;
 		}
 
-		std::vector<float>& peek_separated_harmonic() { return harmonic_out; }
+		std::vector<float>& peek_separated_harmonic()
+		{
+			return harmonic_out_hop;
+		}
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit

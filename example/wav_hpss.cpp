@@ -59,10 +59,6 @@ main(int argc, char **argv)
 	std::cout << "\tseconds: " << file_data->lengthSeconds << std::endl;
 	std::cout << "\tchannels: " << file_data->channelCount << std::endl;
 
-	std::transform(file_data->samples.begin(), file_data->samples.end(),
-	    file_data->samples.begin(),
-	    std::bind(std::multiplies<float>(), std::placeholders::_1, 10000));
-
 	std::vector<float> audio;
 
 	if (file_data->channelCount == 2) {
