@@ -73,7 +73,6 @@ main(int argc, char **argv)
 	}
 
 	auto percussive_out = std::vector<float>(audio.size());
-	auto harmonic_out = std::vector<float>(audio.size());
 
 	auto chunk_size = FLAGS_hop;
 	auto chunks = get_chunks(audio, chunk_size);
@@ -89,28 +88,31 @@ main(int argc, char **argv)
 		std::cout << "At n: " << n << std::endl;
 		hpss.process_next_hop(chunk);
 
-		auto perc = hpss.peek_separated_percussive(); 
-		auto harm = hpss.peek_separated_harmonic(); 
+		auto perc = hpss.peek_separated_percussive();
 
-		std::copy(perc.begin(), perc.end(), percussive_out.begin() + n);
-		std::copy(harm.begin(), harm.end(), harmonic_out.begin() + n);
+		std::copy(perc.begin(), perc.end(), percussive_out.begin() + chunk.size());
+
+		for (std::size_t i = 0; i < chunk.size(); ++i) {
+			std::cout << "audio chunk: " << chunk[i] << std::endl;
+			std::cout << "perc chunk: " << perc[i] << std::endl;
+		}
+		std::cout << std::endl;
+		std::cout << std::endl;
+
+		std::cin.get();
 
 		n += FLAGS_hop;
 	}
 
 	const auto [percussive_min, percussive_max] = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
-	const auto [harmonic_min, harmonic_max] = std::minmax_element(std::begin(harmonic_out), std::end(harmonic_out));
 
-	float real_perc_max = std::max(std::abs(*percussive_min), *percussive_max);
-	float real_harm_max = std::max(std::abs(*harmonic_min), *harmonic_max);
+	float real_perc_max = std::max(-1*(*percussive_min), *percussive_max);
 
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {
 		percussive_out[i] /= real_perc_max;
-		harmonic_out[i] /= real_harm_max;
 
 		std::cout << "percussive " << i << " " << percussive_out[i] << std::endl;
-		std::cout << "harmonic " << i << " " << harmonic_out[i] << std::endl;
 	}
 
 	nqr::EncoderParams encoder_params{
@@ -128,17 +130,7 @@ main(int argc, char **argv)
 		file_data->sourceFormat,
 	};
 
-	const nqr::AudioData harm_out{
-		1,
-		file_data->sampleRate,
-		file_data->lengthSeconds,
-		file_data->frameSize,
-		harmonic_out,
-		file_data->sourceFormat,
-	};
-
 	nqr::encode_wav_to_disk(encoder_params, &perc_out, "./perc_out.wav");
-	nqr::encode_wav_to_disk(encoder_params, &harm_out, "./harm_out.wav");
 
 	return 0;
 }

@@ -6,6 +6,8 @@
 #include <ffts/ffts.h>
 #include <math.h>
 
+#include <iostream>
+
 void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
 {
 	// append latest hop samples e.g.
@@ -13,14 +15,14 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	std::rotate(input.begin(), input.begin() + hop, input.end());
 	std::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
-	// apply square root von hann window to input
-	for (std::size_t i = 0; i < nwin; ++i) {
-		input_windowed[i] = input[i] * win.window[i];
+	// apply square root von hann window to the newest appended hop samples
+	for (std::size_t i = hop; i < nwin; ++i) {
+		input[i] *= win.window[i];
 	}
 
-	// do the real forward fft in-place
-	std::transform(input_windowed.begin(), input_windowed.end(),
-	               curr_fft.begin(), [](float x) -> std::complex<float> {
+	// do the real forward fft in-place by storing input in curr_fft
+	std::transform(input.begin(), input.end(), curr_fft.begin(),
+	               [](float x) -> std::complex<float> {
 		               return std::complex<float>(x, 0.0f);
 	               });
 	ffts_execute(fft_forward, curr_fft.data(), curr_fft.data());
@@ -41,10 +43,6 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 		}
 	}
 
-	/******************************
-	 * SO FAR IDENTICAL TO MATLAB *
-	 ******************************/
-
 	// apply median filter in horizontal and vertical directions
 	// only consider half the stft
 	median_filter_2d<float>(( int )nfft, ( int )stft_width, 0, l_harm, 0,
@@ -53,16 +51,18 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	                        s_half_mag.data(), percussive_matrix.data());
 
 	// calculate the binary masks
+	// note that from this point on, we only consider the percussive part of
+	// the algorithm that's because the horizontal median filter works poorly
+	// in real-time overwrite the matrices in-place
 	for (std::size_t i = 0; i < stft_width; ++i) {
 		for (std::size_t j = 0; j < nwin + 1; ++j) {
 			auto idx = i * (nwin + 1) + j;
-			harmonic_mask[idx]
-			    = float(std::real(harmonic_matrix[idx])
-			                / (std::real(percussive_matrix[idx]) + eps)
-			            > beta);
-			percussive_mask[idx]
-			    = float(std::real(percussive_matrix[idx])
-			                / (std::real(harmonic_matrix[idx]) + eps)
+
+			// Mp = P/(H + eps) >= beta
+			percussive_matrix[idx]
+			    = float(percussive_matrix[idx]
+			                / (harmonic_matrix[idx]
+			                   + std::numeric_limits<float>::epsilon())
 			            >= beta);
 		}
 	}
@@ -70,49 +70,34 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	std::complex<float> scale = {1.0f / ( float )nfft, 0.0};
 
 	// apply masks to recover separated fft
+	// recycle curr_fft instead of allocating a new vector for no reason
 	std::size_t inverse_i = nfft - 1;
 	for (std::size_t i = 0; i < nwin; ++i) {
 		auto mask_idx = (stft_width - 1) * nwin + i;
-		harmonic_fft[i] = curr_fft[i] * harmonic_mask[mask_idx] * scale;
-
-		// H = H + flipud(conj(H))
-		harmonic_fft[inverse_i - i] = std::conj(harmonic_fft[i]);
-
-		percussive_fft[i] = curr_fft[i] * percussive_mask[mask_idx] * scale;
-		percussive_fft[inverse_i - i] = std::conj(percussive_fft[i]);
+		curr_fft[i] *= percussive_matrix[mask_idx] * scale;
+		curr_fft[inverse_i - i] = std::conj(curr_fft[i]);
 	}
 
-	// apply ifft to get resultant audio in-place
+	// apply ifft to get resultant percussive audio in-place
 	// take the real part into the out arrays
-	ffts_execute(fft_backward, harmonic_fft.data(), harmonic_fft.data());
-	ffts_execute(fft_backward, percussive_fft.data(), percussive_fft.data());
-	std::transform(
-	    harmonic_fft.begin(), harmonic_fft.end(), harmonic_out_raw.begin(),
-	    [](std::complex<float> x) -> float { return std::real(x); });
-	std::transform(percussive_fft.begin(), percussive_fft.end(),
-	               percussive_out_raw.begin(),
+	ffts_execute(fft_backward, curr_fft.data(), curr_fft.data());
+	std::transform(curr_fft.begin(), curr_fft.end(), percussive_out_raw.begin(),
 	               [](std::complex<float> x) -> float { return std::real(x); });
 
 	// weighted overlap add with last iteration's samples - only half of the
 	// real fft matters cola divide factor is for COLA compliance see
 	// https://github.com/sevagh/Real-Time-HPSS for background
 	for (std::size_t i = 0; i < nwin; ++i) {
-		harmonic_out[i] += harmonic_out_raw[i] * COLA_factor;
 		percussive_out[i] += percussive_out_raw[i] * COLA_factor;
-
-		// after weighted overlap add, this is the data we're ready to return
-		if (i < hop) {
-			harmonic_out_hop[i] = harmonic_out[i];
-			percussive_out_hop[i] = percussive_out[i];
-		}
 	}
+
+	// after weighted overlap add, the data we're ready to return
+	// is the first 'hop' elements of harmonic_out and percussive_out
+	// uses std::span (see hpss.h)
 
 	// finally we rotate the percussive and harmonic arrays to get them ready
 	// for the next hop and next overlap add
-	std::rotate(
-	    harmonic_out.begin(), harmonic_out.begin() + hop, harmonic_out.end());
 	std::rotate(percussive_out.begin(), percussive_out.begin() + hop,
 	            percussive_out.end());
-	std::fill(harmonic_out.begin() + hop, harmonic_out.end(), 0.0);
 	std::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 }
