@@ -43,11 +43,13 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 		}
 	}
 
+	/* vv SEGFAULT! vv */
+
 	// apply median filter in horizontal and vertical directions
 	// only consider half the stft
-	median_filter_2d<float>(( int )nfft, ( int )stft_width, 0, l_harm, 0,
+	median_filter_2d<float>(( int )nwin, ( int )stft_width, 0, l_harm, 0,
 	                        s_half_mag.data(), harmonic_matrix.data());
-	median_filter_2d<float>(( int )nfft, ( int )stft_width, l_perc, 0, 0,
+	median_filter_2d<float>(( int )nwin, ( int )stft_width, l_perc, 0, 0,
 	                        s_half_mag.data(), percussive_matrix.data());
 
 	// calculate the binary masks
@@ -55,8 +57,8 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	// the algorithm that's because the horizontal median filter works poorly
 	// in real-time overwrite the matrices in-place
 	for (std::size_t i = 0; i < stft_width; ++i) {
-		for (std::size_t j = 0; j < nwin + 1; ++j) {
-			auto idx = i * (nwin + 1) + j;
+		for (std::size_t j = 0; j < nwin; ++j) {
+			auto idx = i * nwin + j;
 
 			// Mp = P/(H + eps) >= beta
 			percussive_matrix[idx]
