@@ -109,11 +109,11 @@ main(int argc, char **argv)
 	float real_perc_max = std::max(-1*(*percussive_min), *percussive_max);
 
 	// normalize between -1.0 and 1.0
-	//for (std::size_t i = 0; i < audio.size(); ++i) {
-	//	percussive_out[i] /= real_perc_max;
+	for (std::size_t i = 0; i < audio.size(); ++i) {
+		percussive_out[i] /= real_perc_max;
 
-	//	std::cout << "percussive " << i << " " << percussive_out[i] << std::endl;
-	//}
+		std::cout << "percussive " << i << " " << percussive_out[i] << std::endl;
+	}
 
 	nqr::EncoderParams encoder_params{
 		1,

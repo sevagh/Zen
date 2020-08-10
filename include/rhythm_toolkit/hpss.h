@@ -59,14 +59,16 @@ namespace hpss {
 		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
 		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
 		    , COLA_factor(0.0f)
-		    , sliding_stft(std::vector<std::complex<float>>(stft_width * nfft))
-		    , curr_fft(std::vector<std::complex<float>>(nfft))
-		    , s_half_mag(std::vector<float>(stft_width * nwin))
-		    , harmonic_matrix(std::vector<float>(stft_width * nwin))
-		    , percussive_matrix(std::vector<float>(stft_width * nwin))
-		    , input(std::vector<float>(nwin))
-		    , percussive_out_raw(std::vector<float>(nfft))
-		    , percussive_out(std::vector<float>(nwin))
+		    , sliding_stft(
+		          std::vector<std::complex<float>>(stft_width * nfft,
+		                                           std::complex(0.0F, 0.0F)))
+		    , curr_fft(std::vector<std::complex<float>>(nfft, 0.0F))
+		    , s_half_mag(std::vector<float>(stft_width * nwin, 0.0F))
+		    , harmonic_matrix(std::vector<float>(stft_width * nwin, 0.0F))
+		    , percussive_matrix(std::vector<float>(stft_width * nwin, 0.0F))
+		    , input(std::vector<float>(nwin, 0.0F))
+		    , percussive_out_raw(std::vector<float>(nwin, 0.0F))
+		    , percussive_out(std::vector<float>(nwin, 0.0F))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
