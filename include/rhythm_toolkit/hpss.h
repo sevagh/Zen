@@ -37,7 +37,8 @@ namespace hpss {
 		int l_perc;
 		std::size_t stft_width;
 		window::Window win;
-		float COLA_factor; // see https://www.mathworks.com/help/signal/ref/iscola.html
+		float COLA_factor; // see
+		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
 		// use 1d vectors for 2d
 		std::vector<std::complex<float>> sliding_stft; // 1D sliding STFT
@@ -45,8 +46,8 @@ namespace hpss {
 		                                               // apply median
 		                                               // filtering and IFFT
 
-		std::vector<std::complex<float>> curr_fft;     // store the fft of the
-		                                               // current frame
+		std::vector<std::complex<float>> curr_fft; // store the fft of the
+		                                           // current frame
 		std::vector<std::complex<float>> harmonic_fft;
 		std::vector<std::complex<float>> percussive_fft;
 		std::vector<float> s_half_mag;
@@ -87,8 +88,7 @@ namespace hpss {
 		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
 		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
 		    , COLA_factor(0.0f)
-		    , sliding_stft(
-		          std::vector<std::complex<float>>(stft_width * nfft))
+		    , sliding_stft(std::vector<std::complex<float>>(stft_width * nfft))
 		    , curr_fft(std::vector<std::complex<float>>(nfft))
 		    , harmonic_fft(std::vector<std::complex<float>>(nfft))
 		    , percussive_fft(std::vector<std::complex<float>>(nfft))
