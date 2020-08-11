@@ -90,17 +90,7 @@ main(int argc, char **argv)
 
 		auto perc = hpss.peek_separated_percussive();
 
-		std::copy(perc.begin(), perc.end(), percussive_out.begin() + chunk.size());
-
-		//for (std::size_t i = 0; i < chunk.size(); ++i) {
-		//	std::cout << "audio chunk: " << chunk[i] << std::endl;
-		//	std::cout << "perc chunk: " << perc[i] << std::endl;
-		//}
-		//std::cout << std::endl;
-		//std::cout << std::endl;
-
-		//std::cin.get();
-
+		std::copy(perc.begin(), perc.end(), percussive_out.begin() + n);
 		n += FLAGS_hop;
 	}
 
@@ -111,13 +101,11 @@ main(int argc, char **argv)
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {
 		percussive_out[i] /= real_perc_max;
-
-		std::cout << "percussive " << i << " " << percussive_out[i] << std::endl;
 	}
 
 	nqr::EncoderParams encoder_params{
 		1,
-		nqr::PCMFormat::PCM_FLT,
+		nqr::PCMFormat::PCM_16,
 		nqr::DitherType::DITHER_NONE,
 	};
 

@@ -6,6 +6,8 @@
 #include <ffts/ffts.h>
 #include <math.h>
 
+#include <iostream>
+
 void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
 {
 	// following the previous iteration
@@ -20,13 +22,24 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	std::rotate(input.begin(), input.begin() + hop, input.end());
 	std::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
-	// apply square root von hann window to the newest appended hop samples
+	// apply square root von hann window
 	for (std::size_t i = 0; i < nwin; ++i) {
 		curr_fft[i] = {input[i] * win.window[i], 0.0F};
 	}
+
 	std::fill(curr_fft.begin() + nwin, curr_fft.end(), 0.0F);
 
 	ffts_execute(fft_forward, curr_fft.data(), curr_fft.data());
+
+	/* THE FFT IS WRONG!! from the real wav file */
+
+	std::cout << "X" << std::endl;
+	for (std::size_t i = 0; i < nfft; ++i) {
+		std::cout << curr_fft[i] << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+	std::exit(0);
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
