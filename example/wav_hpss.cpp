@@ -7,7 +7,7 @@
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 
-DEFINE_int32(hop, 32, "hop (samples)");
+DEFINE_int32(hop, 8, "hop (samples)");
 DEFINE_double(beta, 2.0, "beta (separation factor, float)");
 
 std::vector<std::vector<float>>

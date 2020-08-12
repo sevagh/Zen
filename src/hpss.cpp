@@ -26,28 +26,34 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	for (std::size_t i = 0; i < nwin; ++i) {
 		curr_fft[i] = {input[i] * win.window[i], 0.0F};
 	}
-	std::fill(curr_fft.begin() + nwin, curr_fft.end(), 0.0F);
+	std::fill(curr_fft.begin() + nwin, curr_fft.end(), std::complex<float>(0.0F, 0.0F));
 
-	std::cout << "xw" << std::endl;
-	for (std::size_t i = 0; i < nwin; ++i) {
-		std::cout << curr_fft[i] << std::endl;
-	}
-	std::cout << std::endl;
-	std::cout << std::endl;
+	//std::cout << "xw" << std::endl;
+	//for (std::size_t i = 0; i < nwin; ++i) {
+	//	std::cout << i << " " << curr_fft[i] << std::endl;
+	//}
+	//std::cout << std::endl;
+	//std::cout << std::endl;
 	//std::exit(0);
 
 	// perform fft in-place
 	ffts_execute(fft_forward, curr_fft.data(), curr_fft.data());
 
+	// scale it by the weird FFTS factor
+	//std::complex<float> scale = {1.0F / (float)nfft, 0.0F};
+	//for (std::size_t i = 0; i < nwin; ++i)
+	//	curr_fft[i] *= std::conj(curr_fft[i]) * scale;
+
+
 	/* THE FFT IS WRONG!! from the real wav file */
 
-	std::cout << "X" << std::endl;
-	for (std::size_t i = 0; i < nfft; ++i) {
-		std::cout << curr_fft[i] << std::endl;
-	}
-	std::cout << std::endl;
-	std::cout << std::endl;
-	std::exit(0);
+	//std::cout << "X" << std::endl;
+	//for (std::size_t i = 0; i < nfft; ++i) {
+	//	std::cout << i << " " << curr_fft[i] << std::endl;
+	//}
+	//std::cout << std::endl;
+	//std::cout << std::endl;
+	//std::exit(0);
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
