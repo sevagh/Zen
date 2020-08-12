@@ -7,7 +7,8 @@
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 
-DEFINE_int32(hop, 512, "hop (samples)");
+DEFINE_int32(hop, 32, "hop (samples)");
+DEFINE_double(beta, 2.0, "beta (separation factor, float)");
 
 std::vector<std::vector<float>>
 get_chunks(std::vector<float> &container, size_t k)
@@ -82,7 +83,7 @@ main(int argc, char **argv)
 
 	std::size_t n = 0.;
 
-	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate);
+	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate, FLAGS_hop, FLAGS_beta);
 
 	for (auto chunk : chunks) {
 		std::cout << "At n: " << n << std::endl;

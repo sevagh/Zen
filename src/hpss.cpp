@@ -22,13 +22,21 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	std::rotate(input.begin(), input.begin() + hop, input.end());
 	std::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
-	// apply square root von hann window
+	// fill input signal into complex fft with square root von hann window
 	for (std::size_t i = 0; i < nwin; ++i) {
 		curr_fft[i] = {input[i] * win.window[i], 0.0F};
 	}
-
 	std::fill(curr_fft.begin() + nwin, curr_fft.end(), 0.0F);
 
+	std::cout << "xw" << std::endl;
+	for (std::size_t i = 0; i < nwin; ++i) {
+		std::cout << curr_fft[i] << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+	//std::exit(0);
+
+	// perform fft in-place
 	ffts_execute(fft_forward, curr_fft.data(), curr_fft.data());
 
 	/* THE FFT IS WRONG!! from the real wav file */
