@@ -5,7 +5,6 @@
 #include <complex>
 #include <cstddef>
 #include <ffts/ffts.h>
-#include <span>
 #include <vector>
 
 /*
@@ -42,7 +41,6 @@ namespace hpss {
 
 		std::vector<float> input;
 
-		std::vector<float> percussive_out_raw;
 		std::vector<float> percussive_out;
 
 		ffts_plan_t* fft_forward;
@@ -61,13 +59,12 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , sliding_stft(
 		          std::vector<std::complex<float>>(stft_width * nfft,
-		                                           std::complex(0.0F, 0.0F)))
+		                                           std::complex{0.0F, 0.0F}))
 		    , curr_fft(std::vector<std::complex<float>>(nfft, 0.0F))
 		    , s_half_mag(std::vector<float>(stft_width * nwin, 0.0F))
 		    , harmonic_matrix(std::vector<float>(stft_width * nwin, 0.0F))
 		    , percussive_matrix(std::vector<float>(stft_width * nwin, 0.0F))
 		    , input(std::vector<float>(nwin, 0.0F))
-		    , percussive_out_raw(std::vector<float>(nwin, 0.0F))
 		    , percussive_out(std::vector<float>(nwin, 0.0F))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
@@ -95,9 +92,10 @@ namespace hpss {
 
 		void process_next_hop(std::vector<float>& current_hop);
 
-		std::span<float> peek_separated_percussive()
+		// recall that only the first hop samples are useful!
+		std::vector<float> peek_separated_percussive()
 		{
-			return std::span(percussive_out).first(hop);
+			return std::vector<float>(percussive_out.begin(), percussive_out.begin()+hop);
 		}
 	};
 }; // namespace hpss

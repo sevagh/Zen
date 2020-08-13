@@ -6,20 +6,18 @@
 #include <ffts/ffts.h>
 #include <math.h>
 
-#include <iostream>
-
 void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
 	// for the next hop and next overlap add
-	std::rotate(percussive_out.begin(), percussive_out.begin() + hop,
-	            percussive_out.end());
+	// we can't use std::rotate because of the gcc-8 constraint of CUDA
+	std::copy(percussive_out.begin() + hop, percussive_out.end(), percussive_out.begin());
 	std::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 
 	// append latest hop samples e.g.
 	//     input = input[hop:] + current_hop
-	std::rotate(input.begin(), input.begin() + hop, input.end());
+	std::copy(input.begin()+hop, input.end(), input.begin());
 	std::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
 	// fill input signal into complex fft with square root von hann window
@@ -28,37 +26,13 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	}
 	std::fill(curr_fft.begin() + nwin, curr_fft.end(), std::complex<float>(0.0F, 0.0F));
 
-	//std::cout << "xw" << std::endl;
-	//for (std::size_t i = 0; i < nwin; ++i) {
-	//	std::cout << i << " " << curr_fft[i] << std::endl;
-	//}
-	//std::cout << std::endl;
-	//std::cout << std::endl;
-	//std::exit(0);
-
 	// perform fft in-place
 	ffts_execute(fft_forward, curr_fft.data(), curr_fft.data());
 
-	// scale it by the weird FFTS factor
-	//std::complex<float> scale = {1.0F / (float)nfft, 0.0F};
-	//for (std::size_t i = 0; i < nwin; ++i)
-	//	curr_fft[i] *= std::conj(curr_fft[i]) * scale;
-
-
-	/* THE FFT IS WRONG!! from the real wav file */
-
-	//std::cout << "X" << std::endl;
-	//for (std::size_t i = 0; i < nfft; ++i) {
-	//	std::cout << i << " " << curr_fft[i] << std::endl;
-	//}
-	//std::cout << std::endl;
-	//std::cout << std::endl;
-	//std::exit(0);
-
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
-	std::rotate(
-	    sliding_stft.begin(), sliding_stft.begin() + nfft, sliding_stft.end());
+	std::copy(
+	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
 	std::copy(curr_fft.begin(), curr_fft.end(),
 	          sliding_stft.begin() + (stft_width - 1) * nfft);
 
@@ -110,15 +84,11 @@ void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_ho
 	// take the real part into the out arrays
 	ffts_execute(fft_backward, curr_fft.data(), curr_fft.data());
 
-	std::transform(
-	    curr_fft.begin(), curr_fft.begin() + nwin, percussive_out_raw.begin(),
-	    [](std::complex<float> x) -> float { return std::real(x); });
-
 	// weighted overlap add with last iteration's samples - only half of the
 	// real fft matters cola divide factor is for COLA compliance see
 	// https://github.com/sevagh/Real-Time-HPSS for background
 	for (std::size_t i = 0; i < nwin; ++i) {
-		percussive_out[i] += percussive_out_raw[i] * COLA_factor;
+		percussive_out[i] += std::real(curr_fft[i]) * COLA_factor;
 	}
 
 	// after weighted overlap add, the data we're ready to return

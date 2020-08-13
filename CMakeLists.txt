@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------#
 
 cmake_minimum_required(VERSION 3.14)
-project(rhythm_toolkit)
+project(rhythm_toolkit LANGUAGES CXX CUDA)
 set(VERSION 0.0.1)
 
 enable_testing()
@@ -114,15 +114,17 @@ endif()
 # BINS
 # ------------------------------------------------------------------------------#
 
-function(rhythm_toolkit_example name)
-  add_executable(example_${name} example/${name}.cpp)
+function(rhythm_toolkit_example name ext)
+  add_executable(example_${name} example/${name}.${ext})
   target_link_libraries(example_${name} ${RHYTHM_TOOLKIT_DEPS} gflags libnyquist libwavpack libopus)
 endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  rhythm_toolkit_example(wav_hpss)
+  rhythm_toolkit_example(wav_hpss cpp)
+  rhythm_toolkit_example(cuda_test cu)
   #rhythm_toolkit_example(dummy_hpss)
+  #rhythm_toolkit_example(ffts_test)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()

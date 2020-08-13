@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <chrono>
 
 #include "rhythm_toolkit/hpss.h"
 #include <gflags/gflags.h>
@@ -81,13 +82,17 @@ main(int argc, char **argv)
 	std::cout << "Slicing buffer size " << audio.size() << " into "
 	          << chunks.size() << " chunks of size " << chunk_size << std::endl;
 
-	std::size_t n = 0.;
+	std::size_t n = 0;
+	float delta_t = 1000 * (float)FLAGS_hop/file_data->sampleRate;
 
 	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate, FLAGS_hop, FLAGS_beta);
 
 	for (auto chunk : chunks) {
-		std::cout << "At n: " << n << std::endl;
+		auto t1 = std::chrono::high_resolution_clock::now();
 		hpss.process_next_hop(chunk);
+		auto t2 = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+		std::cout << "n = " << n << ", Δt(ms) = " << delta_t  << ", hpss duration(ms) = " << duration << std::endl;
 
 		auto perc = hpss.peek_separated_percussive();
 
