@@ -44,7 +44,6 @@ include(FindPkgConfig)
 
 find_package(GTest REQUIRED)
 find_package(gflags REQUIRED)
-find_package(FFTS REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(CUDAToolkit REQUIRED)
@@ -55,7 +54,7 @@ find_package(CUDAToolkit REQUIRED)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 # ------------------------------------------------------------------------------#
 # VENDORED LIBS
@@ -72,12 +71,12 @@ target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
+  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp src/hpss.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${FFTS_LIBRARY} CUDA::cufft)
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft)
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")

@@ -3,7 +3,7 @@
 // uses a locally vendored copy of
 // https://github.com/suomela/mf2d/blob/master/src/filter.h for median filtering
 #include "filter.h"
-#include <ffts/ffts.h>
+//#include <ffts/ffts.h>
 #include <math.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>

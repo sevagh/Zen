@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <math.h>
 #include <vector>
+#include <thrust/device_vector.h>
 
 namespace rhythm_toolkit {
 namespace window {
@@ -17,10 +18,10 @@ namespace window {
 
 	class Window {
 	public:
-		std::vector<float> window;
+		thrust::device_vector<float> window;
 
 		Window(WindowType window_type, std::size_t window_size)
-		    : window(std::vector<float>(window_size, 0.0))
+		    : window(thrust::device_vector<float>(window_size, 0.0))
 		{
 			switch (window_type) {
 			default: // only implement a von Hann window for now
