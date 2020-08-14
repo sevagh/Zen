@@ -16,6 +16,7 @@ enable_testing()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # cause FindCUDAToolkit isn't working so well with negativo17's cuda install paths
 set(VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -46,6 +47,7 @@ find_package(gflags REQUIRED)
 find_package(FFTS REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Nyquist REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 # ------------------------------------------------------------------------------#
 # INCLUDE DIRS
@@ -53,7 +55,7 @@ find_package(Nyquist REQUIRED)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src)
+  ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 # ------------------------------------------------------------------------------#
 # VENDORED LIBS
@@ -73,9 +75,9 @@ include_directories(
   ${GTEST_INCLUDE_DIRS} ${FFTS_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
-set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp)
+set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp src/hpss.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${FFTS_LIBRARY})
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit ${FFTS_LIBRARY} CUDA::cufft)
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -85,7 +87,7 @@ else()
   add_library(rhythm_toolkit SHARED ${RHYTHM_TOOLKIT_SOURCES})
 endif()
 
-target_link_libraries(rhythm_toolkit ${SOUNDIO_LIBRARY} ${STK_LIBRARY} mf2d)
+target_link_libraries(rhythm_toolkit mf2d CUDA::cufft)
 
 # ------------------------------------------------------------------------------#
 # CLANG-TIDY
@@ -218,6 +220,7 @@ if(CLANG_FORMAT)
 endif()
 
 # Adding cppclean target if executable is found
+# TODO fix this later
 find_program(CPP_CLEAN "cppclean")
 if(CPP_CLEAN)
   add_custom_target(
