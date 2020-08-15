@@ -64,17 +64,19 @@ namespace hpss {
 		NppStatus npp_status;
 		cudaError cuda_status;
 
+		NppiSize shared_roi;
+
 		NppiSize harmonic_mask;
-		NppiSize harmonic_roi;
 		NppiPoint harmonic_anchor;
 		Npp8u* harmonic_buffer;
 		Npp32u harmonic_buffer_size;
 
 		NppiSize percussive_mask;
-		NppiSize percussive_roi;
 		NppiPoint percussive_anchor;
 		Npp8u* percussive_buffer;
 		Npp32u percussive_buffer_size;
+
+		int nstep;
 
 		HPSS(float fs, std::size_t hop, float beta)
 		    : fs(fs)
@@ -100,12 +102,12 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
-		    , harmonic_mask(NppiSize{1, l_harm})
-		    , harmonic_roi(NppiSize{stft_width, nfft})
-		    , harmonic_anchor(NppiPoint{1, l_harm / 2 + 1})
-		    , percussive_mask(NppiSize{l_perc, 1})
-		    , percussive_roi(NppiSize{stft_width, nfft})
-		    , percussive_anchor(NppiPoint{l_perc / 2 + 1, 1})
+		    , shared_roi(NppiSize{stft_width, nfft})
+		    , harmonic_mask(NppiSize{l_harm, 0})
+		    , harmonic_anchor(NppiPoint{l_harm / 2 + 1, 0})
+		    , percussive_mask(NppiSize{0, l_perc})
+		    , percussive_anchor(NppiPoint{0, l_perc / 2 + 1})
+		    , nstep(stft_width*sizeof(Npp32f))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
@@ -121,15 +123,14 @@ namespace hpss {
 
 			// set up median filtering buffers etc.
 			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    harmonic_roi, harmonic_mask, &harmonic_buffer_size);
+			    shared_roi, harmonic_mask, &harmonic_buffer_size);
 			if (npp_status != NPP_NO_ERROR) {
 				std::cerr << "NPP error " << npp_status << std::endl;
-				;
 				std::exit(1);
 			}
 
 			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    percussive_roi, percussive_mask, &percussive_buffer_size);
+			    shared_roi, percussive_mask, &percussive_buffer_size);
 			if (npp_status != NPP_NO_ERROR) {
 				std::cerr << "NPP error " << npp_status << std::endl;
 				std::exit(1);

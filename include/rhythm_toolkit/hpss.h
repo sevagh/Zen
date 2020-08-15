@@ -29,7 +29,8 @@ namespace hpss {
 	public:
 		HPSS(float fs, std::size_t hop, float beta);
 
-		// sensible defaults
+		HPSS(float fs, std::size_t hop);
+
 		HPSS(float fs);
 
 		~HPSS();

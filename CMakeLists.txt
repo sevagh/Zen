@@ -115,14 +115,14 @@ endif()
 # BINS
 # ------------------------------------------------------------------------------#
 
-function(rhythm_toolkit_example name ext)
-  add_executable(example_${name} example/${name}.${ext})
+function(rhythm_toolkit_example name)
+  add_executable(example_${name} example/${name}.cu)
   target_link_libraries(example_${name} ${RHYTHM_TOOLKIT_DEPS} gflags libnyquist libwavpack libopus)
 endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  rhythm_toolkit_example(wav_hpss cu)
+  rhythm_toolkit_example(wav_hpss)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
@@ -153,8 +153,8 @@ else()
   message("VALGRIND: DISABLED - install valgrind to enable")
 endif()
 
-function(rhythm_toolkit_gtest name ext)
-  add_executable(test_${name} test/${name}.${ext})
+function(rhythm_toolkit_gtest name)
+  add_executable(test_${name} test/${name}.cu)
   target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
   target_compile_definitions(test_${name} PUBLIC UNIT_TESTS)
 
@@ -170,7 +170,7 @@ endfunction()
 
 if(BUILD_TESTS)
   message("LIBRHYTHM_TOOLKIT: Building tests")
-  rhythm_toolkit_gtest(rhythm_toolkit cu)
+  rhythm_toolkit_gtest(rhythm_toolkit)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping tests")
 endif()

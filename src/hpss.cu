@@ -25,6 +25,11 @@ rhythm_toolkit::hpss::HPSS::HPSS(float fs, std::size_t hop, float beta)
 	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, beta);
 }
 
+rhythm_toolkit::hpss::HPSS::HPSS(float fs, std::size_t hop)
+{
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, 2.0);
+}
+
 rhythm_toolkit::hpss::HPSS::HPSS(float fs)
 {
 	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, 512, 2.0);
@@ -45,9 +50,9 @@ rhythm_toolkit::hpss::HPSS::~HPSS() { delete p_impl; }
 struct window_functor {
 	window_functor() {}
 
-	__host__ __device__ float operator()(const float& x, const float& y) const
+	__host__ __device__ thrust::complex<float> operator()(const float& x, const float& y) const
 	{
-		return x * y;
+		return thrust::complex<float>{x * y, 0.0};
 	}
 };
 
@@ -108,16 +113,22 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	thrust::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 
 	// append latest hop samples e.g. input = input[hop:] + current_hop
-	thrust::copy(input.begin() + hop, input.begin() + nwin, input.begin());
+	thrust::copy(input.begin() + hop, input.end(), input.begin());
 	thrust::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), win.window.begin(),
 	                  curr_fft.begin(), window_functor());
 
+	std::cout << "xw" << std::endl;
+	for (int i = hop; i < hop+8; ++i) {
+		std::cout << curr_fft[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+
 	// zero out the second half of the fft
 	//thrust::fill(curr_fft.begin()+nwin, curr_fft.end(), thrust::complex<float>{0.0, 0.0});
-
 	cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
 
 	// rotate stft matrix to move the oldest column to the end
@@ -125,21 +136,42 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	thrust::copy(
 	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
 	thrust::copy(curr_fft.begin(), curr_fft.end(),
-	             sliding_stft.begin() + (stft_width - 1) * nfft);
+	             sliding_stft.end() - nfft);
 
 	// calculate the magnitude of the stft
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
 	                  complex_abs_functor());
 
+	std::cout << "STFTmag" << std::endl;
+	for (int i = 0; i < 8; ++i) {
+		std::cout << s_mag[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+
 	// apply median filter in horizontal and vertical directions with NPP
-	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nfft,
+	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nstep,
 	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
-	                         nfft, harmonic_roi, harmonic_mask,
+	                         nstep, shared_roi, harmonic_mask,
 	                         harmonic_anchor, harmonic_buffer);
 	nppiFilterMedian_32f_C1R(
-	    thrust::raw_pointer_cast(s_mag.data()), nfft,
-	    thrust::raw_pointer_cast(percussive_matrix.data()), nfft,
-	    percussive_roi, percussive_mask, percussive_anchor, percussive_buffer);
+	    thrust::raw_pointer_cast(s_mag.data()), nstep,
+	    thrust::raw_pointer_cast(percussive_matrix.data()), nstep,
+	    shared_roi, percussive_mask, percussive_anchor, percussive_buffer);
+
+	std::cout << "Mh" << std::endl;
+	for (int i = 0; i < 8; ++i) {
+		std::cout << harmonic_matrix[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+
+	std::cout << "Mp" << std::endl;
+	for (int i = 0; i < 8; ++i) {
+		std::cout << percussive_matrix[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
 
 	// calculate the binary masks in-place
 	//
@@ -152,6 +184,13 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	                  harmonic_matrix.begin(), percussive_matrix.begin(),
 	                  mask_functor(beta));
 
+	std::cout << "percussive mask" << std::endl;
+	for (int i = 0; i < 8; ++i) {
+		std::cout << percussive_out[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
+
 	// apply last column of percussive mask to recover separated fft
 	// recycle curr_fft instead of allocating a new vector
 	thrust::transform(curr_fft.begin(), curr_fft.end(),
@@ -160,13 +199,17 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 
 	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
 
-	// now percussive_out_tmp has the current iteration's fresh samples
-	// we overlap-add it to the previous
+	// now curr_fft has the current iteration's fresh samples
+	// we overlap-add it the real part to the previous
 	thrust::transform(curr_fft.begin(), curr_fft.begin()+nwin,
 	                  percussive_out.begin(), percussive_out.begin(), overlap_add_functor(COLA_factor));
 
+	std::cout << "p" << std::endl;
 	for (int i = 0; i < 8; ++i) {
 		std::cout << percussive_out[i] << " " << std::endl;
 	}
 	std::cout << std::endl;
+	std::cout << std::endl;
+
+	std::exit(0);
 }
