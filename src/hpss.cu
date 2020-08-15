@@ -68,9 +68,9 @@ struct overlap_add_functor {
 	{
 	}
 
-	__host__ __device__ float operator()(const float& x, const float& y) const
+	__host__ __device__ float operator()(const thrust::complex<float>& x, const float& y) const
 	{
-		return x + y * cola_factor;
+		return y + x.real() * cola_factor;
 	}
 };
 
@@ -107,16 +107,18 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	             percussive_out.begin());
 	thrust::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 
-	// append latest hop samples e.g.
-	//     input = input[hop:] + current_hop
-	thrust::copy(input.begin() + hop, input.end(), input.begin());
+	// append latest hop samples e.g. input = input[hop:] + current_hop
+	thrust::copy(input.begin() + hop, input.begin() + nwin, input.begin());
 	thrust::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
-	// apply square root von hann window to new samples input[hop:]
-	thrust::transform(input.begin() + hop, input.end(), win.window.begin(),
-	                  input.begin(), window_functor());
+	// populate curr_fft with input .* square root von hann window
+	thrust::transform(input.begin(), input.end(), win.window.begin(),
+	                  curr_fft.begin(), window_functor());
 
-	cufftExecR2C(plan_forward, in_ptr, fft_ptr);
+	// zero out the second half of the fft
+	//thrust::fill(curr_fft.begin()+nwin, curr_fft.end(), thrust::complex<float>{0.0, 0.0});
+
+	cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
@@ -143,7 +145,9 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	//
 	// note that from this point on, we only consider the percussive part of
 	// the algorithm because the horizontal median filter works poorly
-	// in real-time overwrite the matrices in-place
+	// in real-time
+	// 
+	// we overwrite the matrix in-place
 	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
 	                  harmonic_matrix.begin(), percussive_matrix.begin(),
 	                  mask_functor(beta));
@@ -154,13 +158,12 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	                  percussive_matrix.end() - nfft, curr_fft.begin(),
 	                  apply_mask_functor());
 
-	cufftExecC2R(plan_backward, fft_ptr, out_ptr);
+	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
 
 	// now percussive_out_tmp has the current iteration's fresh samples
 	// we overlap-add it to the previous
-	thrust::transform(percussive_out_tmp.begin(), percussive_out_tmp.end(),
-	                  percussive_out.begin(), percussive_out.begin(),
-	                  overlap_add_functor(COLA_factor));
+	thrust::transform(curr_fft.begin(), curr_fft.begin()+nwin,
+	                  percussive_out.begin(), percussive_out.begin(), overlap_add_functor(COLA_factor));
 
 	for (int i = 0; i < 8; ++i) {
 		std::cout << percussive_out[i] << " " << std::endl;

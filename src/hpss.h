@@ -49,15 +49,12 @@ namespace hpss {
 		thrust::device_vector<float> s_mag;
 		thrust::device_vector<float> harmonic_matrix;
 		thrust::device_vector<float> percussive_matrix;
-		thrust::device_vector<float> percussive_out_tmp;
 		thrust::device_vector<float> percussive_out;
 
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
 		// cufft specifics
-		cufftReal* in_ptr;
-		cufftReal* out_ptr;
 		cuFloatComplex* fft_ptr;
 
 		cufftHandle plan_forward;
@@ -82,8 +79,8 @@ namespace hpss {
 		HPSS(float fs, std::size_t hop, float beta)
 		    : fs(fs)
 		    , hop(hop)
-		    , nwin(2 * hop)
-		    , nfft(hop + 1)
+		    , nwin(2*hop)
+		    , nfft(4*hop)
 		    , beta(beta)
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
@@ -99,26 +96,22 @@ namespace hpss {
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_out_tmp(thrust::device_vector<float>(nwin, 0.0F))
 		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
-		    , in_ptr(( cufftReal* )thrust::raw_pointer_cast(input.data()))
-		    , out_ptr(( cufftReal* )thrust::raw_pointer_cast(
-		          percussive_out_tmp.data()))
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
 		    , harmonic_mask(NppiSize{1, l_harm})
 		    , harmonic_roi(NppiSize{stft_width, nfft})
-		    , harmonic_anchor(NppiPoint{1, l_harm / 2})
+		    , harmonic_anchor(NppiPoint{1, l_harm / 2 + 1})
 		    , percussive_mask(NppiSize{l_perc, 1})
 		    , percussive_roi(NppiSize{stft_width, nfft})
-		    , percussive_anchor(NppiPoint{l_perc / 2, 1})
+		    , percussive_anchor(NppiPoint{l_perc / 2 + 1, 1})
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
 
-			cufftPlan1d(&plan_forward, nwin, CUFFT_R2C, 1);
-			cufftPlan1d(&plan_backward, nwin, CUFFT_C2R, 1);
+			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
+			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
