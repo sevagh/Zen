@@ -1,5 +1,5 @@
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef WINDOW_PRIVATE_H
+#define WINDOW_PRIVATE_H
 
 #include <array>
 #include <cstddef>
@@ -7,7 +7,7 @@
 #include <vector>
 #include <thrust/device_vector.h>
 
-namespace rhythm_toolkit {
+namespace rhythm_toolkit_private {
 namespace window {
 
 	static constexpr float PI = 3.14159265359F;
@@ -40,6 +40,6 @@ namespace window {
 	};
 
 }; // namespace window
-}; // namespace rhythm_toolkit
+}; // namespace rhythm_toolkit_private
 
-#endif // WINDOW_H
+#endif // WINDOW_PRIVATE_H

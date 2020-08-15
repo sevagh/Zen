@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
@@ -12,10 +13,35 @@
 #include <thrust/functional.h>
 #include <thrust/complex.h>
 #include <iostream>
-#include "rhythm_toolkit_priv.h"
+#include "hpss.h"
 #include "rhythm_toolkit/hpss.h"
-#include "rhythm_toolkit/window.h"
 
+// real hpss code is below
+// the public namespace is to hide cuda details away from the public interface
+rhythm_toolkit::hpss::HPSS::HPSS(float fs, std::size_t hop, float beta)
+{
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, beta);
+}
+
+rhythm_toolkit::hpss::HPSS::HPSS(float fs)
+{
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, 512, 2.0);
+}
+
+void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& next_hop)
+{
+	p_impl->process_next_hop(next_hop);
+}
+
+std::vector<float> rhythm_toolkit::hpss::HPSS::peek_separated_percussive()
+{
+	return p_impl->peek_separated_percussive();
+}
+
+rhythm_toolkit::hpss::HPSS::~HPSS()
+{
+	delete p_impl;
+}
 struct window_functor
 {
 	window_functor() {}
@@ -32,7 +58,7 @@ void apply_window(thrust::device_vector<float>& signal, thrust::device_vector<fl
 	thrust::transform(signal.begin()+offset, signal.end(), window_vals.begin(), signal.begin(), window_functor());
 }
 
-void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
+void rhythm_toolkit_private::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready

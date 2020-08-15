@@ -2,6 +2,7 @@
 #include <numeric>
 #include <rhythm_toolkit/hpss.h>
 #include <rhythm_toolkit/rhythm_toolkit.h>
+#include <vector>
 
 int main(int argc, char** argv)
 {

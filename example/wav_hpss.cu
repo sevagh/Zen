@@ -100,9 +100,9 @@ main(int argc, char **argv)
 		n += FLAGS_hop;
 	}
 
-	const auto [percussive_min, percussive_max] = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
+	auto percussive_limits = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
 
-	float real_perc_max = std::max(-1*(*percussive_min), *percussive_max);
+	float real_perc_max = std::max(-1*(*percussive_limits.first), *percussive_limits.second);
 
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {

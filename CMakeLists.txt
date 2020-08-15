@@ -74,7 +74,7 @@ include_directories(
   ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
-set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cpp src/hpss.cu)
+set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cu)
 
 set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft)
 
@@ -122,10 +122,7 @@ endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  rhythm_toolkit_example(wav_hpss cpp)
-  rhythm_toolkit_example(cuda_test cu)
-  #rhythm_toolkit_example(dummy_hpss)
-  #rhythm_toolkit_example(ffts_test)
+  rhythm_toolkit_example(wav_hpss cu)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
@@ -156,9 +153,9 @@ else()
   message("VALGRIND: DISABLED - install valgrind to enable")
 endif()
 
-function(rhythm_toolkit_gtest name)
-  add_executable(test_${name} test/${name}.cpp)
-  target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS})
+function(rhythm_toolkit_gtest name ext)
+  add_executable(test_${name} test/${name}.${ext})
+  target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
   target_compile_definitions(test_${name} PUBLIC UNIT_TESTS)
 
   add_test(test_${name} ${BIN_DIR}/test_${name})
@@ -173,7 +170,7 @@ endfunction()
 
 if(BUILD_TESTS)
   message("LIBRHYTHM_TOOLKIT: Building tests")
-  rhythm_toolkit_gtest(rhythm_toolkit)
+  rhythm_toolkit_gtest(rhythm_toolkit cu)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping tests")
 endif()
@@ -206,10 +203,14 @@ file(
   GLOB_RECURSE
   ALL_CXX_SOURCE_FILES
   src/*.cpp
+  src/*.cu
   src/*.h
   include/*.h
+  test/*.cu
   test/*.cpp
-  examples/*.cpp)
+  examples/*.cpp
+  examples/*.cu
+  )
 
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")
