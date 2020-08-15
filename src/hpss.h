@@ -11,6 +11,10 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
+#include "npp.h"
+#include "nppdefs.h"
+#include "nppi.h"
+
 /*
  * Adaptation of Real-Time HPSS
  *     https://github.com/sevagh/Real-Time-HPSS
@@ -42,9 +46,10 @@ namespace hpss {
 		thrust::device_vector<thrust::complex<float>> sliding_stft;
 		thrust::device_vector<thrust::complex<float>> curr_fft;
 
-		thrust::device_vector<float> s_half_mag;
+		thrust::device_vector<float> s_mag;
 		thrust::device_vector<float> harmonic_matrix;
 		thrust::device_vector<float> percussive_matrix;
+		thrust::device_vector<float> percussive_out_tmp;
 		thrust::device_vector<float> percussive_out;
 
 		float COLA_factor; // see
@@ -57,6 +62,22 @@ namespace hpss {
 
 		cufftHandle plan_forward;
 		cufftHandle plan_backward;
+
+		// npp specifics for median filtering
+		NppStatus npp_status;
+		cudaError cuda_status;
+
+		NppiSize harmonic_mask;
+		NppiSize harmonic_roi;
+		NppiPoint harmonic_anchor;
+		Npp8u* harmonic_buffer;
+		Npp32u harmonic_buffer_size;
+
+		NppiSize percussive_mask;
+		NppiSize percussive_roi;
+		NppiPoint percussive_anchor;
+		Npp8u* percussive_buffer;
+		Npp32u percussive_buffer_size;
 
 		HPSS(float fs, std::size_t hop, float beta)
 		    : fs(fs)
@@ -73,18 +94,25 @@ namespace hpss {
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
 		    , curr_fft(thrust::device_vector<thrust::complex<float>>(nfft, 0.0F))
-		    , s_half_mag(thrust::device_vector<float>(stft_width * nwin, 0.0F))
+		    , s_mag(thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , harmonic_matrix(
-		          thrust::device_vector<float>(stft_width * nwin, 0.0F))
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(
-		          thrust::device_vector<float>(stft_width * nwin, 0.0F))
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , percussive_out_tmp(thrust::device_vector<float>(nwin, 0.0F))
 		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
 		    , in_ptr(( cufftReal* )thrust::raw_pointer_cast(input.data()))
-		    , out_ptr(
-		          ( cufftReal* )thrust::raw_pointer_cast(percussive_out.data()))
+		    , out_ptr(( cufftReal* )thrust::raw_pointer_cast(
+		          percussive_out_tmp.data()))
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
+		    , harmonic_mask(NppiSize{1, l_harm})
+		    , harmonic_roi(NppiSize{stft_width, nfft})
+		    , harmonic_anchor(NppiPoint{1, l_harm / 2})
+		    , percussive_mask(NppiSize{l_perc, 1})
+		    , percussive_roi(NppiSize{stft_width, nfft})
+		    , percussive_anchor(NppiPoint{l_perc / 2, 1})
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
@@ -97,11 +125,47 @@ namespace hpss {
 				COLA_factor += win.window[i] * win.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
+
+			// set up median filtering buffers etc.
+			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+			    harmonic_roi, harmonic_mask, &harmonic_buffer_size);
+			if (npp_status != NPP_NO_ERROR) {
+				std::cerr << "NPP error " << npp_status << std::endl;
+				;
+				std::exit(1);
+			}
+
+			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+			    percussive_roi, percussive_mask, &percussive_buffer_size);
+			if (npp_status != NPP_NO_ERROR) {
+				std::cerr << "NPP error " << npp_status << std::endl;
+				std::exit(1);
+			}
+
+			cuda_status
+			    = cudaMalloc(( void** )&harmonic_buffer, harmonic_buffer_size);
+			if (cuda_status != cudaSuccess) {
+				std::cerr << cudaGetErrorString(cuda_status);
+				std::exit(1);
+			}
+
+			cuda_status = cudaMalloc(
+			    ( void** )&percussive_buffer, percussive_buffer_size);
+			if (cuda_status != cudaSuccess) {
+				std::cerr << cudaGetErrorString(cuda_status);
+				std::exit(1);
+			}
 		};
 
 		// sensible defaults
 		HPSS(float fs)
 		    : HPSS(fs, 512, 2.0){};
+
+		~HPSS()
+		{
+			cudaFree(harmonic_buffer);
+			cudaFree(percussive_buffer);
+		}
 
 		void process_next_hop(std::vector<float>& current_hop);
 

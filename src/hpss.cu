@@ -1,4 +1,6 @@
 #include "hpss.h"
+#include "nppdefs.h"
+#include "nppi.h"
 #include "rhythm_toolkit/hpss.h"
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
@@ -39,6 +41,7 @@ std::vector<float> rhythm_toolkit::hpss::HPSS::peek_separated_percussive()
 }
 
 rhythm_toolkit::hpss::HPSS::~HPSS() { delete p_impl; }
+
 struct window_functor {
 	window_functor() {}
 
@@ -48,14 +51,51 @@ struct window_functor {
 	}
 };
 
-void apply_window(thrust::device_vector<float>& signal,
-                  thrust::device_vector<float>& window_vals,
-                  std::size_t offset)
-{
-	// x = x.*window
-	thrust::transform(signal.begin() + offset, signal.end(),
-	                  window_vals.begin(), signal.begin(), window_functor());
-}
+struct apply_mask_functor {
+	apply_mask_functor() {}
+
+	__host__ __device__ thrust::complex<float>
+	operator()(const thrust::complex<float>& x, const float& y) const
+	{
+		return x * y;
+	}
+};
+
+struct overlap_add_functor {
+	const float cola_factor;
+	overlap_add_functor(float _cola_factor)
+	    : cola_factor(_cola_factor)
+	{
+	}
+
+	__host__ __device__ float operator()(const float& x, const float& y) const
+	{
+		return x + y * cola_factor;
+	}
+};
+
+struct complex_abs_functor {
+	template <typename ValueType>
+	__host__ __device__ ValueType operator()(const thrust::complex<ValueType>& z)
+	{
+		return thrust::abs(z);
+	}
+};
+
+struct mask_functor {
+	const float beta;
+	static constexpr float eps = std::numeric_limits<float>::epsilon();
+
+	mask_functor(float _beta)
+	    : beta(_beta)
+	{
+	}
+
+	__host__ __device__ float operator()(const float& x, const float& y) const
+	{
+		return float(x / (y + eps) >= beta);
+	}
+};
 
 void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
     std::vector<float>& current_hop)
@@ -73,7 +113,8 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	thrust::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
 	// apply square root von hann window to new samples input[hop:]
-	apply_window(input, win.window, hop);
+	thrust::transform(input.begin() + hop, input.end(), win.window.begin(),
+	                  input.begin(), window_functor());
 
 	cufftExecR2C(plan_forward, in_ptr, fft_ptr);
 
@@ -84,78 +125,45 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	thrust::copy(curr_fft.begin(), curr_fft.end(),
 	             sliding_stft.begin() + (stft_width - 1) * nfft);
 
-	cufftExecC2R(plan_backward, fft_ptr, out_ptr);
-}
+	// calculate the magnitude of the stft
+	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
+	                  complex_abs_functor());
 
-/*
-void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>&
-current_hop)
-{
-//
-//	// rotate stft matrix to move the oldest column to the end
-//	// copy curr_fft into the last column of the stft
-//	std::copy(
-//	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
-//	std::copy(curr_fft.begin(), curr_fft.end(),
-//	          sliding_stft.begin() + (stft_width - 1) * nfft);
-//
-//	// calculate half the magnitude of the stft
-//	for (std::size_t i = 0; i < stft_width; ++i) {
-//		for (std::size_t j = 0; j < nwin; ++j) {
-//			s_half_mag[i * nwin + j] = std::abs(sliding_stft[i * nfft + j]);
-//		}
-//	}
-//
-//	// apply median filter in horizontal and vertical directions
-//	// only consider half the stft
-//	median_filter_2d<float>(( int )nwin, ( int )stft_width, 0, l_harm, 0,
-//	                        s_half_mag.data(), harmonic_matrix.data());
-//	median_filter_2d<float>(( int )nwin, ( int )stft_width, l_perc, 0, 0,
-//	                        s_half_mag.data(), percussive_matrix.data());
-//
-//	// calculate the binary masks
-//	// note that from this point on, we only consider the percussive part of
-//	// the algorithm that's because the horizontal median filter works poorly
-//	// in real-time overwrite the matrices in-place
-//	for (std::size_t i = 0; i < stft_width; ++i) {
-//		for (std::size_t j = 0; j < nwin; ++j) {
-//			auto idx = i * nwin + j;
-//
-//			// Mp = P/(H + eps) >= beta
-//			percussive_matrix[idx]
-//			    = float(percussive_matrix[idx]
-//			                / (harmonic_matrix[idx]
-//			                   + std::numeric_limits<float>::epsilon())
-//			            >= beta);
-//		}
-//	}
-//
-//	std::complex<float> scale = {1.0f / ( float )nfft, 0.0};
-//
-//	// apply masks to recover separated fft
-//	// recycle curr_fft instead of allocating a new vector
-//	std::size_t inverse_i = nfft - 1;
-//	for (std::size_t i = 0; i < nwin; ++i) {
-//		auto mask_idx = (stft_width - 1) * nwin + i;
-//		curr_fft[i] *= percussive_matrix[mask_idx] * scale;
-//
-//		// P = P + flipud(conj(P))
-//		curr_fft[inverse_i - i] = std::conj(curr_fft[i]);
-//	}
-//
-//	// apply ifft to get resultant percussive audio in-place
-//	// take the real part into the out arrays
-//	ffts_execute(fft_backward, curr_fft.data(), curr_fft.data());
-//
-//	// weighted overlap add with last iteration's samples - only half of the
-//	// real fft matters cola divide factor is for COLA compliance see
-//	// https://github.com/sevagh/Real-Time-HPSS for background
-//	for (std::size_t i = 0; i < nwin; ++i) {
-//		percussive_out[i] += std::real(curr_fft[i]) * COLA_factor;
-//	}
-//
-//	// after weighted overlap add, the data we're ready to return
-//	// is the first 'hop' elements of harmonic_out and percussive_out
-//	// uses std::span (see hpss.h)
+	// apply median filter in horizontal and vertical directions with NPP
+	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nfft,
+	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
+	                         nfft, harmonic_roi, harmonic_mask,
+	                         harmonic_anchor, harmonic_buffer);
+	nppiFilterMedian_32f_C1R(
+	    thrust::raw_pointer_cast(s_mag.data()), nfft,
+	    thrust::raw_pointer_cast(percussive_matrix.data()), nfft,
+	    percussive_roi, percussive_mask, percussive_anchor, percussive_buffer);
+
+	// calculate the binary masks in-place
+	//
+	// note that from this point on, we only consider the percussive part of
+	// the algorithm because the horizontal median filter works poorly
+	// in real-time overwrite the matrices in-place
+	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
+	                  harmonic_matrix.begin(), percussive_matrix.begin(),
+	                  mask_functor(beta));
+
+	// apply last column of percussive mask to recover separated fft
+	// recycle curr_fft instead of allocating a new vector
+	thrust::transform(curr_fft.begin(), curr_fft.end(),
+	                  percussive_matrix.end() - nfft, curr_fft.begin(),
+	                  apply_mask_functor());
+
+	cufftExecC2R(plan_backward, fft_ptr, out_ptr);
+
+	// now percussive_out_tmp has the current iteration's fresh samples
+	// we overlap-add it to the previous
+	thrust::transform(percussive_out_tmp.begin(), percussive_out_tmp.end(),
+	                  percussive_out.begin(), percussive_out.begin(),
+	                  overlap_add_functor(COLA_factor));
+
+	for (int i = 0; i < 8; ++i) {
+		std::cout << percussive_out[i] << " " << std::endl;
+	}
+	std::cout << std::endl;
 }
-*/

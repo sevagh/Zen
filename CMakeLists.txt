@@ -76,7 +76,7 @@ link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft)
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif)
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -86,7 +86,7 @@ else()
   add_library(rhythm_toolkit SHARED ${RHYTHM_TOOLKIT_SOURCES})
 endif()
 
-target_link_libraries(rhythm_toolkit mf2d CUDA::cufft)
+target_link_libraries(rhythm_toolkit mf2d CUDA::cufft CUDA::nppif)
 
 # ------------------------------------------------------------------------------#
 # CLANG-TIDY
