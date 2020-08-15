@@ -7,10 +7,15 @@ clean:
 	rm -rf lib/
 	rm -rf bin/
 
-build:
+setup:
 	mkdir -p build
 	(cd build; cmake .. -G Ninja $(EXTRA_CMAKE_FLAGS))
+
+build: setup
 	ninja -C build
+
+clang-format: setup
+	ninja -C build clang-format
 
 .PHONY:
 	clean

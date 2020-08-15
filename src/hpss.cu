@@ -1,20 +1,20 @@
-#include <math.h>
-#include <stdio.h>
+#include "hpss.h"
+#include "rhythm_toolkit/hpss.h"
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
 #include <cufft.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/transform.h>
-#include <thrust/sequence.h>
-#include <thrust/copy.h>
-#include <thrust/fill.h>
-#include <thrust/replace.h>
-#include <thrust/functional.h>
-#include <thrust/complex.h>
 #include <iostream>
-#include "hpss.h"
-#include "rhythm_toolkit/hpss.h"
+#include <math.h>
+#include <stdio.h>
+#include <thrust/complex.h>
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
+#include <thrust/fill.h>
+#include <thrust/functional.h>
+#include <thrust/host_vector.h>
+#include <thrust/replace.h>
+#include <thrust/sequence.h>
+#include <thrust/transform.h>
 
 // real hpss code is below
 // the public namespace is to hide cuda details away from the public interface
@@ -38,37 +38,38 @@ std::vector<float> rhythm_toolkit::hpss::HPSS::peek_separated_percussive()
 	return p_impl->peek_separated_percussive();
 }
 
-rhythm_toolkit::hpss::HPSS::~HPSS()
-{
-	delete p_impl;
-}
-struct window_functor
-{
+rhythm_toolkit::hpss::HPSS::~HPSS() { delete p_impl; }
+struct window_functor {
 	window_functor() {}
 
-	__host__ __device__
-	float operator()(const float& x, const float& y) const { 
+	__host__ __device__ float operator()(const float& x, const float& y) const
+	{
 		return x * y;
 	}
 };
 
-void apply_window(thrust::device_vector<float>& signal, thrust::device_vector<float>& window_vals, std::size_t offset)
+void apply_window(thrust::device_vector<float>& signal,
+                  thrust::device_vector<float>& window_vals,
+                  std::size_t offset)
 {
 	// x = x.*window
-	thrust::transform(signal.begin()+offset, signal.end(), window_vals.begin(), signal.begin(), window_functor());
+	thrust::transform(signal.begin() + offset, signal.end(),
+	                  window_vals.begin(), signal.begin(), window_functor());
 }
 
-void rhythm_toolkit_private::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
+void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
+    std::vector<float>& current_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
 	// for the next hop and next overlap add
-	thrust::copy(percussive_out.begin() + hop, percussive_out.end(), percussive_out.begin());
+	thrust::copy(percussive_out.begin() + hop, percussive_out.end(),
+	             percussive_out.begin());
 	thrust::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 
 	// append latest hop samples e.g.
 	//     input = input[hop:] + current_hop
-	thrust::copy(input.begin()+hop, input.end(), input.begin());
+	thrust::copy(input.begin() + hop, input.end(), input.begin());
 	thrust::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
 
 	// apply square root von hann window to new samples input[hop:]
@@ -81,13 +82,14 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(std::vector<float>& cu
 	thrust::copy(
 	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
 	thrust::copy(curr_fft.begin(), curr_fft.end(),
-	          sliding_stft.begin() + (stft_width - 1) * nfft);
+	             sliding_stft.begin() + (stft_width - 1) * nfft);
 
 	cufftExecC2R(plan_backward, fft_ptr, out_ptr);
 }
 
 /*
-void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
+void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>&
+current_hop)
 {
 //
 //	// rotate stft matrix to move the oldest column to the end

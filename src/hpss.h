@@ -6,11 +6,10 @@
 #include <cstddef>
 #include <vector>
 
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
-#include <thrust/complex.h>
 #include <cufft.h>
-
+#include <thrust/complex.h>
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 
 /*
  * Adaptation of Real-Time HPSS
@@ -23,7 +22,8 @@
  */
 namespace rhythm_toolkit_private {
 namespace hpss {
-	void cuda_hpss(thrust::host_vector<float>& x, thrust::host_vector<float>& p);
+	void cuda_hpss(thrust::host_vector<float>& x,
+	               thrust::host_vector<float>& p);
 
 	class HPSS {
 	public:
@@ -69,18 +69,22 @@ namespace hpss {
 		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
 		    , input(thrust::device_vector<float>(nwin, 0.0F))
 		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
-		    , sliding_stft(
-		          thrust::device_vector<thrust::complex<float>>(stft_width * nfft,
-		                                           thrust::complex<float>{0.0F, 0.0F}))
+		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
+		          stft_width * nfft,
+		          thrust::complex<float>{0.0F, 0.0F}))
 		    , curr_fft(thrust::device_vector<thrust::complex<float>>(nfft, 0.0F))
 		    , s_half_mag(thrust::device_vector<float>(stft_width * nwin, 0.0F))
-		    , harmonic_matrix(thrust::device_vector<float>(stft_width * nwin, 0.0F))
-		    , percussive_matrix(thrust::device_vector<float>(stft_width * nwin, 0.0F))
+		    , harmonic_matrix(
+		          thrust::device_vector<float>(stft_width * nwin, 0.0F))
+		    , percussive_matrix(
+		          thrust::device_vector<float>(stft_width * nwin, 0.0F))
 		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
-		    , in_ptr((cufftReal*)thrust::raw_pointer_cast(input.data()))
-		    , out_ptr((cufftReal*)thrust::raw_pointer_cast(percussive_out.data()))
-		    , fft_ptr((cuFloatComplex*)thrust::raw_pointer_cast(curr_fft.data()))
+		    , in_ptr(( cufftReal* )thrust::raw_pointer_cast(input.data()))
+		    , out_ptr(
+		          ( cufftReal* )thrust::raw_pointer_cast(percussive_out.data()))
+		    , fft_ptr(
+		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
@@ -106,9 +110,10 @@ namespace hpss {
 			// this does cudamemcpy under the hood - use only for debugging!
 			std::vector<float> ret(hop);
 
-			// only the first hop samples of percussive_out are ready to be consumed
-			// the rest remains to be overlap-added next iteration
-			thrust::copy(percussive_out.begin(), percussive_out.begin()+hop, ret.begin());
+			// only the first hop samples of percussive_out are ready to be
+			// consumed the rest remains to be overlap-added next iteration
+			thrust::copy(percussive_out.begin(), percussive_out.begin() + hop,
+			             ret.begin());
 			return ret;
 		}
 	};

@@ -19,9 +19,9 @@
 // forward declare the private implementation of HPSS
 namespace rhythm_toolkit_private {
 namespace hpss {
-class HPSS;
+	class HPSS;
 };
-};
+}; // namespace rhythm_toolkit_private
 
 namespace rhythm_toolkit {
 namespace hpss {
@@ -40,7 +40,8 @@ namespace hpss {
 		std::vector<float> peek_separated_percussive();
 
 	private:
-		rhythm_toolkit_private::hpss::HPSS* p_impl; // https://en.cppreference.com/w/cpp/language/pimpl
+		rhythm_toolkit_private::hpss::HPSS*
+		    p_impl; // https://en.cppreference.com/w/cpp/language/pimpl
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit

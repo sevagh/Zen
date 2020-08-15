@@ -4,8 +4,8 @@
 #include <array>
 #include <cstddef>
 #include <math.h>
-#include <vector>
 #include <thrust/device_vector.h>
+#include <vector>
 
 namespace rhythm_toolkit_private {
 namespace window {
