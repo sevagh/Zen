@@ -23,10 +23,10 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
-add_definitions("-Wall")
-add_definitions("-Wextra")
-add_definitions("-Wundef")
-add_definitions("-Wunreachable-code")
+#add_definitions("-Wall")
+#add_definitions("-Wextra")
+#add_definitions("-Wundef")
+#add_definitions("-Wunreachable-code")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 
@@ -123,6 +123,7 @@ endfunction()
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
   rhythm_toolkit_example(wav_hpss)
+  #rhythm_toolkit_example(nppifilter)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
