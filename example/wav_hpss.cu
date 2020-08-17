@@ -91,8 +91,8 @@ main(int argc, char **argv)
 		auto t1 = std::chrono::high_resolution_clock::now();
 		hpss.process_next_hop(chunk);
 		auto t2 = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-		std::cout << "n = " << n << ", Δt(ms) = " << delta_t  << ", hpss duration(ms) = " << duration << std::endl;
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+		std::cout << "n = " << n << ", Δt(ms) = " << delta_t  << ", hpss duration(us) = " << duration << std::endl;
 
 		auto perc = hpss.peek_separated_percussive();
 

@@ -83,8 +83,8 @@ namespace hpss {
 		HPSS(float fs, std::size_t hop, float beta)
 		    : fs(fs)
 		    , hop(hop)
-		    , nwin(2*hop)
-		    , nfft(4*hop)
+		    , nwin(2 * hop)
+		    , nfft(4 * hop)
 		    , beta(beta)
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
@@ -104,7 +104,7 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
-		    , nstep(nfft*sizeof(Npp32f))
+		    , nstep(nfft * sizeof(Npp32f))
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
@@ -119,13 +119,13 @@ namespace hpss {
 			COLA_factor = nfft / COLA_factor;
 
 			// set up median filtering buffers etc.
-		        
-			harmonic_roi_offset = (int)floorf((float)l_harm/2);
+
+			harmonic_roi_offset = ( int )floorf(( float )l_harm / 2);
 			harmonic_roi = NppiSize{nfft, stft_width};
 			harmonic_mask = NppiSize{1, l_harm};
 			harmonic_anchor = NppiPoint{0, harmonic_roi_offset};
 
-			percussive_roi_offset = (int)floorf((float)l_perc/2);
+			percussive_roi_offset = ( int )floorf(( float )l_perc / 2);
 			percussive_roi = NppiSize{nfft, stft_width};
 			percussive_mask = NppiSize{l_perc, 1};
 			percussive_anchor = NppiPoint{percussive_roi_offset, 0};

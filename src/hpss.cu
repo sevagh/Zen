@@ -49,7 +49,8 @@ rhythm_toolkit::hpss::HPSS::~HPSS() { delete p_impl; }
 struct window_functor {
 	window_functor() {}
 
-	__host__ __device__ thrust::complex<float> operator()(const float& x, const float& y) const
+	__host__ __device__ thrust::complex<float> operator()(const float& x,
+	                                                      const float& y) const
 	{
 		return thrust::complex<float>{x * y, 0.0};
 	}
@@ -72,7 +73,8 @@ struct overlap_add_functor {
 	{
 	}
 
-	__host__ __device__ float operator()(const thrust::complex<float>& x, const float& y) const
+	__host__ __device__ float operator()(const thrust::complex<float>& x,
+	                                     const float& y) const
 	{
 		return y + x.real() * cola_factor;
 	}
@@ -121,23 +123,24 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	                  curr_fft.begin(), window_functor());
 
 	// zero out the second half of the fft
-	thrust::fill(curr_fft.begin()+nwin, curr_fft.end(), thrust::complex<float>{0.0, 0.0});
+	thrust::fill(curr_fft.begin() + nwin, curr_fft.end(),
+	             thrust::complex<float>{0.0, 0.0});
 	cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
 	thrust::copy(
 	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
-	thrust::copy(curr_fft.begin(), curr_fft.end(),
-	             sliding_stft.end() - nfft);
+	thrust::copy(curr_fft.begin(), curr_fft.end(), sliding_stft.end() - nfft);
 
 	// calculate the magnitude of the stft
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
 	                  complex_abs_functor());
 
 	// apply median filter in horizontal and vertical directions with NPP
-	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data())+stft_width+harmonic_roi_offset, nstep,
-	                         thrust::raw_pointer_cast(harmonic_matrix.data())+stft_width+harmonic_roi_offset,
+	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()),
+	                         nstep,
+	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
 	                         nstep, harmonic_roi, harmonic_mask,
 	                         harmonic_anchor, harmonic_buffer);
 	nppiFilterMedian_32f_C1R(
@@ -150,7 +153,7 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	// note that from this point on, we only consider the percussive part of
 	// the algorithm because the horizontal median filter works poorly
 	// in real-time
-	// 
+	//
 	// we overwrite the matrix in-place
 	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
 	                  harmonic_matrix.begin(), percussive_matrix.begin(),
@@ -166,6 +169,7 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 
 	// now curr_fft has the current iteration's fresh samples
 	// we overlap-add it the real part to the previous
-	thrust::transform(curr_fft.begin(), curr_fft.begin()+nwin,
-	                  percussive_out.begin(), percussive_out.begin(), overlap_add_functor(COLA_factor));
+	thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+	                  percussive_out.begin(), percussive_out.begin(),
+	                  overlap_add_functor(COLA_factor));
 }
