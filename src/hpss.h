@@ -88,7 +88,7 @@ namespace hpss {
 		    , beta(beta)
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
-		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
+		    , stft_width(l_harm)
 		    , input(thrust::device_vector<float>(nwin, 0.0F))
 		    , win(window::Window(window::WindowType::SqrtVonHann, nwin))
 		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
