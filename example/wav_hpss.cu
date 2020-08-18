@@ -87,18 +87,24 @@ main(int argc, char **argv)
 
 	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate, FLAGS_hop, FLAGS_beta);
 
+	float iters = 0.0F;
+	int time_tot = 0;
+
 	for (auto chunk : chunks) {
 		auto t1 = std::chrono::high_resolution_clock::now();
 		hpss.process_next_hop(chunk);
 		auto t2 = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-		std::cout << "n = " << n << ", Δt(ms) = " << delta_t  << ", hpss duration(us) = " << duration << std::endl;
+
+		time_tot += std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
 		auto perc = hpss.peek_separated_percussive();
 
 		std::copy(perc.begin(), perc.end(), percussive_out.begin() + n);
 		n += FLAGS_hop;
+		iters += 1.0F;
 	}
+
+	std::cout << "Δn = " << FLAGS_hop << ", Δt(ms) = " << delta_t  << ", average hpss duration(us) = " << (float)time_tot/iters << std::endl;
 
 	auto percussive_limits = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
 

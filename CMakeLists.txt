@@ -54,16 +54,11 @@ find_package(CUDAToolkit REQUIRED)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  ${GTEST_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 # ------------------------------------------------------------------------------#
 # VENDORED LIBS
 # ------------------------------------------------------------------------------#
-
-set(MF2D_SOURCES ${VENDOR_DIR}/mf2d/src/filter.cc)
-
-add_library(mf2d SHARED ${MF2D_SOURCES})
-target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 # ------------------------------------------------------------------------------#
 # LIBS
@@ -71,7 +66,7 @@ target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
+  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cu)
@@ -86,7 +81,7 @@ else()
   add_library(rhythm_toolkit SHARED ${RHYTHM_TOOLKIT_SOURCES})
 endif()
 
-target_link_libraries(rhythm_toolkit mf2d CUDA::cufft CUDA::nppif)
+target_link_libraries(rhythm_toolkit CUDA::cufft CUDA::nppif)
 
 # ------------------------------------------------------------------------------#
 # CLANG-TIDY

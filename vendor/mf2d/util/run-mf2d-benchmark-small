@@ -1,9 +1,0 @@
-#!/bin/bash
-
-mkdir -p tmp || exit 1
-for i in {1..10}; do
-    echo "$i"
-    bin/mf2d-benchmark example/test-1.fits | tee "tmp/mf2d-benchmark-out-$i.txt" | expand -t10
-    echo
-done
-

@@ -138,15 +138,14 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 	                  complex_abs_functor());
 
 	// apply median filter in horizontal and vertical directions with NPP
-	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()),
-	                         nstep,
+	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nstep,
 	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
-	                         nstep, harmonic_roi, harmonic_mask,
-	                         harmonic_anchor, harmonic_buffer);
+	                         nstep, medfilt_roi, harmonic_mask,
+	                         harmonic_anchor, nullptr);
 	nppiFilterMedian_32f_C1R(
 	    thrust::raw_pointer_cast(s_mag.data()), nstep,
-	    thrust::raw_pointer_cast(percussive_matrix.data()), nstep,
-	    percussive_roi, percussive_mask, percussive_anchor, percussive_buffer);
+	    thrust::raw_pointer_cast(percussive_matrix.data()), nstep, medfilt_roi,
+	    percussive_mask, percussive_anchor, nullptr);
 
 	// calculate the binary masks in-place
 	//

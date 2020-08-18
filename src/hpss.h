@@ -61,22 +61,15 @@ namespace hpss {
 		cufftHandle plan_backward;
 
 		// npp specifics for median filtering
-		NppStatus npp_status;
-		cudaError cuda_status;
+		NppiSize medfilt_roi;
 
 		int harmonic_roi_offset;
-		NppiSize harmonic_roi;
 		NppiSize harmonic_mask;
 		NppiPoint harmonic_anchor;
-		Npp8u* harmonic_buffer;
-		Npp32u harmonic_buffer_size;
 
 		int percussive_roi_offset;
-		NppiSize percussive_roi;
 		NppiSize percussive_mask;
 		NppiPoint percussive_anchor;
-		Npp8u* percussive_buffer;
-		Npp32u percussive_buffer_size;
 
 		int nstep;
 
@@ -119,55 +112,20 @@ namespace hpss {
 			COLA_factor = nfft / COLA_factor;
 
 			// set up median filtering buffers etc.
+			medfilt_roi = NppiSize{nfft, stft_width};
 
 			harmonic_roi_offset = ( int )floorf(( float )l_harm / 2);
-			harmonic_roi = NppiSize{nfft, stft_width};
 			harmonic_mask = NppiSize{1, l_harm};
 			harmonic_anchor = NppiPoint{0, harmonic_roi_offset};
 
 			percussive_roi_offset = ( int )floorf(( float )l_perc / 2);
-			percussive_roi = NppiSize{nfft, stft_width};
 			percussive_mask = NppiSize{l_perc, 1};
 			percussive_anchor = NppiPoint{percussive_roi_offset, 0};
-
-			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    harmonic_roi, harmonic_mask, &harmonic_buffer_size);
-			if (npp_status != NPP_NO_ERROR) {
-				std::cerr << "NPP error " << npp_status << std::endl;
-				std::exit(1);
-			}
-
-			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    percussive_roi, percussive_mask, &percussive_buffer_size);
-			if (npp_status != NPP_NO_ERROR) {
-				std::cerr << "NPP error " << npp_status << std::endl;
-				std::exit(1);
-			}
-
-			cuda_status
-			    = cudaMalloc(( void** )&harmonic_buffer, harmonic_buffer_size);
-			if (cuda_status != cudaSuccess) {
-				std::cerr << cudaGetErrorString(cuda_status);
-				std::exit(1);
-			}
-
-			cuda_status = cudaMalloc(
-			    ( void** )&percussive_buffer, percussive_buffer_size);
-			if (cuda_status != cudaSuccess) {
-				std::cerr << cudaGetErrorString(cuda_status);
-				std::exit(1);
-			}
 		};
 
 		// sensible defaults
 		HPSS(float fs)
 		    : HPSS(fs, 512, 2.0){};
-
-		~HPSS()
-		{
-			cudaFree(harmonic_buffer);
-			cudaFree(percussive_buffer);
-		}
 
 		void process_next_hop(std::vector<float>& current_hop);
 
