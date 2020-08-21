@@ -32,6 +32,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 
 option(BUILD_STATIC "Build static library" OFF)
 option(BUILD_TESTS "Build tests" ON)
+option(BUILD_BENCHES "Build benchmarks" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 
 # ------------------------------------------------------------------------------#
@@ -44,6 +45,8 @@ include(FindPkgConfig)
 
 find_package(GTest REQUIRED)
 find_package(gflags REQUIRED)
+find_package(benchmark REQUIRED)
+find_package(FFTW REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(CUDAToolkit REQUIRED)
@@ -60,13 +63,18 @@ include_directories(
 # VENDORED LIBS
 # ------------------------------------------------------------------------------#
 
+set(MF2D_SOURCES ${VENDOR_DIR}/mf2d/src/filter.cc)
+
+add_library(mf2d SHARED ${MF2D_SOURCES})
+target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
+
 # ------------------------------------------------------------------------------#
 # LIBS
 # ------------------------------------------------------------------------------#
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${VENDOR_DIR}/libnyquist/include)
+  ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cu)
@@ -81,7 +89,18 @@ else()
   add_library(rhythm_toolkit SHARED ${RHYTHM_TOOLKIT_SOURCES})
 endif()
 
-target_link_libraries(rhythm_toolkit CUDA::cufft CUDA::nppif)
+target_link_libraries(${RHYTHM_TOOLKIT_DEPS})
+
+if(BUILD_TESTS)
+  set(RHYTHM_TOOLKIT_TESTS_SOURCES test/hpss_cpu.cu test/util.cu)
+  set(RHYTHM_TOOLKIT_TESTS_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} benchmark benchmark_main gtest gtest_main pthread fftw3 mf2d)
+  
+  message("LIBRHYTHM_TOOLKIT: Building test util library")
+  add_library(rhythm_toolkit_test SHARED ${RHYTHM_TOOLKIT_TESTS_SOURCES})
+  target_link_libraries(${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
+else()
+  message("LIBRHYTHM_TOOLKIT: Skipping test util library")
+endif()
 
 # ------------------------------------------------------------------------------#
 # CLANG-TIDY
@@ -139,8 +158,6 @@ install(FILES include/rhythm_toolkit.h DESTINATION include/rhythm_toolkit)
 # TESTS
 # ------------------------------------------------------------------------------#
 
-set(RHYTHM_TOOLKIT_TESTS_DEPS ${RHYTHM_TOOLKIT_DEPS} gtest gtest_main pthread)
-
 find_program(VALGRIND_EXEC "valgrind")
 if(VALGRIND_EXEC)
   message("VALGRIND: ${VALGRIND_EXEC}")
@@ -150,7 +167,7 @@ else()
 endif()
 
 function(rhythm_toolkit_gtest name)
-  add_executable(test_${name} test/${name}.cu)
+  add_executable(test_${name} test/test_${name}.cu)
   target_link_libraries(test_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
   target_compile_definitions(test_${name} PUBLIC UNIT_TESTS)
 
@@ -169,6 +186,22 @@ if(BUILD_TESTS)
   rhythm_toolkit_gtest(rhythm_toolkit)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping tests")
+endif()
+
+# ------------------------------------------------------------------------------#
+# BENCHES
+# ------------------------------------------------------------------------------#
+
+function(rhythm_toolkit_gbench name)
+  add_executable(bench_${name} test/bench_${name}.cu)
+  target_link_libraries(bench_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
+endfunction()
+
+if(BUILD_BENCHES)
+  message("LIBRHYTHM_TOOLKIT: Building benches")
+  rhythm_toolkit_gbench(hpss)
+else()
+  message("LIBRHYTHM_TOOLKIT: Skipping benches")
 endif()
 
 # ------------------------------------------------------------------------------#
@@ -204,8 +237,10 @@ file(
   include/*.h
   test/*.cu
   test/*.cpp
+  test/*.h
   examples/*.cpp
   examples/*.cu
+  examples/*.h
   )
 
 # Adding clang-format target if executable is found
