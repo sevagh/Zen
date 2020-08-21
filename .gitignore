@@ -2,3 +2,4 @@
 /bin
 /lib
 *.wav
+!samples/*.wav
