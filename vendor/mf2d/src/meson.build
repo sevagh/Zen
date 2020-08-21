@@ -1,0 +1,5 @@
+cfitsiodep = dependency('cfitsio')
+mf2d = executable('mf2d', 'mf2d.cc', 'driver.cc', 'filter.cc', 'imageio.cc', dependencies : cfitsiodep)
+mf2d_benchmark = executable('mf2d-benchmark', 'mf2d-benchmark.cc', 'driver.cc', 'filter.cc', 'imageio.cc', dependencies : cfitsiodep)
+mf2d_unittest = executable('mf2d-unittest', 'mf2d-unittest.cc', 'filter.cc')
+test('mf2d-unittest', mf2d_unittest)

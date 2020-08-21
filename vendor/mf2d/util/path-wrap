@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export CPATH=$HOME/opt/include
+export LIBRARY_PATH=$HOME/opt/lib
+exec "$@"
