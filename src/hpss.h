@@ -15,6 +15,8 @@
 #include "nppdefs.h"
 #include "nppi.h"
 
+#include "rhythm_toolkit/io.h"
+
 /*
  * Adaptation of Real-Time HPSS
  *     https://github.com/sevagh/Real-Time-HPSS
@@ -31,6 +33,7 @@ namespace hpss {
 
 	class HPSS {
 	public:
+		rhythm_toolkit::io::IO& io;
 		float fs;
 		std::size_t hop;
 		std::size_t nwin;
@@ -73,8 +76,9 @@ namespace hpss {
 
 		int nstep;
 
-		HPSS(float fs, std::size_t hop, float beta)
-		    : fs(fs)
+		HPSS(float fs, std::size_t hop, float beta, rhythm_toolkit::io::IO& io)
+		    : io(io)
+		    , fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
 		    , nfft(4 * hop)
@@ -124,21 +128,33 @@ namespace hpss {
 		};
 
 		// sensible defaults
-		HPSS(float fs)
-		    : HPSS(fs, 512, 2.0){};
+		HPSS(float fs, rhythm_toolkit::io::IO& io)
+		    : HPSS(fs, 512, 2.0, io){};
 
-		void process_next_hop(std::vector<float>& current_hop);
+		// copies data from the io object
+		void process_next_hop();
 
-		std::vector<float> peek_separated_percussive()
+		// populates the io object
+		void peek_separated_percussive()
 		{
-			// this does cudamemcpy under the hood - use only for debugging!
-			std::vector<float> ret(hop);
-
 			// only the first hop samples of percussive_out are ready to be
 			// consumed the rest remains to be overlap-added next iteration
 			thrust::copy(percussive_out.begin(), percussive_out.begin() + hop,
-			             ret.begin());
-			return ret;
+			             io.device_out);
+		}
+
+		void reset()
+		{
+			thrust::fill(input.begin(), input.end(), 0.0F);
+			thrust::fill(sliding_stft.begin(), sliding_stft.end(),
+			             thrust::complex<float>{0.0F, 0.0F});
+			thrust::fill(curr_fft.begin(), curr_fft.end(),
+			             thrust::complex<float>{0.0F, 0.0F});
+			thrust::fill(s_mag.begin(), s_mag.end(), 0.0F);
+			thrust::fill(harmonic_matrix.begin(), harmonic_matrix.end(), 0.0F);
+			thrust::fill(
+			    percussive_matrix.begin(), percussive_matrix.end(), 0.0F);
+			thrust::fill(percussive_out.begin(), percussive_out.end(), 0.0F);
 		}
 	};
 }; // namespace hpss

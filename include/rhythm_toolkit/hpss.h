@@ -1,10 +1,11 @@
 #ifndef HPSS_H
 #define HPSS_H
 
-#include "window.h"
 #include <complex>
 #include <cstddef>
 #include <vector>
+
+#include "io.h"
 
 /*
  * Adaptation of Real-Time HPSS
@@ -27,18 +28,22 @@ namespace rhythm_toolkit {
 namespace hpss {
 	class HPSS {
 	public:
-		HPSS(float fs, std::size_t hop, float beta);
+		HPSS(float fs, std::size_t hop, float beta, rhythm_toolkit::io::IO& io);
 
-		HPSS(float fs, std::size_t hop);
+		HPSS(float fs, std::size_t hop, rhythm_toolkit::io::IO& io);
 
-		HPSS(float fs);
+		HPSS(float fs, rhythm_toolkit::io::IO& io);
 
 		~HPSS();
 
-		void process_next_hop(std::vector<float>& next_hop);
+		// copy from the io object
+		void process_next_hop();
 
-		// recall that only the first hop samples are useful!
-		std::vector<float> peek_separated_percussive();
+		// write to the io object
+		void peek_separated_percussive();
+
+		// reset internal buffers, fill with 0s, etc.
+		void reset();
 
 	private:
 		rhythm_toolkit_private::hpss::HPSS*

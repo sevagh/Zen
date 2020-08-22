@@ -1,10 +1,9 @@
-#include "rhythm_toolkit/hpss.h"
 #include "hpss_cpu.h"
+#include "rhythm_toolkit/hpss.h"
 #include "util.h"
 #include <benchmark/benchmark.h>
 
-static void
-BM_HPSS_GPUCUDA(benchmark::State &state)
+static void BM_HPSS_GPUCUDA(benchmark::State& state)
 {
 	auto data = test_util::sinewave(state.range(0), 1337, 48000);
 	for (auto _ : state) {

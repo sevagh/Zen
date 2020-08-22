@@ -74,10 +74,10 @@ target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include)
+  ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include ${VENDOR_DIR}/cuda-samples/Common)
 link_directories(${GTEST_LIBRARY_DIRS})
 
-set(RHYTHM_TOOLKIT_SOURCES src/rhythm_toolkit.cpp src/hpss.cu)
+set(RHYTHM_TOOLKIT_SOURCES src/hpss.cu)
 
 set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif)
 
@@ -183,7 +183,7 @@ endfunction()
 
 if(BUILD_TESTS)
   message("LIBRHYTHM_TOOLKIT: Building tests")
-  rhythm_toolkit_gtest(rhythm_toolkit)
+  #rhythm_toolkit_gtest(rhythm_toolkit)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping tests")
 endif()

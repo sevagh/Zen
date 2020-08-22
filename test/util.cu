@@ -15,20 +15,20 @@ test_util::sinewave(size_t size, double frequency, int sample_rate)
 	size_t lut_size = size / 4;
 
 	std::vector<int> lut{};
-	double *_tone_single_channel = (double *)malloc(sizeof(double) * size / 2);
+	double* _tone_single_channel = ( double* )malloc(sizeof(double) * size / 2);
 
-	double doublef = (double)frequency;
+	double doublef = ( double )frequency;
 	double delta_phi = doublef * lut_size * 1.0 / sample_rate;
 	double phase = 0.0;
 
 	for (int i = 0; i < signed(lut_size); ++i) {
-		lut.push_back((int)roundf(0x7FFF * sinf(2.0 * M_PI * i / lut_size)));
+		lut.push_back(( int )roundf(0x7FFF * sinf(2.0 * M_PI * i / lut_size)));
 	}
 
 	double min = DBL_MAX;
 	double max = -DBL_MAX;
 	for (int i = 0; i < signed(size / 2); ++i) {
-		int val = double(lut[(int)phase]);
+		int val = double(lut[( int )phase]);
 		if (val > max) {
 			max = val;
 		}
@@ -47,8 +47,7 @@ test_util::sinewave(size_t size, double frequency, int sample_rate)
 	return tone_single_channel;
 }
 
-std::vector<double>
-test_util::vec_from_file(std::string path)
+std::vector<double> test_util::vec_from_file(std::string path)
 {
 	std::vector<double> data;
 	std::ifstream infile(path);

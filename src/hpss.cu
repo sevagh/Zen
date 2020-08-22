@@ -19,30 +19,37 @@
 
 // real hpss code is below
 // the public namespace is to hide cuda details away from the public interface
-rhythm_toolkit::hpss::HPSS::HPSS(float fs, std::size_t hop, float beta)
+rhythm_toolkit::hpss::HPSS::HPSS(float fs,
+                                 std::size_t hop,
+                                 float beta,
+                                 rhythm_toolkit::io::IO& io)
 {
-	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, beta);
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, beta, io);
 }
 
-rhythm_toolkit::hpss::HPSS::HPSS(float fs, std::size_t hop)
+rhythm_toolkit::hpss::HPSS::HPSS(float fs,
+                                 std::size_t hop,
+                                 rhythm_toolkit::io::IO& io)
 {
-	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, 2.0);
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, hop, 2.0, io);
 }
 
-rhythm_toolkit::hpss::HPSS::HPSS(float fs)
+rhythm_toolkit::hpss::HPSS::HPSS(float fs, rhythm_toolkit::io::IO& io)
 {
-	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, 512, 2.0);
+	p_impl = new rhythm_toolkit_private::hpss::HPSS(fs, 512, 2.0, io);
 }
 
-void rhythm_toolkit::hpss::HPSS::process_next_hop(std::vector<float>& next_hop)
+void rhythm_toolkit::hpss::HPSS::process_next_hop()
 {
-	p_impl->process_next_hop(next_hop);
+	p_impl->process_next_hop();
 }
 
-std::vector<float> rhythm_toolkit::hpss::HPSS::peek_separated_percussive()
+void rhythm_toolkit::hpss::HPSS::peek_separated_percussive()
 {
-	return p_impl->peek_separated_percussive();
+	p_impl->peek_separated_percussive();
 }
+
+void rhythm_toolkit::hpss::HPSS::reset() { p_impl->reset(); }
 
 rhythm_toolkit::hpss::HPSS::~HPSS() { delete p_impl; }
 
@@ -103,8 +110,7 @@ struct mask_functor {
 	}
 };
 
-void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
-    std::vector<float>& current_hop)
+void rhythm_toolkit_private::hpss::HPSS::process_next_hop()
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
@@ -116,7 +122,7 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop(
 
 	// append latest hop samples e.g. input = input[hop:] + current_hop
 	thrust::copy(input.begin() + hop, input.end(), input.begin());
-	thrust::copy(current_hop.begin(), current_hop.end(), input.begin() + hop);
+	thrust::copy(io.device_in, io.device_in + hop, input.begin() + hop);
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), win.window.begin(),

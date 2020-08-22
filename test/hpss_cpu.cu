@@ -6,12 +6,14 @@
 #include <fftw3.h>
 #include <math.h>
 
-void rhythm_toolkit_cpu::hpss::HPSS::process_next_hop(std::vector<float>& current_hop)
+void rhythm_toolkit_cpu::hpss::HPSS::process_next_hop(
+    std::vector<float>& current_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
 	// for the next hop and next overlap add
-	std::copy(percussive_out.begin() + hop, percussive_out.end(), percussive_out.begin());
+	std::copy(percussive_out.begin() + hop, percussive_out.end(),
+	          percussive_out.begin());
 	std::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
 
 	// append latest hop samples e.g.
@@ -23,14 +25,16 @@ void rhythm_toolkit_cpu::hpss::HPSS::process_next_hop(std::vector<float>& curren
 	for (std::size_t i = 0; i < nwin; ++i) {
 		curr_fft[i] = {input[i] * win.window[i], 0.0F};
 	}
-	std::fill(curr_fft.begin() + nwin, curr_fft.end(), std::complex<float>(0.0F, 0.0F));
+	std::fill(curr_fft.begin() + nwin, curr_fft.end(),
+	          std::complex<float>(0.0F, 0.0F));
 
 	// perform fft in-place
 	fftw_execute(fft_forward);
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
-	std::copy(sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
+	std::copy(
+	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
 	std::copy(curr_fft.begin(), curr_fft.end(),
 	          sliding_stft.begin() + (stft_width - 1) * nfft);
 

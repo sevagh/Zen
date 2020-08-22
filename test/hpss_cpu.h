@@ -56,11 +56,13 @@ namespace hpss {
 		    , l_harm(roundf(0.2 / ((nfft - hop) / fs)))
 		    , l_perc(roundf(500 / (fs / nfft)))
 		    , stft_width(std::size_t(ceilf(( float )l_harm / 2)))
-		    , win(rhythm_toolkit_private::window::Window(rhythm_toolkit_private::window::WindowType::SqrtVonHann, nwin))
+		    , win(rhythm_toolkit_private::window::Window(
+		          rhythm_toolkit_private::window::WindowType::SqrtVonHann,
+		          nwin))
 		    , COLA_factor(0.0f)
-		    , sliding_stft(
-		          std::vector<std::complex<float>>(stft_width * nfft,
-		                                           std::complex<float>(0.0F, 0.0F)))
+		    , sliding_stft(std::vector<std::complex<float>>(
+		          stft_width * nfft,
+		          std::complex<float>(0.0F, 0.0F)))
 		    , curr_fft(std::vector<std::complex<float>>(nfft, 0.0F))
 		    , s_half_mag(std::vector<float>(stft_width * nwin, 0.0F))
 		    , harmonic_matrix(std::vector<float>(stft_width * nwin, 0.0F))
@@ -72,8 +74,14 @@ namespace hpss {
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
 
-			fft_forward = fftw_plan_dft_1d(nfft, reinterpret_cast<fftw_complex*>(curr_fft.data()), reinterpret_cast<fftw_complex*>(curr_fft.data()), FFTW_FORWARD, FFTW_MEASURE);
-			fft_backward = fftw_plan_dft_1d(nfft, reinterpret_cast<fftw_complex*>(curr_fft.data()), reinterpret_cast<fftw_complex*>(curr_fft.data()), FFTW_BACKWARD, FFTW_MEASURE);
+			fft_forward = fftw_plan_dft_1d(
+			    nfft, reinterpret_cast<fftw_complex*>(curr_fft.data()),
+			    reinterpret_cast<fftw_complex*>(curr_fft.data()), FFTW_FORWARD,
+			    FFTW_MEASURE);
+			fft_backward = fftw_plan_dft_1d(
+			    nfft, reinterpret_cast<fftw_complex*>(curr_fft.data()),
+			    reinterpret_cast<fftw_complex*>(curr_fft.data()),
+			    FFTW_BACKWARD, FFTW_MEASURE);
 
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
@@ -96,7 +104,8 @@ namespace hpss {
 
 		std::vector<float> peek_separated_percussive()
 		{
-			return std::vector<float>(percussive_out.begin(), percussive_out.begin() + hop);
+			return std::vector<float>(
+			    percussive_out.begin(), percussive_out.begin() + hop);
 		}
 	};
 }; // namespace hpss

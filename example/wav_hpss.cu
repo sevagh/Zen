@@ -4,30 +4,33 @@
 #include <chrono>
 
 #include "rhythm_toolkit/hpss.h"
+#include "rhythm_toolkit/io.h"
+
 #include <gflags/gflags.h>
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 
-DEFINE_int32(hop, 8, "hop (samples)");
+DEFINE_int32(hop, 512, "hop (samples)");
 DEFINE_double(beta, 2.0, "beta (separation factor, float)");
+DEFINE_int32(warmup, -1, "warmup memory copies");
 
-std::vector<std::vector<float>>
-get_chunks(std::vector<float> &container, size_t k)
+std::vector<std::pair<std::size_t, std::size_t>>
+get_chunk_limits(std::vector<float> &container, size_t k)
 {
-	std::vector<std::vector<float>> ret;
+	std::vector<std::pair<std::size_t, std::size_t>> ret;
 
 	size_t size = container.size();
 	size_t i = 0;
 
 	if (size > k) {
 		for (; i < size - k; i += k) {
-			ret.push_back(std::vector<float>(container.begin() + i, container.begin() + i + k));
+			ret.push_back(std::pair<std::size_t, std::size_t>{i, i + k});
 		}
 	}
 
 	if (i % k) {
 		ret.push_back(
-		    std::vector<float>(container.begin() + i, container.begin() + i + (i % k)));
+		    std::pair<std::size_t, std::size_t>(i, i + (i % k)));
 	}
 
 	return ret;
@@ -77,29 +80,57 @@ main(int argc, char **argv)
 	auto percussive_out = std::vector<float>(audio.size());
 
 	auto chunk_size = FLAGS_hop;
-	auto chunks = get_chunks(audio, chunk_size);
+	auto chunk_limits = get_chunk_limits(audio, chunk_size);
 
 	std::cout << "Slicing buffer size " << audio.size() << " into "
-	          << chunks.size() << " chunks of size " << chunk_size << std::endl;
+	          << chunk_limits.size() << " chunks of size " << chunk_size << std::endl;
 
 	std::size_t n = 0;
 	float delta_t = 1000 * (float)FLAGS_hop/file_data->sampleRate;
 
-	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate, FLAGS_hop, FLAGS_beta);
+	auto begin_iter = audio.begin();
+
+	rhythm_toolkit::io::IO io(FLAGS_hop);
+
+	auto hpss = rhythm_toolkit::hpss::HPSS(file_data->sampleRate, FLAGS_hop, FLAGS_beta, io);
+
+	if (FLAGS_warmup > 0) {
+		std::cout << "Doing " << FLAGS_warmup << " warmup iterations..." << std::endl;
+		std::vector<float> test_data(FLAGS_warmup*FLAGS_hop);
+		std::vector<float> test_out(FLAGS_warmup*FLAGS_hop);
+		std::iota(test_data.begin(), test_data.end(), -100.0F);
+		for (std::size_t i = 0; i < FLAGS_warmup; ++i) {
+			std::copy(test_data.begin() + i*FLAGS_hop, test_data.begin() + (i+1)*FLAGS_hop, io.host_in);
+			hpss.process_next_hop();
+			hpss.peek_separated_percussive();
+			// copy output samples from io object
+			std::copy(io.host_out, io.host_out + FLAGS_hop, test_out.begin() + i*FLAGS_hop);
+		}
+		// reset buffers after warmup
+		hpss.reset();
+		std::cout << "Warmup done, beginning HPSS of wav" << std::endl;
+	}
 
 	float iters = 0.0F;
 	int time_tot = 0;
 
-	for (auto chunk : chunks) {
+	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it = chunk_limits.begin() ; chunk_it != chunk_limits.end(); ++chunk_it) {
 		auto t1 = std::chrono::high_resolution_clock::now();
-		hpss.process_next_hop(chunk);
-		auto t2 = std::chrono::high_resolution_clock::now();
 
+		// copy input samples into io object
+		std::copy(begin_iter + chunk_it->first, begin_iter + chunk_it->second, io.host_in);
+
+		// process input samples
+		hpss.process_next_hop();
+
+		hpss.peek_separated_percussive();
+
+		// copy output samples from io object
+		std::copy(io.host_out, io.host_out + FLAGS_hop, percussive_out.begin() + n);
+
+		auto t2 = std::chrono::high_resolution_clock::now();
 		time_tot += std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
-		auto perc = hpss.peek_separated_percussive();
-
-		std::copy(perc.begin(), perc.end(), percussive_out.begin() + n);
 		n += FLAGS_hop;
 		iters += 1.0F;
 	}
