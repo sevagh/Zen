@@ -4,6 +4,7 @@
 #include <complex>
 #include <cstddef>
 #include <vector>
+#include <thrust/device_vector.h>
 
 #include "io.h"
 
@@ -28,26 +29,28 @@ namespace rhythm_toolkit {
 namespace hpss {
 	class HPSS {
 	public:
-		HPSS(float fs, std::size_t hop, float beta, rhythm_toolkit::io::IO& io);
+		HPSS(float fs, std::size_t hop_h, std::size_t hop_p, float beta_h, float beta_p, rhythm_toolkit::io::IO& io);
 
-		HPSS(float fs, std::size_t hop, rhythm_toolkit::io::IO& io);
+		HPSS(float fs, std::size_t hop_h, std::size_t hop_p, rhythm_toolkit::io::IO& io);
 
 		HPSS(float fs, rhythm_toolkit::io::IO& io);
 
 		~HPSS();
 
-		// copy from the io object
+		// copies from the io in vec, writes to the io out vec
 		void process_next_hop();
 
-		// write to the io object
-		void peek_separated_percussive();
-
-		// reset internal buffers, fill with 0s, etc.
-		void reset();
-
 	private:
-		rhythm_toolkit_private::hpss::HPSS*
-		    p_impl; // https://en.cppreference.com/w/cpp/language/pimpl
+		// https://en.cppreference.com/w/cpp/language/pimpl
+		// we use 2 cascading HPSS objects to implement driedger's iterative algorithm "HPR-I"
+		rhythm_toolkit_private::hpss::HPSS *p_impl_h;
+		rhythm_toolkit_private::hpss::HPSS *p_impl_p;
+
+		std::size_t hop_h, hop_p;
+		rhythm_toolkit::io::IO& io;
+
+		// intermediate array to pass values between first and second iteration of HPSS
+		thrust::device_vector<float> intermediate;
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit

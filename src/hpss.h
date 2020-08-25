@@ -15,8 +15,6 @@
 #include "nppdefs.h"
 #include "nppi.h"
 
-#include "rhythm_toolkit/io.h"
-
 /*
  * Adaptation of Real-Time HPSS
  *     https://github.com/sevagh/Real-Time-HPSS
@@ -33,7 +31,6 @@ namespace hpss {
 
 	class HPSS {
 	public:
-		rhythm_toolkit::io::IO& io;
 		float fs;
 		std::size_t hop;
 		std::size_t nwin;
@@ -52,10 +49,12 @@ namespace hpss {
 		thrust::device_vector<float> s_mag;
 		thrust::device_vector<float> harmonic_matrix;
 		thrust::device_vector<float> percussive_matrix;
-		thrust::device_vector<float> harmonic_mask;
 		thrust::device_vector<float> percussive_mask;
+		thrust::device_vector<float> harmonic_mask;
+		thrust::device_vector<float> residual_mask;
 		thrust::device_vector<float> percussive_out;
 		thrust::device_vector<float> harmonic_out;
+		thrust::device_vector<float> residual_out;
 
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
@@ -84,11 +83,14 @@ namespace hpss {
 		Npp8u* percussive_buffer;
 		Npp32u percussive_buffer_size;
 
+		NppiSize percussive_smoothing_mask;
+		Npp8u* percussive_smoothing_buffer;
+		Npp32u percussive_smoothing_buffer_size;
+
 		int nstep;
 
-		HPSS(float fs, std::size_t hop, float beta, rhythm_toolkit::io::IO& io)
-		    : io(io)
-		    , fs(fs)
+		HPSS(float fs, std::size_t hop, float beta)
+		    : fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
 		    , nfft(4 * hop)
@@ -107,9 +109,11 @@ namespace hpss {
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_mask(thrust::device_vector<float>(nfft, 0.0F))
 		    , percussive_mask(thrust::device_vector<float>(nfft, 0.0F))
+		    , harmonic_mask(thrust::device_vector<float>(nfft, 0.0F))
+		    , residual_mask(thrust::device_vector<float>(nfft, 0.0F))
 		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
+		    , residual_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , harmonic_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
@@ -136,6 +140,10 @@ namespace hpss {
 			percussive_filter_mask = NppiSize{l_perc, 1};
 			percussive_anchor = NppiPoint{percussive_roi_offset, 0};
 
+			// 3 point moving average median filter to smooth the resultant percussive
+			// spectrum and eliminate clicks/glitches
+			percussive_smoothing_mask = NppiSize{3, 1};
+
 			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
 			    medfilt_roi, harmonic_filter_mask, &harmonic_buffer_size);
 			if (npp_status != NPP_NO_ERROR) {
@@ -145,6 +153,13 @@ namespace hpss {
 
 			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
 			    medfilt_roi, percussive_filter_mask, &percussive_buffer_size);
+			if (npp_status != NPP_NO_ERROR) {
+				std::cerr << "NPP error " << npp_status << std::endl;
+				std::exit(1);
+			}
+
+			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+			    medfilt_roi, percussive_smoothing_mask, &percussive_smoothing_buffer_size);
 			if (npp_status != NPP_NO_ERROR) {
 				std::cerr << "NPP error " << npp_status << std::endl;
 				std::exit(1);
@@ -164,48 +179,29 @@ namespace hpss {
 				std::exit(1);
 			}
 
+			cuda_status = cudaMalloc(
+			    ( void** )&percussive_smoothing_buffer, percussive_smoothing_buffer_size);
+			if (cuda_status != cudaSuccess) {
+				std::cerr << cudaGetErrorString(cuda_status);
+				std::exit(1);
+			}
+
 			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
 			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 		};
 
 		// sensible defaults
-		HPSS(float fs, rhythm_toolkit::io::IO& io)
-		    : HPSS(fs, 512, 2.0, io){};
+		HPSS(float fs)
+		    : HPSS(fs, 512, 2.0){};
 
 		~HPSS()
 		{
 			cudaFree(harmonic_buffer);
 			cudaFree(percussive_buffer);
+			cudaFree(percussive_smoothing_buffer);
 		}
 
-		// copies data from the io object
-		void process_next_hop();
-
-		// populates the io object
-		void peek_separated_percussive()
-		{
-			// only the first hop samples of percussive_out are ready to be
-			// consumed the rest remains to be overlap-added next iteration
-			thrust::copy(percussive_out.begin(), percussive_out.begin() + hop,
-			             io.device_out);
-		}
-
-		void reset()
-		{
-			thrust::fill(input.begin(), input.end(), 0.0F);
-			thrust::fill(sliding_stft.begin(), sliding_stft.end(),
-			             thrust::complex<float>{0.0F, 0.0F});
-			thrust::fill(curr_fft.begin(), curr_fft.end(),
-			             thrust::complex<float>{0.0F, 0.0F});
-			thrust::fill(s_mag.begin(), s_mag.end(), 0.0F);
-			thrust::fill(harmonic_matrix.begin(), harmonic_matrix.end(), 0.0F);
-			thrust::fill(
-			    percussive_matrix.begin(), percussive_matrix.end(), 0.0F);
-			thrust::fill(harmonic_mask.begin(), harmonic_mask.end(), 0.0F);
-			thrust::fill(percussive_mask.begin(), percussive_mask.end(), 0.0F);
-			thrust::fill(percussive_out.begin(), percussive_out.end(), 0.0F);
-			thrust::fill(harmonic_out.begin(), harmonic_out.end(), 0.0F);
-		}
+		void process_next_hop(thrust::device_ptr<float> in_hop);
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
