@@ -28,6 +28,8 @@ add_definitions("-Wextra")
 add_definitions("-Wundef")
 add_definitions("-Wunreachable-code")
 
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "--default-stream-per-thread")
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 
 option(BUILD_STATIC "Build static library" OFF)

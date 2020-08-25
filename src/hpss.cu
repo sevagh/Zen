@@ -17,6 +17,8 @@
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
 
+static constexpr float eps = std::numeric_limits<float>::epsilon();
+
 // real hpss code is below
 // the public namespace is to hide cuda details away from the public interface
 rhythm_toolkit::hpss::HPSS::HPSS(float fs,
@@ -97,7 +99,6 @@ struct complex_abs_functor {
 
 struct mask_functor {
 	const float beta;
-	static constexpr float eps = std::numeric_limits<float>::epsilon();
 
 	mask_functor(float _beta)
 	    : beta(_beta)
@@ -115,10 +116,13 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop()
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
 	// for the next hop and next overlap add
-
 	thrust::copy(percussive_out.begin() + hop, percussive_out.end(),
 	             percussive_out.begin());
 	thrust::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
+
+	thrust::copy(
+	    harmonic_out.begin() + hop, harmonic_out.end(), harmonic_out.begin());
+	thrust::fill(harmonic_out.begin() + hop, harmonic_out.end(), 0.0);
 
 	// append latest hop samples e.g. input = input[hop:] + current_hop
 	thrust::copy(input.begin() + hop, input.end(), input.begin());
@@ -146,28 +150,23 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop()
 	// apply median filter in horizontal and vertical directions with NPP
 	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nstep,
 	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
-	                         nstep, medfilt_roi, harmonic_mask,
-	                         harmonic_anchor, nullptr);
+	                         nstep, medfilt_roi, harmonic_filter_mask,
+	                         harmonic_anchor, harmonic_buffer);
 	nppiFilterMedian_32f_C1R(
 	    thrust::raw_pointer_cast(s_mag.data()), nstep,
 	    thrust::raw_pointer_cast(percussive_matrix.data()), nstep, medfilt_roi,
-	    percussive_mask, percussive_anchor, nullptr);
+	    percussive_filter_mask, percussive_anchor, percussive_buffer);
 
-	// calculate the binary masks in-place
-	//
-	// note that from this point on, we only consider the percussive part of
-	// the algorithm because the horizontal median filter works poorly
-	// in real-time
-	//
-	// we overwrite the matrix in-place
-	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
-	                  harmonic_matrix.begin(), percussive_matrix.begin(),
+	thrust::transform(harmonic_matrix.end() - nfft, harmonic_matrix.end(),
+	                  percussive_matrix.end() - nfft, harmonic_mask.begin(),
+	                  mask_functor(beta - eps));
+	thrust::transform(percussive_matrix.end() - nfft, percussive_matrix.end(),
+	                  harmonic_matrix.end() - nfft, percussive_mask.begin(),
 	                  mask_functor(beta));
 
 	// apply last column of percussive mask to recover separated fft
-	// recycle curr_fft instead of allocating a new vector
-	thrust::transform(curr_fft.begin(), curr_fft.end(),
-	                  percussive_matrix.end() - nfft, curr_fft.begin(),
+	thrust::transform(sliding_stft.end() - nfft, sliding_stft.end(),
+	                  percussive_mask.begin(), curr_fft.begin(),
 	                  apply_mask_functor());
 
 	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
@@ -176,5 +175,17 @@ void rhythm_toolkit_private::hpss::HPSS::process_next_hop()
 	// we overlap-add it the real part to the previous
 	thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
 	                  percussive_out.begin(), percussive_out.begin(),
+	                  overlap_add_functor(COLA_factor));
+
+	// apply last column of percussive mask to recover separated fft
+	thrust::transform(sliding_stft.end() - nfft, sliding_stft.end(),
+	                  harmonic_mask.begin(), curr_fft.begin(),
+	                  apply_mask_functor());
+
+	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
+
+	// now harm_fft has the current iteration's fresh samples
+	thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+	                  harmonic_out.begin(), harmonic_out.begin(),
 	                  overlap_add_functor(COLA_factor));
 }

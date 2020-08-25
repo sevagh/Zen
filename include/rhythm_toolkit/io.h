@@ -25,7 +25,8 @@ namespace io {
 			cudaSetDeviceFlags(cudaDeviceMapHost);
 
 			cudaError_t cuda_error;
-			unsigned int cuda_malloc_flags = cudaHostAllocMapped;
+			unsigned int cuda_malloc_flags
+			    = cudaHostAllocMapped | cudaHostAllocPortable;
 
 			// use mapped + wc for performance:
 			// http://developer.download.nvidia.com/compute/cuda/3_0/toolkit/docs/online/group__CUDART__MEMORY_g217d441a73d9304c6f0ccc22ec307dba.html

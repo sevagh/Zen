@@ -52,7 +52,10 @@ namespace hpss {
 		thrust::device_vector<float> s_mag;
 		thrust::device_vector<float> harmonic_matrix;
 		thrust::device_vector<float> percussive_matrix;
+		thrust::device_vector<float> harmonic_mask;
+		thrust::device_vector<float> percussive_mask;
 		thrust::device_vector<float> percussive_out;
+		thrust::device_vector<float> harmonic_out;
 
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
@@ -64,15 +67,22 @@ namespace hpss {
 		cufftHandle plan_backward;
 
 		// npp specifics for median filtering
+		NppStatus npp_status;
+		cudaError cuda_status;
+
 		NppiSize medfilt_roi;
 
 		int harmonic_roi_offset;
-		NppiSize harmonic_mask;
+		NppiSize harmonic_filter_mask;
 		NppiPoint harmonic_anchor;
+		Npp8u* harmonic_buffer;
+		Npp32u harmonic_buffer_size;
 
 		int percussive_roi_offset;
-		NppiSize percussive_mask;
+		NppiSize percussive_filter_mask;
 		NppiPoint percussive_anchor;
+		Npp8u* percussive_buffer;
+		Npp32u percussive_buffer_size;
 
 		int nstep;
 
@@ -97,7 +107,10 @@ namespace hpss {
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , harmonic_mask(thrust::device_vector<float>(nfft, 0.0F))
+		    , percussive_mask(thrust::device_vector<float>(nfft, 0.0F))
 		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
+		    , harmonic_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
@@ -105,9 +118,6 @@ namespace hpss {
 		{
 			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
 			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
-
-			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
-			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
@@ -119,17 +129,54 @@ namespace hpss {
 			medfilt_roi = NppiSize{nfft, stft_width};
 
 			harmonic_roi_offset = ( int )floorf(( float )l_harm / 2);
-			harmonic_mask = NppiSize{1, l_harm};
+			harmonic_filter_mask = NppiSize{1, l_harm};
 			harmonic_anchor = NppiPoint{0, harmonic_roi_offset};
 
 			percussive_roi_offset = ( int )floorf(( float )l_perc / 2);
-			percussive_mask = NppiSize{l_perc, 1};
+			percussive_filter_mask = NppiSize{l_perc, 1};
 			percussive_anchor = NppiPoint{percussive_roi_offset, 0};
+
+			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+			    medfilt_roi, harmonic_filter_mask, &harmonic_buffer_size);
+			if (npp_status != NPP_NO_ERROR) {
+				std::cerr << "NPP error " << npp_status << std::endl;
+				std::exit(1);
+			}
+
+			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+			    medfilt_roi, percussive_filter_mask, &percussive_buffer_size);
+			if (npp_status != NPP_NO_ERROR) {
+				std::cerr << "NPP error " << npp_status << std::endl;
+				std::exit(1);
+			}
+
+			cuda_status
+			    = cudaMalloc(( void** )&harmonic_buffer, harmonic_buffer_size);
+			if (cuda_status != cudaSuccess) {
+				std::cerr << cudaGetErrorString(cuda_status);
+				std::exit(1);
+			}
+
+			cuda_status = cudaMalloc(
+			    ( void** )&percussive_buffer, percussive_buffer_size);
+			if (cuda_status != cudaSuccess) {
+				std::cerr << cudaGetErrorString(cuda_status);
+				std::exit(1);
+			}
+
+			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
+			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 		};
 
 		// sensible defaults
 		HPSS(float fs, rhythm_toolkit::io::IO& io)
 		    : HPSS(fs, 512, 2.0, io){};
+
+		~HPSS()
+		{
+			cudaFree(harmonic_buffer);
+			cudaFree(percussive_buffer);
+		}
 
 		// copies data from the io object
 		void process_next_hop();
@@ -154,7 +201,10 @@ namespace hpss {
 			thrust::fill(harmonic_matrix.begin(), harmonic_matrix.end(), 0.0F);
 			thrust::fill(
 			    percussive_matrix.begin(), percussive_matrix.end(), 0.0F);
+			thrust::fill(harmonic_mask.begin(), harmonic_mask.end(), 0.0F);
+			thrust::fill(percussive_mask.begin(), percussive_mask.end(), 0.0F);
 			thrust::fill(percussive_out.begin(), percussive_out.end(), 0.0F);
+			thrust::fill(harmonic_out.begin(), harmonic_out.end(), 0.0F);
 		}
 	};
 }; // namespace hpss
