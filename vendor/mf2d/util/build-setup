@@ -1,6 +1,0 @@
-#!/bin/sh
-
-rm -rf build*
-mkdir build; CXX="clang++" CXXFLAGS="-Weverything -Wno-padded -Wno-weak-template-vtables -Wno-weak-vtables -Wno-source-uses-openmp -Wno-unused-parameter -Wno-float-equal -Wno-c++11-long-long" meson build
-mkdir build-debug; CXX="g++-4.9" CXXFLAGS="-fsanitize=address -fsanitize=undefined -Wall -Wextra -Wold-style-cast -Woverloaded-virtual -Wsign-promo -Wdouble-promotion -Wconversion -Wsign-conversion -Wmissing-declarations -Wredundant-decls -Wno-unused-parameter -Wno-float-equal -Wno-unknown-pragmas" LDFLAGS="-fsanitize=address -fsanitize=undefined" meson build-debug
-mkdir build-opt; CXX="g++-4.9" CXXFLAGS="-DNDEBUG -fopenmp -march=native -O3 -Wa,-q -Wall" LDFLAGS="-fopenmp" meson --buildtype=plain build-opt

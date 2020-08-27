@@ -1,7 +1,0 @@
-pipelines:
-  default:
-    - step:
-        script:
-          - apt-get update && apt-get install -y libcfitsio3-dev
-          - compile/gcc-linux.sh
-          - test/test.sh
