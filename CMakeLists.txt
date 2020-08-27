@@ -48,7 +48,6 @@ include(FindPkgConfig)
 find_package(GTest REQUIRED)
 find_package(gflags REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(FFTW REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(CUDAToolkit REQUIRED)
@@ -62,24 +61,15 @@ include_directories(
   ${GTEST_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 # ------------------------------------------------------------------------------#
-# VENDORED LIBS
-# ------------------------------------------------------------------------------#
-
-set(MF2D_SOURCES ${VENDOR_DIR}/mf2d/src/filter.cc)
-
-add_library(mf2d SHARED ${MF2D_SOURCES})
-target_link_libraries(mf2d PUBLIC OpenMP::OpenMP_CXX)
-
-# ------------------------------------------------------------------------------#
 # LIBS
 # ------------------------------------------------------------------------------#
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/mf2d/src ${VENDOR_DIR}/libnyquist/include ${VENDOR_DIR}/cuda-samples/Common)
+  ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/libnyquist/include)
 link_directories(${GTEST_LIBRARY_DIRS})
 
-set(RHYTHM_TOOLKIT_SOURCES src/hpss.cu)
+set(RHYTHM_TOOLKIT_SOURCES src/hpri_offline.cu src/p_realtime.cu)
 
 set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif)
 
@@ -94,8 +84,8 @@ endif()
 target_link_libraries(${RHYTHM_TOOLKIT_DEPS})
 
 if(BUILD_TESTS)
-  set(RHYTHM_TOOLKIT_TESTS_SOURCES test/hpss_cpu.cu test/util.cu)
-  set(RHYTHM_TOOLKIT_TESTS_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} benchmark benchmark_main gtest gtest_main pthread fftw3 mf2d)
+  set(RHYTHM_TOOLKIT_TESTS_SOURCES test/util.cu)
+  set(RHYTHM_TOOLKIT_TESTS_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} benchmark benchmark_main gtest gtest_main pthread)
   
   message("LIBRHYTHM_TOOLKIT: Building test util library")
   add_library(rhythm_toolkit_test SHARED ${RHYTHM_TOOLKIT_TESTS_SOURCES})
@@ -139,7 +129,6 @@ endfunction()
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
   rhythm_toolkit_example(wav_hpss)
-  #rhythm_toolkit_example(nppifilter)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()

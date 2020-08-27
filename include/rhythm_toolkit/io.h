@@ -13,14 +13,15 @@
 
 namespace rhythm_toolkit {
 namespace io {
-	class IO {
+	class IOGPU {
 	public:
 		float* host_in;
 		float* host_out;
 		thrust::device_ptr<float> device_in;
 		thrust::device_ptr<float> device_out;
+		std::size_t size;
 
-		IO(std::size_t hop)
+		IOGPU(std::size_t size) : size(size)
 		{
 			cudaSetDeviceFlags(cudaDeviceMapHost);
 
@@ -31,7 +32,7 @@ namespace io {
 			// use mapped + wc for performance:
 			// http://developer.download.nvidia.com/compute/cuda/3_0/toolkit/docs/online/group__CUDART__MEMORY_g217d441a73d9304c6f0ccc22ec307dba.html
 			cuda_error = cudaHostAlloc(
-			    ( void** )&host_in, hop * sizeof(float),
+			    ( void** )&host_in, size * sizeof(float),
 			    cuda_malloc_flags | cudaHostAllocWriteCombined);
 
 			if (cuda_error != cudaSuccess) {
@@ -40,7 +41,7 @@ namespace io {
 			}
 
 			cuda_error = cudaHostAlloc(
-			    ( void** )&host_out, hop * sizeof(float), cuda_malloc_flags);
+			    ( void** )&host_out, size * sizeof(float), cuda_malloc_flags);
 
 			if (cuda_error != cudaSuccess) {
 				std::cerr << cudaGetErrorString(cuda_error) << std::endl;
@@ -65,7 +66,7 @@ namespace io {
 			device_out = thrust::device_pointer_cast(device_out_raw_ptr);
 		}
 
-		~IO()
+		~IOGPU()
 		{
 			cudaFree(host_in);
 			cudaFree(host_out);
@@ -74,6 +75,18 @@ namespace io {
 	private:
 		float* device_in_raw_ptr;
 		float* device_out_raw_ptr;
+	};
+
+	class IOCPU {
+	public:
+		std::vector<float> host_in;
+		std::vector<float> host_out;
+		std::size_t size;
+
+		IOCPU(std::size_t size)
+		: size(size)
+		, host_in(std::vector<float>(size))
+		, host_out(std::vector<float>(size)) {};
 	};
 }; // namespace io
 }; // namespace rhythm_toolkit
