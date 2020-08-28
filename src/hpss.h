@@ -2,6 +2,7 @@
 #define HPSS_PRIVATE_H
 
 #include "window.h"
+#include "medianfilter.h"
 #include <complex>
 #include <cstddef>
 #include <vector>
@@ -24,6 +25,7 @@
  * save some computation (although the harmonic mask is necessary for a
  * percussive separation)
  */
+
 namespace rhythm_toolkit_private {
 namespace hpss {
 	static constexpr float Eps = std::numeric_limits<float>::epsilon();
@@ -142,32 +144,12 @@ namespace hpss {
 		cufftHandle plan_forward;
 		cufftHandle plan_backward;
 
-		// npp specifics for median filtering
-		NppStatus npp_status;
-		cudaError cuda_status;
-
-		NppiSize harmonic_roi;
-		int harmonic_roi_offset;
-		NppiSize harmonic_filter_mask;
-		NppiPoint harmonic_anchor;
-		Npp8u* harmonic_buffer;
-		Npp32u harmonic_buffer_size;
-
-		NppiSize percussive_roi;
-		int percussive_roi_offset;
-		NppiSize percussive_filter_mask;
-		NppiPoint percussive_anchor;
-		Npp8u* percussive_buffer;
-		Npp32u percussive_buffer_size;
-
-		int percussive_nstep;
-		int harmonic_nstep;
-		int harmonic_start_pixel_offset;
-		int percussive_start_pixel_offset;
+		median_filter::MedianFilterGPU time;
+		median_filter::MedianFilterGPU frequency;
 
 		HPROfflineGPU(float fs, std::size_t max_size_samples, std::size_t hop, float beta)
 		    : fs(fs)
-		    , max_size_samples(max_size_samples)
+		    , max_size_samples(max_size_samples+hop)
 		    , hop(hop)
 		    , nwin(2 * hop)
 		    , nfft(4 * hop)
@@ -195,67 +177,18 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
+		    , time(median_filter::MedianFilterGPU(stft_width, nfft, l_harm, median_filter::MedianFilterDirection::Time))
+		    , frequency(median_filter::MedianFilterGPU(stft_width, nfft, l_perc, median_filter::MedianFilterDirection::Frequency))
 		{
-			l_perc += (1 - (l_perc % 2)); // make sure filter lengths are odd
-			l_harm += (1 - (l_harm % 2)); // make sure filter lengths are odd
-
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
 				COLA_factor += win.window[i] * win.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
 
-			harmonic_nstep = nfft * sizeof(Npp32f);
-			harmonic_roi = NppiSize{(int)nfft, (int)stft_width-l_harm};
-			harmonic_roi_offset = ( int )floorf(( float )l_harm / 2);
-			harmonic_start_pixel_offset = harmonic_roi_offset;
-			harmonic_filter_mask = NppiSize{1, l_harm};
-			harmonic_anchor = NppiPoint{0, harmonic_roi_offset};
-
-			percussive_nstep = stft_width * sizeof(Npp32f);
-			percussive_roi = NppiSize{(int)nfft-l_perc, (int)stft_width};
-			percussive_roi_offset = ( int )floorf(( float )l_perc / 2);
-			percussive_start_pixel_offset = percussive_roi_offset*percussive_nstep;
-			percussive_filter_mask = NppiSize{l_perc, 1};
-			percussive_anchor = NppiPoint{percussive_roi_offset, 0};
-
-			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    harmonic_roi, harmonic_filter_mask, &harmonic_buffer_size);
-			if (npp_status != NPP_NO_ERROR) {
-				std::cerr << "NPP error " << npp_status << std::endl;
-				std::exit(1);
-			}
-
-			npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    percussive_roi, percussive_filter_mask, &percussive_buffer_size);
-			if (npp_status != NPP_NO_ERROR) {
-				std::cerr << "NPP error " << npp_status << std::endl;
-				std::exit(1);
-			}
-
-			cuda_status
-			    = cudaMalloc(( void** )&harmonic_buffer, harmonic_buffer_size);
-			if (cuda_status != cudaSuccess) {
-				std::cerr << cudaGetErrorString(cuda_status);
-				std::exit(1);
-			}
-
-			cuda_status = cudaMalloc(
-			    ( void** )&percussive_buffer, percussive_buffer_size);
-			if (cuda_status != cudaSuccess) {
-				std::cerr << cudaGetErrorString(cuda_status);
-				std::exit(1);
-			}
-
 			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
 			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 		};
-
-		~HPROfflineGPU()
-		{
-			cudaFree(harmonic_buffer);
-			cudaFree(percussive_buffer);
-		}
 
 		void process(thrust::device_ptr<float> in_signal, std::size_t size);
 	};

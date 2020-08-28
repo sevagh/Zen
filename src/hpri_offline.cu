@@ -75,44 +75,12 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::~HPRIOfflineGPU() {
 void rhythm_toolkit_private::hpss::HPROfflineGPU::process(thrust::device_ptr<float> in_signal, std::size_t signal_size)
 {
 	std::size_t n_chunks = (std::size_t)ceilf((float)signal_size/(float)hop);
-	std::size_t remain = signal_size - (n_chunks-1)*hop;
-
-	std::cout <<  "prefill stft" << std::endl;
-
-	std::cout << "n chunks: " << n_chunks << std::endl;
-	std::cout << "stft width: " << stft_width << std::endl;
-	std::cout << "signal_size/hop: " << (float)signal_size/(float)hop << std::endl;
-	std::cout << "remain: " << remain << std::endl;
 
 	// pre-fill the entire stft
-	for (std::size_t i = 0; i < n_chunks-1; ++i) {
+	for (std::size_t i = 0; i < n_chunks; ++i) {
 		// copy current hop samples e.g. input = input[hop:] + current_hop
 		thrust::copy(input.begin() + hop, input.end(), input.begin());
 		thrust::copy(in_signal + i*hop, in_signal + (i+1)*hop, input.begin() + hop);
-
-		// populate curr_fft with input .* square root von hann window
-		thrust::transform(input.begin(), input.end(), win.window.begin(),
-				  curr_fft.begin(), rhythm_toolkit_private::hpss::window_functor());
-
-		// zero out the second half of the fft
-		thrust::fill(curr_fft.begin() + nwin, curr_fft.end(),
-			     thrust::complex<float>{0.0, 0.0});
-
-		// in the offline variant, we need future stft colums available
-		cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
-
-		// insert fft into stft
-		thrust::copy(curr_fft.begin(), curr_fft.end(), sliding_stft.begin() + i*nfft);
-	}
-
-	// for remaining samples
-	for (std::size_t i = n_chunks-2; i < n_chunks; ++i) {
-		// copy current hop samples e.g. input = input[hop:] + current_hop
-		thrust::copy(input.begin() + hop, input.end(), input.begin());
-		thrust::copy(in_signal + i*hop, in_signal + i*hop + remain, input.begin() + hop);
-
-		// zero out anything past remain
-		thrust::fill(input.begin()+hop+remain, input.end(), 0.0F);
 
 		// populate curr_fft with input .* square root von hann window
 		thrust::transform(input.begin(), input.end(), win.window.begin(),
@@ -139,27 +107,8 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(thrust::device_ptr<flo
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
-	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()) + harmonic_start_pixel_offset, harmonic_nstep,
-				 thrust::raw_pointer_cast(harmonic_matrix.data()) + harmonic_start_pixel_offset,
-				 harmonic_nstep, harmonic_roi, harmonic_filter_mask,
-				 harmonic_anchor, harmonic_buffer);
-
-	std::cout <<  "calculate median filters & masks 3" << std::endl;
-
-	std::cout <<  "s_mag.size: " << s_mag.size() << std::endl;
-	std::cout <<  "percussive_matrix.size: " << percussive_matrix.size() << std::endl;
-	std::cout <<  "harmonic.roi: " << harmonic_roi.width << ", " << harmonic_roi.height << std::endl;
-	std::cout <<  "perc mask: " << percussive_filter_mask.width << ", " << percussive_filter_mask.height << std::endl;
-	std::cout <<  "perc anchor: " << percussive_anchor.x << ", " << percussive_anchor.y << std::endl;
-
-	std::cout << "s mag ptr: " << thrust::raw_pointer_cast(s_mag.data()) << std::endl;
-	std::cout << "p mat ptr: " << thrust::raw_pointer_cast(percussive_matrix.data()) << std::endl;
-	std::cout << "p buf ptr: " << (void*)percussive_buffer << std::endl;
-
-	nppiFilterMedian_32f_C1R(
-	    thrust::raw_pointer_cast(s_mag.data()) + percussive_start_pixel_offset, percussive_nstep,
-	    thrust::raw_pointer_cast(percussive_matrix.data()) + percussive_start_pixel_offset, percussive_nstep, percussive_roi,
-	    percussive_filter_mask, percussive_anchor, percussive_buffer);
+	time.filter(s_mag.data(), harmonic_matrix.data());
+	frequency.filter(s_mag.data(), percussive_matrix.data());
 
 	std::cout <<  "calculate median filters & masks 4" << std::endl;
 
@@ -208,9 +157,9 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(thrust::device_ptr<flo
 
 		// now curr_fft has the current iteration's fresh samples
 		// we overlap-add it the real part to the previous
-		thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
-				  percussive_out.begin() + i*hop, percussive_out.begin() + i*hop,
-				  rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
+		//thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+		//		  percussive_out.begin() + i*hop, percussive_out.begin() + i*hop,
+		//		  rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
 
 		// apply last column of harmonic mask to recover harmonic audio from original fft
 		thrust::transform(sliding_stft.begin() + i*nfft, sliding_stft.begin() + (i+1)*nfft,

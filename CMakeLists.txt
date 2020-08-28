@@ -85,7 +85,8 @@ target_link_libraries(${RHYTHM_TOOLKIT_DEPS})
 
 if(BUILD_TESTS)
   set(RHYTHM_TOOLKIT_TESTS_SOURCES test/util.cu)
-  set(RHYTHM_TOOLKIT_TESTS_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} benchmark benchmark_main gtest gtest_main pthread)
+  set(RHYTHM_TOOLKIT_TESTS_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} gtest gtest_main pthread)
+  set(RHYTHM_TOOLKIT_BENCHES_DEPS rhythm_toolkit_test ${RHYTHM_TOOLKIT_DEPS} benchmark benchmark_main pthread)
   
   message("LIBRHYTHM_TOOLKIT: Building test util library")
   add_library(rhythm_toolkit_test SHARED ${RHYTHM_TOOLKIT_TESTS_SOURCES})
@@ -174,7 +175,7 @@ endfunction()
 
 if(BUILD_TESTS)
   message("LIBRHYTHM_TOOLKIT: Building tests")
-  #rhythm_toolkit_gtest(rhythm_toolkit)
+  rhythm_toolkit_gtest(medianfilter)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping tests")
 endif()
@@ -185,7 +186,7 @@ endif()
 
 function(rhythm_toolkit_gbench name)
   add_executable(bench_${name} test/bench_${name}.cu)
-  target_link_libraries(bench_${name} ${RHYTHM_TOOLKIT_TESTS_DEPS} -static-libstdc++)
+  target_link_libraries(bench_${name} ${RHYTHM_TOOLKIT_BENCHES_DEPS} -static-libstdc++)
 endfunction()
 
 if(BUILD_BENCHES)

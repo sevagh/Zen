@@ -2,6 +2,7 @@
 #include <functional>
 #include <iostream>
 #include <chrono>
+#include <math.h>
 
 #include "rhythm_toolkit/hpss.h"
 #include "rhythm_toolkit/io.h"
@@ -55,6 +56,9 @@ main(int argc, char **argv)
 		audio = std::vector<float>(
 		    file_data->samples.begin(), file_data->samples.end());
 	}
+
+	std::size_t audio_padded_size = (std::size_t)(((float)FLAGS_hop_h)*(floorf(((float)audio.size())/(float)FLAGS_hop_h))) + FLAGS_hop_h;
+	audio.resize(audio_padded_size, 0.0F);
 
 	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I (harmonic-percussive-residual iterative) separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
 
