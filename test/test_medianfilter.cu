@@ -74,8 +74,28 @@ TEST(MedianFilterUnitTest, SmallSquareVertical)
 	testdata[4*9 + 7] = 5;
 	testdata[4*9 + 8] = 5;
 
+	std::cout << "small square before: " << std::endl;
+
+	for (int i = 0; i < 9; ++i) {
+		for (int j = 0; j < 9; ++j) {
+			std::cout << testdata[i*9+j] << " ";
+		}
+		std::cout << std::endl;
+	}
+
+
 	auto vertical = MedianFilterGPU(9, 9, 3, MedianFilterDirection::Frequency);
 	vertical.filter(testdata.data(), result.data());
+
+	std::cout << "small square after: " << std::endl;
+
+	for (int i = 0; i < 9; ++i) {
+		for (int j = 0; j < 9; ++j) {
+			std::cout << result[i*9+j] << " ";
+		}
+		std::cout << std::endl;
+	}
+
 
 	for (int i = 0; i < 9; ++i) {
 		for (int j = 0; j < 9; ++j) {
@@ -110,11 +130,12 @@ TEST(MedianFilterUnitTest, LargeImageSmallHorizontalFilter)
 
 	// fill middle row and middle column
 	for (int i = 0; i < time_width; ++i) {
-		testdata[time_mid + i*frequency_height] = 8;
-	}
-
-	for (int j = 0; j < frequency_height; ++j) {
-		testdata[frequency_mid*time_width + j] = 5;
+		for (int j = 0; j < frequency_height; ++j) {
+			if (i == time_mid)
+				testdata[i*frequency_height + j] = 5;
+			if (j == frequency_mid)
+				testdata[i*frequency_height + j] = 8;
+		}
 	}
 
 	auto horizontal = MedianFilterGPU(time_width, frequency_height, 3, MedianFilterDirection::Time);
@@ -123,6 +144,7 @@ TEST(MedianFilterUnitTest, LargeImageSmallHorizontalFilter)
 	for (int i = 0; i < time_width; ++i) {
 		for (int j = 0; j < frequency_height; ++j) {
 			auto elem = result[i*frequency_height + j];
+
 			if (i == time_mid) {
 				EXPECT_EQ(elem, 5);
 			} else {
@@ -137,8 +159,10 @@ TEST(MedianFilterUnitTest, LargeImageSmallHorizontalFilter)
 
 TEST(MedianFilterUnitTest, LargeImageSmallVerticalFilter)
 {
-	int time_width = 50;
-	int frequency_height = 4096*4;
+	//int time_width = 50;
+	int time_width = 5;
+	int frequency_height = 10;
+	//int frequency_height = 4096*4;
 
 	int time_mid = time_width/2;
 	int frequency_mid = frequency_height/2;
@@ -148,35 +172,48 @@ TEST(MedianFilterUnitTest, LargeImageSmallVerticalFilter)
 
 	// fill middle row and middle column
 	for (int i = 0; i < time_width; ++i) {
-		testdata[time_mid + i*frequency_height] = 8;
+		for (int j = 0; j < frequency_height; ++j) {
+			if (i == time_mid)
+				testdata[i*frequency_height + j] = 5;
+			if (j == frequency_mid)
+				testdata[i*frequency_height + j] = 8;
+		}
 	}
 
-	for (int i = 0; i < frequency_height; ++i) {
-		testdata[frequency_mid*time_width + i] = 5;
+	std::cout << "small rectangle before: " << std::endl;
+
+	for (int i = 0; i < time_width; ++i) {
+		for (int j = 0; j < frequency_height; ++j) {
+			std::cout << testdata[i*frequency_height+j] << " ";
+		}
+		std::cout << std::endl;
 	}
 
 	auto vertical = MedianFilterGPU(time_width, frequency_height, 3, MedianFilterDirection::Frequency);
 	vertical.filter(testdata.data(), result.data());
 
+	std::cout << "small rectangle after: " << std::endl;
+
 	for (int i = 0; i < time_width; ++i) {
 		for (int j = 0; j < frequency_height; ++j) {
-			auto elem = result[i*frequency_height + j];
-			if (elem == 8) {
-				std::cout << "8 at i,j " << i << "," << j << std::endl;
-			} else if (elem == 5) {
-				std::cout << "5 at i,j " << i << "," << j << std::endl;
-			}
-
-			// subtract 1 because frequency_height is even so its midpoint is x/2 - 1
-			//if (j == frequency_mid-1) {
-			//	EXPECT_EQ(elem, 8);
-			//} else {
-			//	// there's 1 off element in the entire matrix. no biggie, roi imperfections
-			//	if (i == 26 && j == 25)
-			//		continue;
-			//	EXPECT_EQ(elem, 0);
-			//}
+			std::cout << result[i*frequency_height+j] << " ";
 		}
+		std::cout << std::endl;
 	}
+
+	//for (int i = 0; i < time_width; ++i) {
+	//	for (int j = 0; j < frequency_height; ++j) {
+	//		auto elem = result[i*frequency_height + j];
+
+	//		if (j == frequency_mid) {
+	//			EXPECT_EQ(elem, 8);
+	//		} else {
+	//			// there's 1 off element in the entire matrix. no biggie, roi imperfections
+	//			if (i == 26 && j == 25)
+	//				continue;
+	//			EXPECT_EQ(elem, 0);
+	//		}
+	//	}
+	//}
 }
 
