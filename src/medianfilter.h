@@ -16,6 +16,8 @@
 
 #include "rhythm_toolkit/rhythm_toolkit.h"
 
+// TODO rename freq/time to x/y vertical/horizontal
+
 namespace rhythm_toolkit_private {
 namespace median_filter {
 
@@ -45,7 +47,7 @@ namespace median_filter {
 		: time(time)
 		, frequency(frequency)
 		, filter_len(filter_len)
-		, roi(NppiSize{frequency, time})
+		, nstep(frequency * sizeof(Npp32f)) // expect 1D linear memory layout e.g. i*y + j
 		{
 			if ((dir == MedianFilterDirection::Time && filter_len > time) ||  (dir == MedianFilterDirection::Frequency && filter_len > frequency)) {
 				throw rhythm_toolkit::RtkException("median filter bigger than matrix dimension");
@@ -54,24 +56,25 @@ namespace median_filter {
 			filter_len += (1 - (filter_len % 2)); // make sure filter length is odd
 			filter_mid = ( int )floorf(( float )filter_len / 2);
 
+
 			switch (dir) {
 				// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
 				case MedianFilterDirection::Time:
-					nstep = frequency * sizeof(Npp32f);
+					roi = NppiSize{frequency, time-filter_len};
 
 					mask = NppiSize{1, filter_len};
-					anchor = NppiPoint{0, 0};
+					anchor = NppiPoint{0, filter_mid};
 
-					start_pixel_offset = 0;//filter_mid * nstep;
+					start_pixel_offset = filter_mid * nstep;
 
 					break;
 				case MedianFilterDirection::Frequency:
-					nstep = time * sizeof(Npp32f);
+					roi = NppiSize{frequency-filter_len, time};
 
 					mask = NppiSize{filter_len, 1};
-					anchor = NppiPoint{0, 0};
+					anchor = NppiPoint{filter_mid, 0};
 
-					start_pixel_offset = 0;//filter_mid * sizeof(Npp32f);
+					start_pixel_offset = filter_mid;
 					break;
 			}
 
@@ -95,9 +98,9 @@ namespace median_filter {
 			cudaFree(buffer);
 		}
 
-		void filter(thrust::device_ptr<float> src, thrust::device_ptr<float> dst) {
-			nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(src) + start_pixel_offset, nstep,
-				 thrust::raw_pointer_cast(dst) + start_pixel_offset,
+		void filter(Npp32f *src, Npp32f *dst) {
+			nppiFilterMedian_32f_C1R(src + start_pixel_offset, nstep,
+				 dst + start_pixel_offset,
 				 nstep, roi, mask, anchor, buffer);
 
 		}

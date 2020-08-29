@@ -125,9 +125,14 @@ namespace hpss {
 		thrust::device_vector<thrust::complex<float>> sliding_stft;
 		thrust::device_vector<thrust::complex<float>> curr_fft;
 
-		thrust::device_vector<float> s_mag;
-		thrust::device_vector<float> harmonic_matrix;
-		thrust::device_vector<float> percussive_matrix;
+		Npp32f* _s_mag;
+		Npp32f* _harmonic_matrix;
+		Npp32f* _percussive_matrix;
+
+		thrust::device_ptr<float> s_mag;
+		thrust::device_ptr<float> harmonic_matrix;
+		thrust::device_ptr<float> percussive_matrix;
+
 		thrust::device_vector<float> percussive_mask;
 		thrust::device_vector<float> harmonic_mask;
 		thrust::device_vector<float> residual_mask;
@@ -163,11 +168,6 @@ namespace hpss {
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
 		    , curr_fft(thrust::device_vector<thrust::complex<float>>(nfft, 0.0F))
-		    , s_mag(thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_matrix(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_matrix(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , harmonic_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , residual_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
@@ -177,8 +177,8 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
-		    , time(median_filter::MedianFilterGPU(stft_width, nfft, l_harm, median_filter::MedianFilterDirection::Time))
-		    , frequency(median_filter::MedianFilterGPU(stft_width, nfft, l_perc, median_filter::MedianFilterDirection::Frequency))
+		    , time(stft_width, nfft, l_harm, median_filter::MedianFilterDirection::Time)
+		    , frequency(stft_width, nfft, l_perc, median_filter::MedianFilterDirection::Frequency)
 		{
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {

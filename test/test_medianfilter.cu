@@ -1,45 +1,96 @@
 #include <gtest/gtest.h>
 #include "medianfilter.h"
 #include "rhythm_toolkit/rhythm_toolkit.h"
-#include <thrust/device_vector.h>
 #include <iostream>
+
+#include <thrust/device_vector.h>
+#include "npp.h"
+#include "nppdefs.h"
+#include "nppi.h"
 
 using namespace rhythm_toolkit_private::median_filter;
 
-TEST(MedianFilterUnitTest, SmallSquareHorizontal)
-{
-	thrust::device_vector<float> testdata(9*9);
-	thrust::device_vector<float> result(9*9);
+  class MedianFilterTest : public ::testing::Test {
+
+  public:
+	  thrust::device_vector<float> _testdata;
+	  thrust::device_vector<float> _result;
+
+    Npp32f *testdata;
+    Npp32f *result;
+    MedianFilterGPU* time_mfilt;
+    MedianFilterGPU* freq_mfilt;
+    int x;
+    int y;
+
+    MedianFilterTest(int x, int y, int f)
+    : x(x)
+    , y(y)
+	, _testdata(thrust::device_vector<float>(x*y))
+	, _result(thrust::device_vector<float>(x*y))
+    {
+	testdata = (Npp32f*)thrust::raw_pointer_cast(_testdata.data());
+	result = (Npp32f*)thrust::raw_pointer_cast(_result.data());
+
+	if (testdata == nullptr) {
+		std::cerr << "couldn't allocate device memory for test vectors" << std::endl;
+		std::exit(1);
+	}
 
 	// fill middle row and middle column
-	testdata[4 + 0*9] = 8;
-	testdata[4 + 1*9] = 8;
-	testdata[4 + 2*9] = 8;
-	testdata[4 + 3*9] = 8;
-	testdata[4 + 4*9] = 8;
-	testdata[4 + 5*9] = 8;
-	testdata[4 + 6*9] = 8;
-	testdata[4 + 7*9] = 8;
-	testdata[4 + 8*9] = 8;
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			if (i == x/2)
+				_testdata[i*y + j] = 5;
+			if (j == y/2)
+				_testdata[i*y + j] = 8;
+		}
+	}
 
-	testdata[4*9 + 0] = 5;
-	testdata[4*9 + 1] = 5;
-	testdata[4*9 + 2] = 5;
-	testdata[4*9 + 3] = 5;
-	testdata[4*9 + 4] = 5;
-	testdata[4*9 + 5] = 5;
-	testdata[4*9 + 6] = 5;
-	testdata[4*9 + 7] = 5;
-	testdata[4*9 + 8] = 5;
+        time_mfilt = new MedianFilterGPU(x, y, f, MedianFilterDirection::Time);
+        freq_mfilt = new MedianFilterGPU(x, y, f, MedianFilterDirection::Frequency);
+    }
 
-	auto horizontal = MedianFilterGPU(9, 9, 3, MedianFilterDirection::Time);
+    virtual ~MedianFilterTest() {
+	    delete time_mfilt;
+	    delete freq_mfilt;
+    }
 
-	horizontal.filter(testdata.data(), result.data());
+    virtual void SetUp() {}
 
-	for (int i = 0; i < 9; ++i) {
-		for (int j = 0; j < 9; ++j) {
-			auto elem = result[i*9 + j];
-			if (i == 4) {
+    virtual void TearDown() {}
+  };
+
+class MedianFilterSmallSquareUnitTest : public MedianFilterTest {
+protected:
+    MedianFilterSmallSquareUnitTest() : MedianFilterTest(9, 9, 3) {}
+};
+
+class MedianFilterLargeSquareUnitTest : public MedianFilterTest {
+protected:
+    MedianFilterLargeSquareUnitTest() : MedianFilterTest(1024, 1024, 21) {}
+};
+
+class MedianFilterSmallRectangleUnitTest : public MedianFilterTest {
+protected:
+    MedianFilterSmallRectangleUnitTest() : MedianFilterTest(10, 20, 5) {}
+};
+
+class MedianFilterLargeRectangleUnitTest : public MedianFilterTest {
+protected:
+    MedianFilterLargeRectangleUnitTest() : MedianFilterTest(10, 20, 5) {}
+};
+
+TEST_F(MedianFilterSmallSquareUnitTest, Time)
+{
+	time_mfilt->filter(testdata, result);
+
+	std::cout << "NEXT SEGFAULT!" << std::endl;
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+			if (i == x/2) {
 				EXPECT_EQ(elem, 5);
 			} else {
 				EXPECT_EQ(elem, 0);
@@ -48,61 +99,19 @@ TEST(MedianFilterUnitTest, SmallSquareHorizontal)
 	}
 }
 
-TEST(MedianFilterUnitTest, SmallSquareVertical)
+TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
 {
-	thrust::device_vector<float> testdata(9*9);
-	thrust::device_vector<float> result(9*9);
-
-	// fill middle row and middle column
-	testdata[4 + 0*9] = 8;
-	testdata[4 + 1*9] = 8;
-	testdata[4 + 2*9] = 8;
-	testdata[4 + 3*9] = 8;
-	testdata[4 + 4*9] = 8;
-	testdata[4 + 5*9] = 8;
-	testdata[4 + 6*9] = 8;
-	testdata[4 + 7*9] = 8;
-	testdata[4 + 8*9] = 8;
-
-	testdata[4*9 + 0] = 5;
-	testdata[4*9 + 1] = 5;
-	testdata[4*9 + 2] = 5;
-	testdata[4*9 + 3] = 5;
-	testdata[4*9 + 4] = 5;
-	testdata[4*9 + 5] = 5;
-	testdata[4*9 + 6] = 5;
-	testdata[4*9 + 7] = 5;
-	testdata[4*9 + 8] = 5;
-
-	std::cout << "small square before: " << std::endl;
-
-	for (int i = 0; i < 9; ++i) {
-		for (int j = 0; j < 9; ++j) {
-			std::cout << testdata[i*9+j] << " ";
-		}
-		std::cout << std::endl;
-	}
+	freq_mfilt->filter(testdata, result);
 
 
-	auto vertical = MedianFilterGPU(9, 9, 3, MedianFilterDirection::Frequency);
-	vertical.filter(testdata.data(), result.data());
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
 
-	std::cout << "small square after: " << std::endl;
-
-	for (int i = 0; i < 9; ++i) {
-		for (int j = 0; j < 9; ++j) {
-			std::cout << result[i*9+j] << " ";
-		}
-		std::cout << std::endl;
-	}
-
-
-	for (int i = 0; i < 9; ++i) {
-		for (int j = 0; j < 9; ++j) {
-			auto elem = result[i*9 + j];
-			if (j == 4) {
-				EXPECT_EQ(elem, 8);
-			} else {
+			// allow 0s on the outermost edges from the limited roi
+			if (i == x/2 && j >= 2 && j < y-2) {
+				EXPECT_EQ(elem, 5);
+			} else if (i != x/2) {
 				EXPECT_EQ(elem, 0);
 			}
 		}
@@ -117,103 +126,88 @@ TEST(MedianFilterUnitTest, DegenerateInputFilterTooBig)
 		MedianFilterGPU(9, 9, 171, MedianFilterDirection::Time), rhythm_toolkit::RtkException);
 }
 
-TEST(MedianFilterUnitTest, LargeImageSmallHorizontalFilter)
+TEST_F(MedianFilterSmallRectangleUnitTest, Time)
 {
-	int time_width = 50;
-	int frequency_height = 4096*4;
-
-	int time_mid = time_width/2;
-	int frequency_mid = frequency_height/2;
-
-	thrust::device_vector<float> testdata(time_width*frequency_height);
-	thrust::device_vector<float> result(time_width*frequency_height);
-
-	// fill middle row and middle column
-	for (int i = 0; i < time_width; ++i) {
-		for (int j = 0; j < frequency_height; ++j) {
-			if (i == time_mid)
-				testdata[i*frequency_height + j] = 5;
-			if (j == frequency_mid)
-				testdata[i*frequency_height + j] = 8;
+	std::cout << "before" << std::endl;
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _testdata[i*y + j];
+			std::cout << elem << " ";
 		}
+		std::cout << std::endl;
 	}
 
-	auto horizontal = MedianFilterGPU(time_width, frequency_height, 3, MedianFilterDirection::Time);
-	horizontal.filter(testdata.data(), result.data());
+	time_mfilt->filter(testdata, result);
 
-	for (int i = 0; i < time_width; ++i) {
-		for (int j = 0; j < frequency_height; ++j) {
-			auto elem = result[i*frequency_height + j];
+	std::cout << "after" << std::endl;
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+			std::cout << elem << " ";
+		}
+		std::cout << std::endl;
+	}
 
-			if (i == time_mid) {
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+
+			if (i == x/2) {
 				EXPECT_EQ(elem, 5);
 			} else {
-				// there's 1 off element in the entire matrix. no biggie, roi imperfections
-				if (i == 26 && j == 25)
-					continue;
 				EXPECT_EQ(elem, 0);
 			}
 		}
 	}
 }
 
-TEST(MedianFilterUnitTest, LargeImageSmallVerticalFilter)
+TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
 {
-	//int time_width = 50;
-	int time_width = 5;
-	int frequency_height = 10;
-	//int frequency_height = 4096*4;
+	freq_mfilt->filter(testdata, result);
 
-	int time_mid = time_width/2;
-	int frequency_mid = frequency_height/2;
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
 
-	thrust::device_vector<float> testdata(time_width*frequency_height);
-	thrust::device_vector<float> result(time_width*frequency_height);
-
-	// fill middle row and middle column
-	for (int i = 0; i < time_width; ++i) {
-		for (int j = 0; j < frequency_height; ++j) {
-			if (i == time_mid)
-				testdata[i*frequency_height + j] = 5;
-			if (j == frequency_mid)
-				testdata[i*frequency_height + j] = 8;
+			if (i == x/2 && j > 2 && j < y-3) {
+				EXPECT_EQ(elem, 5);
+			} else if (i != x/2) {
+				EXPECT_EQ(elem, 0);
+			}
 		}
 	}
-
-	std::cout << "small rectangle before: " << std::endl;
-
-	for (int i = 0; i < time_width; ++i) {
-		for (int j = 0; j < frequency_height; ++j) {
-			std::cout << testdata[i*frequency_height+j] << " ";
-		}
-		std::cout << std::endl;
-	}
-
-	auto vertical = MedianFilterGPU(time_width, frequency_height, 3, MedianFilterDirection::Frequency);
-	vertical.filter(testdata.data(), result.data());
-
-	std::cout << "small rectangle after: " << std::endl;
-
-	for (int i = 0; i < time_width; ++i) {
-		for (int j = 0; j < frequency_height; ++j) {
-			std::cout << result[i*frequency_height+j] << " ";
-		}
-		std::cout << std::endl;
-	}
-
-	//for (int i = 0; i < time_width; ++i) {
-	//	for (int j = 0; j < frequency_height; ++j) {
-	//		auto elem = result[i*frequency_height + j];
-
-	//		if (j == frequency_mid) {
-	//			EXPECT_EQ(elem, 8);
-	//		} else {
-	//			// there's 1 off element in the entire matrix. no biggie, roi imperfections
-	//			if (i == 26 && j == 25)
-	//				continue;
-	//			EXPECT_EQ(elem, 0);
-	//		}
-	//	}
-	//}
 }
 
+TEST_F(MedianFilterLargeRectangleUnitTest, Time)
+{
+	time_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+
+			if (i == x/2) {
+				EXPECT_EQ(elem, 5);
+			} else {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterLargeRectangleUnitTest, Frequency)
+{
+	freq_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+
+			if (i == x/2 && j >= 3 && j < y-3) {
+				EXPECT_EQ(elem, 5);
+			} else if (i != x/2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}

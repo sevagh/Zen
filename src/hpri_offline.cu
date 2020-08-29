@@ -100,27 +100,27 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(thrust::device_ptr<flo
 	std::cout <<  "calculate median filters & masks 1" << std::endl;
 
 	// calculate the magnitude of the stft
-	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
+	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag,
 			  rhythm_toolkit_private::hpss::complex_abs_functor());
 
 	std::cout <<  "calculate median filters & masks 2" << std::endl;
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
-	time.filter(s_mag.data(), harmonic_matrix.data());
-	frequency.filter(s_mag.data(), percussive_matrix.data());
+	time.filter(_s_mag, _harmonic_matrix);
+	frequency.filter(_s_mag, _percussive_matrix);
 
 	std::cout <<  "calculate median filters & masks 4" << std::endl;
 
 	// compute masks
-	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
-			  harmonic_matrix.begin(), percussive_mask.begin(),
+	thrust::transform(percussive_matrix, percussive_matrix + stft_width*nfft,
+			  harmonic_matrix, percussive_mask.begin(),
 			  rhythm_toolkit_private::hpss::mask_functor(beta));
 
 	std::cout <<  "calculate median filters & masks 5" << std::endl;
 
-	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(),
-			  percussive_matrix.begin(), harmonic_mask.begin(),
+	thrust::transform(harmonic_matrix, harmonic_matrix + stft_width*nfft,
+			  percussive_matrix, harmonic_mask.begin(),
 			  rhythm_toolkit_private::hpss::mask_functor(beta-rhythm_toolkit_private::hpss::Eps));
 
 	std::cout <<  "calculate median filters & masks 6" << std::endl;

@@ -71,7 +71,7 @@ link_directories(${GTEST_LIBRARY_DIRS})
 
 set(RHYTHM_TOOLKIT_SOURCES src/hpri_offline.cu src/p_realtime.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif)
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu)
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -130,7 +130,7 @@ endfunction()
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
   rhythm_toolkit_example(wav_hpss)
-  rhythm_toolkit_example(simple_mfilt)
+  rhythm_toolkit_example(simple_medfilt)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
