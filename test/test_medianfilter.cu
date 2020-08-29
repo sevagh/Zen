@@ -83,67 +83,30 @@ protected:
 
 TEST_F(MedianFilterSmallSquareUnitTest, Time)
 {
-	std::cout << "before" << std::endl;
-	for (int i = 0; i < x; ++i) {
-		for (int j = 0; j < y; ++j) {
-			auto elem = _testdata[i*y + j];
-			std::cout << elem << " ";
-		}
-		std::cout << std::endl;
-	}
-
 	time_mfilt->filter(testdata, result);
 
-	std::cout << "after" << std::endl;
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i*y + j];
-			std::cout << elem << " ";
+			if (j == y/2 && i < x-3) {
+				EXPECT_EQ(elem, 8);
+			} else if (j != y/2) {
+				EXPECT_EQ(elem, 0);
+			}
 		}
-		std::cout << std::endl;
 	}
-
-	//for (int i = 0; i < x; ++i) {
-	//	for (int j = 0; j < y; ++j) {
-	//		auto elem = _result[i*y + j];
-	//		if (i == x/2) {
-	//			EXPECT_EQ(elem, 5);
-	//		} else {
-	//			EXPECT_EQ(elem, 0);
-	//		}
-	//	}
-	//}
 }
 
 TEST_F(MedianFilterSmallRectangleUnitTest, Time)
 {
-	std::cout << "before" << std::endl;
-	for (int i = 0; i < x; ++i) {
-		for (int j = 0; j < y; ++j) {
-			auto elem = _testdata[i*y + j];
-			std::cout << elem << " ";
-		}
-		std::cout << std::endl;
-	}
-
 	time_mfilt->filter(testdata, result);
 
-	std::cout << "after" << std::endl;
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i*y + j];
-			std::cout << elem << " ";
-		}
-		std::cout << std::endl;
-	}
-
-	for (int i = 0; i < x; ++i) {
-		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i*y + j];
-
-			if (i == x/2) {
-				EXPECT_EQ(elem, 5);
-			} else {
+			if (j == y/2 && i < x-5) {
+				EXPECT_EQ(elem, 8);
+			} else if (j != y/2) {
 				EXPECT_EQ(elem, 0);
 			}
 		}
@@ -157,10 +120,9 @@ TEST_F(MedianFilterLargeRectangleUnitTest, Time)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i*y + j];
-
-			if (i == x/2) {
-				EXPECT_EQ(elem, 5);
-			} else {
+			if (j == y/2 && i < x-5) {
+				EXPECT_EQ(elem, 8);
+			} else if (j != y/2) {
 				EXPECT_EQ(elem, 0);
 			}
 		}

@@ -60,14 +60,12 @@ namespace median_filter {
 			switch (dir) {
 				// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
 				case MedianFilterDirection::Time:
-					//roi.height -= filter_len; 
-					nstep = frequency * sizeof(Npp32f);
+					roi.height -= filter_len; 
 
 					mask = NppiSize{1, filter_len};
-					anchor = NppiPoint{0, filter_mid};
-					//anchor = NppiPoint{0, 0};
+					anchor = NppiPoint{0, 0};
 
-					start_pixel_offset = 0;//filter_mid;// * nstep;
+					start_pixel_offset = 0;
 
 					break;
 				case MedianFilterDirection::Frequency:
