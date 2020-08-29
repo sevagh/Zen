@@ -21,7 +21,8 @@ namespace io {
 		thrust::device_ptr<float> device_out;
 		std::size_t size;
 
-		IOGPU(std::size_t size) : size(size)
+		IOGPU(std::size_t size)
+		    : size(size)
 		{
 			cudaSetDeviceFlags(cudaDeviceMapHost);
 
@@ -84,9 +85,9 @@ namespace io {
 		std::size_t size;
 
 		IOCPU(std::size_t size)
-		: size(size)
-		, host_in(std::vector<float>(size))
-		, host_out(std::vector<float>(size)) {};
+		    : size(size)
+		    , host_in(std::vector<float>(size))
+		    , host_out(std::vector<float>(size)){};
 	};
 }; // namespace io
 }; // namespace rhythm_toolkit

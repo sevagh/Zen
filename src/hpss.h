@@ -1,8 +1,8 @@
 #ifndef HPSS_PRIVATE_H
 #define HPSS_PRIVATE_H
 
-#include "window.h"
 #include "medianfilter.h"
+#include "window.h"
 #include <complex>
 #include <cstddef>
 #include <vector>
@@ -34,8 +34,8 @@ namespace hpss {
 	struct window_functor {
 		window_functor() {}
 
-		__host__ __device__ thrust::complex<float> operator()(const float& x,
-								      const float& y) const
+		__host__ __device__ thrust::complex<float>
+		operator()(const float& x, const float& y) const
 		{
 			return thrust::complex<float>{x * y, 0.0};
 		}
@@ -45,7 +45,7 @@ namespace hpss {
 		residual_mask_functor() {}
 
 		__host__ __device__ float operator()(const float& x,
-						     const float& y) const
+		                                     const float& y) const
 		{
 			return 1 - (x + y);
 		}
@@ -69,7 +69,7 @@ namespace hpss {
 		}
 
 		__host__ __device__ float operator()(const thrust::complex<float>& x,
-						     const float& y) const
+		                                     const float& y) const
 		{
 			return y + x.real() * cola_factor;
 		}
@@ -77,7 +77,8 @@ namespace hpss {
 
 	struct complex_abs_functor {
 		template <typename ValueType>
-		__host__ __device__ ValueType operator()(const thrust::complex<ValueType>& z)
+		__host__ __device__ ValueType
+		operator()(const thrust::complex<ValueType>& z)
 		{
 			return thrust::abs(z);
 		}
@@ -91,7 +92,8 @@ namespace hpss {
 		{
 		}
 
-		__host__ __device__ float operator()(const float& x, const float& y) const
+		__host__ __device__ float operator()(const float& x,
+		                                     const float& y) const
 		{
 			return float((x / (y + Eps)) >= beta);
 		}
@@ -100,8 +102,8 @@ namespace hpss {
 	struct sum_vectors_functor {
 		sum_vectors_functor() {}
 
-		__host__ __device__ float
-		operator()(const float& x, const float& y) const
+		__host__ __device__ float operator()(const float& x,
+		                                     const float& y) const
 		{
 			return x + y;
 		}
@@ -125,13 +127,9 @@ namespace hpss {
 		thrust::device_vector<thrust::complex<float>> sliding_stft;
 		thrust::device_vector<thrust::complex<float>> curr_fft;
 
-		Npp32f* _s_mag;
-		Npp32f* _harmonic_matrix;
-		Npp32f* _percussive_matrix;
-
-		thrust::device_ptr<float> s_mag;
-		thrust::device_ptr<float> harmonic_matrix;
-		thrust::device_ptr<float> percussive_matrix;
+		thrust::device_vector<float> s_mag;
+		thrust::device_vector<float> harmonic_matrix;
+		thrust::device_vector<float> percussive_matrix;
 
 		thrust::device_vector<float> percussive_mask;
 		thrust::device_vector<float> harmonic_mask;
@@ -152,33 +150,52 @@ namespace hpss {
 		median_filter::MedianFilterGPU time;
 		median_filter::MedianFilterGPU frequency;
 
-		HPROfflineGPU(float fs, std::size_t max_size_samples, std::size_t hop, float beta)
+		HPROfflineGPU(float fs,
+		              std::size_t max_size_samples,
+		              std::size_t hop,
+		              float beta)
 		    : fs(fs)
-		    , max_size_samples(max_size_samples+hop)
+		    , max_size_samples(max_size_samples + hop)
 		    , hop(hop)
 		    , nwin(2 * hop)
 		    , nfft(4 * hop)
 		    , beta(beta)
-		    , l_harm(roundf(0.2 / ((float)(nfft - hop) / fs)))
-		    , l_perc(roundf(500 / (fs / (float)nfft)))
-		    , stft_width((std::size_t)ceilf((float)max_size_samples/(float)hop))
+		    , l_harm(roundf(0.2 / (( float )(nfft - hop) / fs)))
+		    , l_perc(roundf(500 / (fs / ( float )nfft)))
+		    , stft_width(( std::size_t )ceilf(( float )max_size_samples
+		                                      / ( float )hop))
 		    , input(thrust::device_vector<float>(nwin, 0.0F))
 		    , win(window::WindowGPU(window::WindowType::SqrtVonHann, nwin))
 		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
 		    , curr_fft(thrust::device_vector<thrust::complex<float>>(nfft, 0.0F))
-		    , percussive_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , residual_mask(thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_out(thrust::device_vector<float>(max_size_samples, 0.0F))
+		    , s_mag(thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , percussive_matrix(
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , harmonic_matrix(
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , percussive_mask(
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , harmonic_mask(
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , residual_mask(
+		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
+		    , percussive_out(
+		          thrust::device_vector<float>(max_size_samples, 0.0F))
 		    , residual_out(thrust::device_vector<float>(max_size_samples, 0.0F))
 		    , harmonic_out(thrust::device_vector<float>(max_size_samples, 0.0F))
 		    , COLA_factor(0.0f)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
-		    , time(stft_width, nfft, l_harm, median_filter::MedianFilterDirection::Time)
-		    , frequency(stft_width, nfft, l_perc, median_filter::MedianFilterDirection::Frequency)
+		    , time(stft_width,
+		           nfft,
+		           l_harm,
+		           median_filter::MedianFilterDirection::Time)
+		    , frequency(stft_width,
+		                nfft,
+		                l_perc,
+		                median_filter::MedianFilterDirection::Frequency)
 		{
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
@@ -282,8 +299,9 @@ namespace hpss {
 
 			// set up median filtering buffers etc.
 			// avoid invalid pixels by using a smaller roi
-			medfilt_roi = NppiSize{(int)nfft-2*l_perc, (int)stft_width-2*l_harm};
-			start_pixel_offset = l_harm + l_perc*nstep;
+			medfilt_roi = NppiSize{
+			    ( int )nfft - 2 * l_perc, ( int )stft_width - 2 * l_harm};
+			start_pixel_offset = l_harm + l_perc * nstep;
 
 			harmonic_roi_offset = ( int )floorf(( float )l_harm / 2);
 			harmonic_filter_mask = NppiSize{1, l_harm};
