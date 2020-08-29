@@ -83,47 +83,36 @@ protected:
 
 TEST_F(MedianFilterSmallSquareUnitTest, Time)
 {
+	std::cout << "before" << std::endl;
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _testdata[i*y + j];
+			std::cout << elem << " ";
+		}
+		std::cout << std::endl;
+	}
+
 	time_mfilt->filter(testdata, result);
 
-	std::cout << "NEXT SEGFAULT!" << std::endl;
-
+	std::cout << "after" << std::endl;
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i*y + j];
-			if (i == x/2) {
-				EXPECT_EQ(elem, 5);
-			} else {
-				EXPECT_EQ(elem, 0);
-			}
+			std::cout << elem << " ";
 		}
+		std::cout << std::endl;
 	}
-}
 
-TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
-{
-	freq_mfilt->filter(testdata, result);
-
-
-	for (int i = 0; i < x; ++i) {
-		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i*y + j];
-
-			// allow 0s on the outermost edges from the limited roi
-			if (i == x/2 && j >= 2 && j < y-2) {
-				EXPECT_EQ(elem, 5);
-			} else if (i != x/2) {
-				EXPECT_EQ(elem, 0);
-			}
-		}
-	}
-}
-
-TEST(MedianFilterUnitTest, DegenerateInputFilterTooBig)
-{
-	EXPECT_THROW(
-		MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency), rhythm_toolkit::RtkException);
-	EXPECT_THROW(
-		MedianFilterGPU(9, 9, 171, MedianFilterDirection::Time), rhythm_toolkit::RtkException);
+	//for (int i = 0; i < x; ++i) {
+	//	for (int j = 0; j < y; ++j) {
+	//		auto elem = _result[i*y + j];
+	//		if (i == x/2) {
+	//			EXPECT_EQ(elem, 5);
+	//		} else {
+	//			EXPECT_EQ(elem, 0);
+	//		}
+	//	}
+	//}
 }
 
 TEST_F(MedianFilterSmallRectangleUnitTest, Time)
@@ -161,23 +150,6 @@ TEST_F(MedianFilterSmallRectangleUnitTest, Time)
 	}
 }
 
-TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
-{
-	freq_mfilt->filter(testdata, result);
-
-	for (int i = 0; i < x; ++i) {
-		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i*y + j];
-
-			if (i == x/2 && j > 2 && j < y-3) {
-				EXPECT_EQ(elem, 5);
-			} else if (i != x/2) {
-				EXPECT_EQ(elem, 0);
-			}
-		}
-	}
-}
-
 TEST_F(MedianFilterLargeRectangleUnitTest, Time)
 {
 	time_mfilt->filter(testdata, result);
@@ -189,6 +161,42 @@ TEST_F(MedianFilterLargeRectangleUnitTest, Time)
 			if (i == x/2) {
 				EXPECT_EQ(elem, 5);
 			} else {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
+{
+	freq_mfilt->filter(testdata, result);
+
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+
+			// allow 0s on the outermost edges from the limited roi
+			if (i == x/2 && j >= 2 && j < y-2) {
+				EXPECT_EQ(elem, 5);
+			} else if (i != x/2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
+{
+	freq_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i*y + j];
+
+			if (i == x/2 && j > 2 && j < y-3) {
+				EXPECT_EQ(elem, 5);
+			} else if (i != x/2) {
 				EXPECT_EQ(elem, 0);
 			}
 		}
@@ -210,4 +218,12 @@ TEST_F(MedianFilterLargeRectangleUnitTest, Frequency)
 			}
 		}
 	}
+}
+
+TEST(MedianFilterUnitTest, DegenerateInputFilterTooBig)
+{
+	EXPECT_THROW(
+		MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency), rhythm_toolkit::RtkException);
+	EXPECT_THROW(
+		MedianFilterGPU(9, 9, 171, MedianFilterDirection::Time), rhythm_toolkit::RtkException);
 }
