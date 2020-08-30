@@ -56,25 +56,19 @@ main(int argc, char **argv)
 		audio = std::vector<float>(
 		    file_data->samples.begin(), file_data->samples.end());
 	}
-
-	std::size_t audio_padded_size = (std::size_t)(((float)FLAGS_hop_h)*(floorf(((float)audio.size())/(float)FLAGS_hop_h))) + FLAGS_hop_h;
-	audio.resize(audio_padded_size, 0.0F);
-
-	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I (harmonic-percussive-residual iterative) separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
-
-	rhythm_toolkit::io::IOGPU io(audio.size());
+	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
 
 	//auto ng = NoiseGate(file_data->sampleRate);
-	auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(file_data->sampleRate, audio.size(), FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p, io);
+	auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
 
 	auto t1 = std::chrono::high_resolution_clock::now();
-	hpss.process();
+	auto result = hpss.process(audio);
 	auto t2 = std::chrono::high_resolution_clock::now();
 	auto dur = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
 	std::cout << "2-pass HPR-I-Offline took " << dur << " us" << std::endl;
 
-	std::vector<float> percussive_out(io.host_out, io.host_out + io.size);
+	auto percussive_out = result;
 
 	auto percussive_limits = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
 

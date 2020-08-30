@@ -31,26 +31,21 @@ namespace hpss {
 	class HPRIOfflineGPU {
 	public:
 		HPRIOfflineGPU(float fs,
-		               std::size_t max_size_samples,
 		               std::size_t hop_h,
 		               std::size_t hop_p,
 		               float beta_h,
-		               float beta_p,
-		               rhythm_toolkit::io::IOGPU& io);
-		HPRIOfflineGPU(float fs,
-		               std::size_t max_size_samples,
-		               std::size_t hop_h,
-		               std::size_t hop_p,
-		               rhythm_toolkit::io::IOGPU& io);
-		HPRIOfflineGPU(float fs,
-		               std::size_t max_size_samples,
-		               rhythm_toolkit::io::IOGPU& io);
+		               float beta_p);
+		HPRIOfflineGPU(float fs, std::size_t hop_h, std::size_t hop_p);
+		HPRIOfflineGPU(float fs);
 
 		~HPRIOfflineGPU();
 
-		// copies from the io in vec, writes to the io out vec
 		// pass the entire song in the in vec
-		void process();
+		// the vector is copied to be modified in-place
+		//
+		// returns a triplet of harmonic,percussive,residual results
+		// of audio.size()
+		std::vector<float> process(std::vector<float> audio);
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
@@ -60,11 +55,7 @@ namespace hpss {
 		rhythm_toolkit_private::hpss::HPROfflineGPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
-		rhythm_toolkit::io::IOGPU& io;
-
-		// intermediate array to pass values between first and second iteration
-		// of HPSS
-		thrust::device_vector<float> intermediate;
+		rhythm_toolkit::io::IOGPU io_h, io_p;
 	};
 
 	class PRealtimeGPU {

@@ -12,7 +12,7 @@ setup:
 	(cd build; cmake .. -G Ninja $(EXTRA_CMAKE_FLAGS))
 
 build: setup
-	ninja -C build
+	ninja -C build -j 16
 
 clang-format: setup
 	ninja -C build clang-format

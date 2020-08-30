@@ -1,6 +1,4 @@
 #include "hpss.h"
-#include "nppdefs.h"
-#include "nppi.h"
 #include "rhythm_toolkit/hpss.h"
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
@@ -83,15 +81,11 @@ void rhythm_toolkit_private::hpss::PRealtimeGPU::process_next_hop(
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
-	nppiFilterMedian_32f_C1R(thrust::raw_pointer_cast(s_mag.data()), nstep,
-	                         thrust::raw_pointer_cast(harmonic_matrix.data()),
-	                         nstep, medfilt_roi, harmonic_filter_mask,
-	                         harmonic_anchor, harmonic_buffer);
-
-	nppiFilterMedian_32f_C1R(
-	    thrust::raw_pointer_cast(s_mag.data()), nstep,
-	    thrust::raw_pointer_cast(percussive_matrix.data()), nstep, medfilt_roi,
-	    percussive_filter_mask, percussive_anchor, percussive_buffer);
+	time.filter(( Npp32f* )thrust::raw_pointer_cast(s_mag.data()),
+	            ( Npp32f* )thrust::raw_pointer_cast(harmonic_matrix.data()));
+	frequency.filter(
+	    ( Npp32f* )thrust::raw_pointer_cast(s_mag.data()),
+	    ( Npp32f* )thrust::raw_pointer_cast(percussive_matrix.data()));
 
 	// compute percussive mask from harmonic + percussive magnitude spectra
 	// the last column of percussive_matrix contains the mask to be applied to
