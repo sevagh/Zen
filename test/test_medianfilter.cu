@@ -49,9 +49,10 @@ public:
 			}
 		}
 
-		causal_time_mfilt = new MedianFilterGPU(x, y, f, MedianFilterDirection::TimeCausal);
-		anticausal_time_mfilt
-		    = new MedianFilterGPU(x, y, f, MedianFilterDirection::TimeAnticausal);
+		causal_time_mfilt
+		    = new MedianFilterGPU(x, y, f, MedianFilterDirection::TimeCausal);
+		anticausal_time_mfilt = new MedianFilterGPU(
+		    x, y, f, MedianFilterDirection::TimeAnticausal);
 		freq_mfilt
 		    = new MedianFilterGPU(x, y, f, MedianFilterDirection::Frequency);
 	}
@@ -63,7 +64,8 @@ public:
 		delete freq_mfilt;
 	}
 
-	void printPre() {
+	void printPre()
+	{
 		std::cout << "before" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
@@ -74,7 +76,8 @@ public:
 		}
 	}
 
-	void printPost() {
+	void printPost()
+	{
 		std::cout << "after" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
@@ -124,9 +127,9 @@ protected:
 
 TEST_F(MedianFilterSmallSquareUnitTest, CausalTime)
 {
-	//printPre();
+	// printPre();
 	causal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -143,9 +146,9 @@ TEST_F(MedianFilterSmallSquareUnitTest, CausalTime)
 
 TEST_F(MedianFilterSmallRectangleUnitTest, CausalTime)
 {
-	//printPre();
+	// printPre();
 	causal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -162,9 +165,9 @@ TEST_F(MedianFilterSmallRectangleUnitTest, CausalTime)
 
 TEST_F(MedianFilterLargeRectangleUnitTest, CausalTime)
 {
-	//printPre();
+	// printPre();
 	causal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -181,9 +184,9 @@ TEST_F(MedianFilterLargeRectangleUnitTest, CausalTime)
 
 TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
 {
-	//printPre();
+	// printPre();
 	freq_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -202,9 +205,9 @@ TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
 
 TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
 {
-	//printPre();
+	// printPre();
 	freq_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -222,9 +225,9 @@ TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
 
 TEST_F(MedianFilterLargeRectangleUnitTest, Frequency)
 {
-	//printPre();
+	// printPre();
 	freq_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -246,15 +249,16 @@ TEST(MedianFilterUnitTest, DegenerateInputFilterTooBig)
 	             rhythm_toolkit::RtkException);
 	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeCausal),
 	             rhythm_toolkit::RtkException);
-	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal),
-	             rhythm_toolkit::RtkException);
+	EXPECT_THROW(
+	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal),
+	    rhythm_toolkit::RtkException);
 }
 
 TEST_F(MedianFilterSmallSquareUnitTest, AnticausalTime)
 {
-	//printPre();
+	// printPre();
 	anticausal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -271,9 +275,9 @@ TEST_F(MedianFilterSmallSquareUnitTest, AnticausalTime)
 
 TEST_F(MedianFilterSmallRectangleUnitTest, AnticausalTime)
 {
-	//printPre();
+	// printPre();
 	anticausal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -290,9 +294,9 @@ TEST_F(MedianFilterSmallRectangleUnitTest, AnticausalTime)
 
 TEST_F(MedianFilterLargeRectangleUnitTest, AnticausalTime)
 {
-	//printPre();
+	// printPre();
 	anticausal_time_mfilt->filter(testdata, result);
-	//printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {

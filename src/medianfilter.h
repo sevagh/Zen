@@ -55,7 +55,9 @@ namespace median_filter {
 		                                        // layout e.g. i*y + j
 		    , roi(NppiSize{frequency, time})
 		{
-			if (((dir == MedianFilterDirection::TimeCausal || dir == MedianFilterDirection::TimeAnticausal) && filter_len > time)
+			if (((dir == MedianFilterDirection::TimeCausal
+			      || dir == MedianFilterDirection::TimeAnticausal)
+			     && filter_len > time)
 			    || (dir == MedianFilterDirection::Frequency
 			        && filter_len > frequency)) {
 				throw rhythm_toolkit::RtkException("median filter bigger than "
@@ -69,55 +71,65 @@ namespace median_filter {
 			switch (dir) {
 			// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
 			//
-			// NBB: for some reason, cuda-memcheck complains about the y-direction median filtering
-			// if any anchor/offset different from 0 is used
+			// NBB: for some reason, cuda-memcheck complains about the
+			// y-direction median filtering if any anchor/offset different from
+			// 0 is used
 			//
-			// i think this is a bug because the final median filtering code works fine
+			// i think this is a bug because the final median filtering code
+			// works fine
 			//
-			// conversely, for the x-direction median filter in the Frequency case, cuda-memcheck doesn't
-			// object
+			// conversely, for the x-direction median filter in the Frequency
+			// case, cuda-memcheck doesn't object
 			case MedianFilterDirection::TimeCausal:
-				// causal case is for real-time use where future frames aren't available
+				// causal case is for real-time use where future frames aren't
+				// available
 				//
-				// in this case the sliding stft should have a trailing history of l_harm/2
-				// frames (going by the original offline algorithm)
+				// in this case the sliding stft should have a trailing history
+				// of l_harm/2 frames (going by the original offline algorithm)
 				//
 				// we're supplying a full matrix of time = stft_width = l_harm
 				//
-				// our mask should extend backwards, i.e. have the anchor at the tip of the mask
-				// this is because the current frame is the last frame, and should have the most
-				// median filtering - the earlier frames, or past, lose importance rapidly
+				// our mask should extend backwards, i.e. have the anchor at
+				// the tip of the mask this is because the current frame is the
+				// last frame, and should have the most median filtering - the
+				// earlier frames, or past, lose importance rapidly
 				roi.height -= filter_len;
 
 				mask = NppiSize{1, filter_len};
 				anchor = NppiPoint{0, filter_len};
 
-				// start one entire mask past the beginning so the mask can validly extend backwards
-				start_pixel_offset = filter_len*nstep/sizeof(Npp32f);
+				// start one entire mask past the beginning so the mask can
+				// validly extend backwards
+				start_pixel_offset = filter_len * nstep / sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::TimeAnticausal:
 				// anticausal case is for offline processing where we can use
-				// past and future frames for improved harmonic-percussive separation
+				// past and future frames for improved harmonic-percussive
+				// separation
 				//
-				// in this case we expect to be supplied with time = stft_width = l_harm
-				// but we have past and future samples
+				// in this case we expect to be supplied with time = stft_width
+				// = l_harm but we have past and future samples
 				//
-				// therefore the anchor should be in the middle of the mask, to get the best
-				// median filtering at the middle frame which contains the audio to be reconstructed
+				// therefore the anchor should be in the middle of the mask, to
+				// get the best median filtering at the middle frame which
+				// contains the audio to be reconstructed
 				roi.height -= filter_len;
 
 				mask = NppiSize{1, filter_len};
 				anchor = NppiPoint{0, filter_mid};
 
-				// start half a mask past the beginning so the mask can validly extend backwards
-				start_pixel_offset = filter_mid*nstep/sizeof(Npp32f);
+				// start half a mask past the beginning so the mask can validly
+				// extend backwards
+				start_pixel_offset = filter_mid * nstep / sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::Frequency:
-				// choose an roi + mask + anchor so that the median filter extends forward in the fft
+				// choose an roi + mask + anchor so that the median filter
+				// extends forward in the fft
 				//
-				// since we're discarding the second half of the fft, it's less important
+				// since we're discarding the second half of the fft, it's less
+				// important
 				roi.width -= filter_len;
 
 				mask = NppiSize{filter_len, 1};

@@ -172,7 +172,7 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(
 		// we overlap-add it the real part to the previous
 		// thrust::transform(curr_fft.begin(), curr_fft.begin() + nwin,
 		//		  percussive_out.begin() + i*hop, percussive_out.begin() +
-		//i*hop,
+		// i*hop,
 		//		  rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
 
 		// apply last column of harmonic mask to recover harmonic audio from
