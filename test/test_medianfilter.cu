@@ -18,7 +18,8 @@ public:
 
 	Npp32f* testdata;
 	Npp32f* result;
-	MedianFilterGPU* time_mfilt;
+	MedianFilterGPU* causal_time_mfilt;
+	MedianFilterGPU* anticausal_time_mfilt;
 	MedianFilterGPU* freq_mfilt;
 	int x;
 	int y;
@@ -48,14 +49,17 @@ public:
 			}
 		}
 
-		time_mfilt = new MedianFilterGPU(x, y, f, MedianFilterDirection::Time);
+		causal_time_mfilt = new MedianFilterGPU(x, y, f, MedianFilterDirection::TimeCausal);
+		anticausal_time_mfilt
+		    = new MedianFilterGPU(x, y, f, MedianFilterDirection::TimeAnticausal);
 		freq_mfilt
 		    = new MedianFilterGPU(x, y, f, MedianFilterDirection::Frequency);
 	}
 
 	virtual ~MedianFilterTest()
 	{
-		delete time_mfilt;
+		delete causal_time_mfilt;
+		delete anticausal_time_mfilt;
 		delete freq_mfilt;
 	}
 
@@ -96,9 +100,9 @@ protected:
 	}
 };
 
-TEST_F(MedianFilterSmallSquareUnitTest, Time)
+TEST_F(MedianFilterSmallSquareUnitTest, CausalTime)
 {
-	time_mfilt->filter(testdata, result);
+	causal_time_mfilt->filter(testdata, result);
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -113,9 +117,9 @@ TEST_F(MedianFilterSmallSquareUnitTest, Time)
 	}
 }
 
-TEST_F(MedianFilterSmallRectangleUnitTest, Time)
+TEST_F(MedianFilterSmallRectangleUnitTest, CausalTime)
 {
-	time_mfilt->filter(testdata, result);
+	causal_time_mfilt->filter(testdata, result);
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -130,9 +134,9 @@ TEST_F(MedianFilterSmallRectangleUnitTest, Time)
 	}
 }
 
-TEST_F(MedianFilterLargeRectangleUnitTest, Time)
+TEST_F(MedianFilterLargeRectangleUnitTest, CausalTime)
 {
-	time_mfilt->filter(testdata, result);
+	causal_time_mfilt->filter(testdata, result);
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
@@ -156,7 +160,7 @@ TEST_F(MedianFilterSmallSquareUnitTest, Frequency)
 			auto elem = _result[i * y + j];
 
 			// allow 0s on the outermost edges from the limited roi
-			if (i == x / 2 && j >= 2 && j < y - 2) {
+			if (i == x / 2 && j < y - 3) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -174,7 +178,7 @@ TEST_F(MedianFilterSmallRectangleUnitTest, Frequency)
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i * y + j];
 
-			if (i == x / 2 && j > 2 && j < y - 3) {
+			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -192,7 +196,7 @@ TEST_F(MedianFilterLargeRectangleUnitTest, Frequency)
 		for (int j = 0; j < y; ++j) {
 			auto elem = _result[i * y + j];
 
-			if (i == x / 2 && j >= 3 && j < y - 3) {
+			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -206,6 +210,59 @@ TEST(MedianFilterUnitTest, DegenerateInputFilterTooBig)
 {
 	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency),
 	             rhythm_toolkit::RtkException);
-	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::Time),
+	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeCausal),
 	             rhythm_toolkit::RtkException);
+	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal),
+	             rhythm_toolkit::RtkException);
+}
+
+TEST_F(MedianFilterSmallSquareUnitTest, AnticausalTime)
+{
+	anticausal_time_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i * y + j];
+			if (j == y / 2 && i < x - 3) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallRectangleUnitTest, AnticausalTime)
+{
+	anticausal_time_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i * y + j];
+			if (j == y / 2 && i < x - 5) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterLargeRectangleUnitTest, AnticausalTime)
+{
+	anticausal_time_mfilt->filter(testdata, result);
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = _result[i * y + j];
+			if (j == y / 2 && i < x - 5) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
 }

@@ -191,7 +191,7 @@ namespace hpss {
 		    , time(stft_width,
 		           nfft,
 		           l_harm,
-		           median_filter::MedianFilterDirection::Time)
+		           median_filter::MedianFilterDirection::TimeAnticausal)
 		    , frequency(stft_width,
 		                nfft,
 		                l_perc,

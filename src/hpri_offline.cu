@@ -32,8 +32,6 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::HPRIOfflineGPU(
     , hop_h(hop_h)
     , hop_p(hop_p)
 {
-	std::cout << "initial params, max: " << max_size_samples
-	          << ", hop_h: " << hop_h << ", hop_p: " << hop_p << std::endl;
 	p_impl_h = new rhythm_toolkit_private::hpss::HPROfflineGPU(
 	    fs, max_size_samples, hop_h, beta_h);
 	p_impl_p = new rhythm_toolkit_private::hpss::HPROfflineGPU(
@@ -56,12 +54,8 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::HPRIOfflineGPU(
 
 void rhythm_toolkit::hpss::HPRIOfflineGPU::process()
 {
-	std::cout << "A" << std::endl;
-
 	// first apply HPR with hop size 4096 for good harmonic separation
 	p_impl_h->process(io.device_in, io.size);
-
-	std::cout << "B" << std::endl;
 
 	// use xp1 + xr1 as input for the second iteration of HPR with hop size 256
 	// for good percussive separation
@@ -69,8 +63,6 @@ void rhythm_toolkit::hpss::HPRIOfflineGPU::process()
 	                  p_impl_h->percussive_out.end(),
 	                  p_impl_h->residual_out.begin(), intermediate.begin(),
 	                  rhythm_toolkit_private::hpss::sum_vectors_functor());
-
-	std::cout << "C" << std::endl;
 
 	// do second pass with input signal = xp1 + xr1
 	p_impl_p->process(intermediate.data(), io.size);
@@ -118,13 +110,9 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(
 		    curr_fft.begin(), curr_fft.end(), sliding_stft.begin() + i * nfft);
 	}
 
-	std::cout << "calculate median filters & masks 1" << std::endl;
-
 	// calculate the magnitude of the stft
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
 	                  rhythm_toolkit_private::hpss::complex_abs_functor());
-
-	std::cout << "calculate median filters & masks 2" << std::endl;
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
@@ -134,28 +122,20 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process(
 	    ( Npp32f* )thrust::raw_pointer_cast(s_mag.data()),
 	    ( Npp32f* )thrust::raw_pointer_cast(percussive_matrix.data()));
 
-	std::cout << "calculate median filters & masks 4" << std::endl;
-
 	// compute masks
 	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
 	                  harmonic_matrix.begin(), percussive_mask.begin(),
 	                  rhythm_toolkit_private::hpss::mask_functor(beta));
-
-	std::cout << "calculate median filters & masks 5" << std::endl;
 
 	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(),
 	                  percussive_matrix.begin(), harmonic_mask.begin(),
 	                  rhythm_toolkit_private::hpss::mask_functor(
 	                      beta - rhythm_toolkit_private::hpss::Eps));
 
-	std::cout << "calculate median filters & masks 6" << std::endl;
-
 	// compute residual mask from harmonic and percussive masks
 	thrust::transform(harmonic_mask.begin(), harmonic_mask.end(),
 	                  percussive_mask.begin(), residual_mask.begin(),
 	                  rhythm_toolkit_private::hpss::residual_mask_functor());
-
-	std::cout << "sliding overlap add reconstruction" << std::endl;
 
 	for (std::size_t i = 0; i < n_chunks; ++i) {
 		// following the previous iteration
