@@ -68,6 +68,14 @@ namespace median_filter {
 
 			switch (dir) {
 			// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
+			//
+			// NBB: for some reason, cuda-memcheck complains about the y-direction median filtering
+			// if any anchor/offset different from 0 is used
+			//
+			// i think this is a bug because the final median filtering code works fine
+			//
+			// conversely, for the x-direction median filter in the Frequency case, cuda-memcheck doesn't
+			// object
 			case MedianFilterDirection::TimeCausal:
 				// causal case is for real-time use where future frames aren't available
 				//
@@ -79,14 +87,13 @@ namespace median_filter {
 				// our mask should extend backwards, i.e. have the anchor at the tip of the mask
 				// this is because the current frame is the last frame, and should have the most
 				// median filtering - the earlier frames, or past, lose importance rapidly
-				roi.height -= 6;
+				roi.height -= filter_len;
 
-				mask = NppiSize{3, 3};
-				anchor = NppiPoint{0, 0};//filter_len};
+				mask = NppiSize{1, filter_len};
+				anchor = NppiPoint{0, filter_len};
 
 				// start one entire mask past the beginning so the mask can validly extend backwards
-				//start_pixel_offset = 1*nstep;//filter_len*nstep;
-				start_pixel_offset = 1*nstep + 1;
+				start_pixel_offset = filter_len*nstep/sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::TimeAnticausal:
@@ -104,7 +111,7 @@ namespace median_filter {
 				anchor = NppiPoint{0, filter_mid};
 
 				// start half a mask past the beginning so the mask can validly extend backwards
-				start_pixel_offset = filter_mid*nstep;
+				start_pixel_offset = filter_mid*nstep/sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::Frequency:
