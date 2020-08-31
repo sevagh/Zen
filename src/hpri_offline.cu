@@ -58,12 +58,14 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::process(std::vector<float> audio)
 	    = ( int )(ceilf(( float )audio_size / ( float )hop_h));
 	int pad = n_chunks_ceil_iter1 * hop_h - audio_size;
 
-	int lag = p_impl_h->lag;
+	int lag1 = p_impl_h->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
-	pad += lag * hop_h;
-	n_chunks_ceil_iter1 += lag;
+	pad += lag1 * hop_h;
+
+	// first lag frames are simply for prefilling the future frames of the stft
+	n_chunks_ceil_iter1 += lag1;
 
 	audio.resize(audio.size() + pad, 0.0F);
 
@@ -72,7 +74,7 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::process(std::vector<float> audio)
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
 
-	for (std::size_t i = 0; i < n_chunks_ceil_iter1; ++i) {
+	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
 		// first apply HPR with hop size 4096 for good harmonic separation
 		// copy the song, 4096 samples at a time, into the 4096-sized
 		// mapped/pinned IOGPU device
@@ -95,25 +97,20 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::process(std::vector<float> audio)
 
 	int n_chunks_ceil_iter2
 	    = ( int )(ceilf(( float )original_size / ( float )hop_p));
-	pad = n_chunks_ceil_iter2 * hop_p - audio_size;
 
-	lag = p_impl_p->lag;
+	int lag2 = p_impl_p->lag;
 
-	// pad with extra lag frames since offline/anticausal HPSS uses future
+	// padded with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
-	pad += lag * hop_p;
-	n_chunks_ceil_iter2 += lag;
+	n_chunks_ceil_iter2 += lag2;
 
-	// truncate the extra lag padded frames of the previous large hop size
-	// to only keep lag padded frames of the next smaller hop size
-	audio.resize(audio.size() - n_chunks_ceil_iter2 * hop_p, 0.0F);
-
-	for (std::size_t i = 0; i < n_chunks_ceil_iter2; ++i) {
+	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
 		// next apply HPR with hop size 256 for good harmonic separation
 		// copy the song, 256 samples at a time, into the 256-sized
 		// mapped/pinned IOGPU device
-		std::copy(intermediate.begin() + i * hop_p,
-		          intermediate.begin() + (i + 1) * hop_p, io_p.host_in);
+		std::copy(intermediate.begin() + lag1 * hop_h + i * hop_p,
+		          intermediate.begin() + lag1 * hop_h + (i + 1) * hop_p,
+		          io_p.host_in);
 
 		p_impl_p->process_next_hop(io_p.device_in);
 
@@ -125,6 +122,8 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::process(std::vector<float> audio)
 	}
 
 	// truncate all padding
+	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
+	          percussive_out.begin());
 	percussive_out.resize(original_size);
 
 	return percussive_out;
