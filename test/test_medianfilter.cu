@@ -315,11 +315,11 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, AnticausalTime)
 class MedianFilterCPUTest : public ::testing::Test {
 
 public:
-	thrust::device_vector<float> _testdata;
-	thrust::device_vector<float> _result;
+	std::vector<float> _testdata;
+	std::vector<float> _result;
 
-	Npp32f* testdata;
-	Npp32f* result;
+	Ipp32f* testdata;
+	Ipp32f* result;
 	MedianFilterCPU* causal_time_mfilt;
 	MedianFilterCPU* anticausal_time_mfilt;
 	MedianFilterCPU* freq_mfilt;
@@ -329,11 +329,11 @@ public:
 	MedianFilterCPUTest(int x, int y, int f)
 	    : x(x)
 	    , y(y)
-	    , _testdata(thrust::device_vector<float>(x * y))
-	    , _result(thrust::device_vector<float>(x * y))
+	    , _testdata(std::vector<float>(x * y))
+	    , _result(std::vector<float>(x * y))
 	{
-		testdata = ( Npp32f* )thrust::raw_pointer_cast(_testdata.data());
-		result = ( Npp32f* )thrust::raw_pointer_cast(_result.data());
+		testdata = ( Ipp32f* )_testdata.data();
+		result = ( Ipp32f* )_result.data();
 
 		if (testdata == nullptr) {
 			std::cerr << "couldn't allocate device memory for test vectors"
@@ -422,16 +422,16 @@ protected:
 class MedianFilterLargeRectangleUnitTestCPU : public MedianFilterCPUTest {
 protected:
 	MedianFilterLargeRectangleUnitTestCPU()
-	    : MedianFilterCPUTest(1024, 17, 5)
+	    : MedianFilterCPUTest(1024, 128, 5)
 	{
 	}
 };
 
 TEST_F(MedianFilterSmallSquareUnitTestCPU, CausalTime)
 {
-	printPre();
+	// printPre();
 	causal_time_mfilt->filter(testdata, result);
-	printPost();
+	// printPost();
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {

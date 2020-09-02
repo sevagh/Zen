@@ -165,17 +165,12 @@ namespace median_filter {
 		int filter_len;
 
 		IppiSize roi;
-		int filter_mid;
 		IppiSize mask;
 
 		int nstep;
-		int start_pixel_offset;
 
 		Ipp8u* buffer;
 		int buffer_size;
-
-		// replicate borders
-		IppiBorderType border_type = ippBorderRepl;
 
 		// use time and frequency as axis names
 		MedianFilterCPU(int time,
@@ -200,8 +195,9 @@ namespace median_filter {
 			filter_len
 			    += (1 - (filter_len % 2)); // make sure filter length is odd
 
+			// roi selection and median filter parameters are much simpler for ipp
+			// since it handles border replication
 			switch (dir) {
-			// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
 			case MedianFilterDirection::TimeCausal:
 			case MedianFilterDirection::TimeAnticausal:
 				mask = IppiSize{1, filter_len};
@@ -212,20 +208,20 @@ namespace median_filter {
 			}
 
 			IppStatus ipp_status = ippiFilterMedianBorderGetBufferSize(
-			    roi, mask, ipp8u, 1, &buffer_size);
-			if (ipp_status != NPP_NO_ERROR) {
+			    roi, mask, ipp32f, 1, &buffer_size);
+			if (ipp_status < 0) {
 				std::cerr << "IPP error " << ipp_status << std::endl;
 				std::exit(1);
 			}
 
-			buffer = ( Ipp8u* )ippMalloc(buffer_size);
+			buffer = ippsMalloc_8u(buffer_size);
 			if (buffer == nullptr) {
 				std::cerr << "IPP malloc error " << std::endl;
 				std::exit(1);
 			}
 		};
 
-		~MedianFilterCPU() { ippFree(buffer); }
+		~MedianFilterCPU() { ippsFree(buffer); }
 
 		void filter(Ipp32f* src, Ipp32f* dst)
 		{
