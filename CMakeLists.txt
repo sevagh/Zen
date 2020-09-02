@@ -46,11 +46,16 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(FindPkgConfig)
 
 find_package(GTest REQUIRED)
+find_package(IPP REQUIRED)
 find_package(gflags REQUIRED)
 find_package(benchmark REQUIRED)
-find_package(OpenMP REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(CUDAToolkit REQUIRED)
+find_package(SoundIo REQUIRED)
+if(BUILD_STATIC)
+  find_package(ALSA REQUIRED)
+  find_package(JACK REQUIRED)
+endif()
 
 # ------------------------------------------------------------------------------#
 # INCLUDE DIRS
@@ -58,7 +63,7 @@ find_package(CUDAToolkit REQUIRED)
 
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
-  ${GTEST_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  ${GTEST_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${SOUNDIO_INCLUDE_DIR} ${PULSEAUDIO_INCLUDE_DIR} ${ALSA_INCLUDE_DIR} ${IPP_INCLUDE_DIR})
 
 # ------------------------------------------------------------------------------#
 # LIBS
@@ -67,11 +72,11 @@ include_directories(
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
   ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/libnyquist/include)
-link_directories(${GTEST_LIBRARY_DIRS})
+link_directories(${GTEST_LIBRARY_DIRS} ${IPP_LIBRARIES})
 
 set(RHYTHM_TOOLKIT_SOURCES src/hpri_offline.cu src/p_realtime.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu)
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu ${IPP_LIBRARY})
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -129,7 +134,8 @@ endfunction()
 
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
-  rhythm_toolkit_example(wav_hpss)
+  rhythm_toolkit_example(wav_hpss_offline)
+  #rhythm_toolkit_example(wav_hpss_realtime)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()

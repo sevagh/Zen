@@ -11,10 +11,8 @@
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 
-DEFINE_int32(hop_h, 4096, "hop harmonic (samples)");
-DEFINE_int32(hop_p, 256, "hop percussive (samples)");
-DEFINE_double(beta_h, 2.0, "beta harmonic (separation factor, float)");
-DEFINE_double(beta_p, 2.0, "beta harmonic (separation factor, float)");
+DEFINE_int32(hop, 256, "hop harmonic (samples)");
+DEFINE_double(beta, 2.0, "beta harmonic (separation factor, float)");
 
 int
 main(int argc, char **argv)
@@ -58,7 +56,6 @@ main(int argc, char **argv)
 	}
 	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
 
-	//auto ng = NoiseGate(file_data->sampleRate);
 	auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
 
 	auto t1 = std::chrono::high_resolution_clock::now();

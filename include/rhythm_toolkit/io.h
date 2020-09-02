@@ -12,6 +12,8 @@
 
 #include "npp.h"
 
+#include "rhythm_toolkit.h"
+
 static std::once_flag cuda_init_flag;
 
 static void cuda_init()

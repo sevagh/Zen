@@ -14,6 +14,10 @@
 #include "nppdefs.h"
 #include "nppi.h"
 
+#include "ipp.h"
+#include "ippdefs.h"
+#include "ippi.h"
+
 #include "rhythm_toolkit/rhythm_toolkit.h"
 
 // TODO rename freq/time to x/y vertical/horizontal
@@ -70,16 +74,6 @@ namespace median_filter {
 
 			switch (dir) {
 			// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
-			//
-			// NBB: for some reason, cuda-memcheck complains about the
-			// y-direction median filtering if any anchor/offset different from
-			// 0 is used
-			//
-			// i think this is a bug because the final median filtering code
-			// works fine
-			//
-			// conversely, for the x-direction median filter in the Frequency
-			// case, cuda-memcheck doesn't object
 			case MedianFilterDirection::TimeCausal:
 				// causal case is for real-time use where future frames aren't
 				// available
@@ -161,6 +155,82 @@ namespace median_filter {
 			nppiFilterMedian_32f_C1R(src + start_pixel_offset, nstep,
 			                         dst + start_pixel_offset, nstep, roi,
 			                         mask, anchor, buffer);
+		}
+	};
+
+	class MedianFilterCPU {
+	public:
+		int time;
+		int frequency;
+		int filter_len;
+
+		IppiSize roi;
+		int filter_mid;
+		IppiSize mask;
+
+		int nstep;
+		int start_pixel_offset;
+
+		Ipp8u* buffer;
+		int buffer_size;
+
+		// replicate borders
+		IppiBorderType border_type = ippBorderRepl;
+
+		// use time and frequency as axis names
+		MedianFilterCPU(int time,
+		                int frequency,
+		                int filter_len,
+		                MedianFilterDirection dir)
+		    : time(time)
+		    , frequency(frequency)
+		    , filter_len(filter_len)
+		    , nstep(frequency * sizeof(Ipp32f))
+		    , roi(IppiSize{frequency, time})
+		{
+			if (((dir == MedianFilterDirection::TimeCausal
+			      || dir == MedianFilterDirection::TimeAnticausal)
+			     && filter_len > time)
+			    || (dir == MedianFilterDirection::Frequency
+			        && filter_len > frequency)) {
+				throw rhythm_toolkit::RtkException("median filter bigger than "
+				                                   "matrix dimension");
+			}
+
+			filter_len
+			    += (1 - (filter_len % 2)); // make sure filter length is odd
+
+			switch (dir) {
+			// https://docs.nvidia.com/cuda/npp/nppi_conventions_lb.html#roi_specification
+			case MedianFilterDirection::TimeCausal:
+			case MedianFilterDirection::TimeAnticausal:
+				mask = IppiSize{1, filter_len};
+				break;
+			case MedianFilterDirection::Frequency:
+				mask = IppiSize{filter_len, 1};
+				break;
+			}
+
+			IppStatus ipp_status = ippiFilterMedianBorderGetBufferSize(
+			    roi, mask, ipp8u, 1, &buffer_size);
+			if (ipp_status != NPP_NO_ERROR) {
+				std::cerr << "IPP error " << ipp_status << std::endl;
+				std::exit(1);
+			}
+
+			buffer = ( Ipp8u* )ippMalloc(buffer_size);
+			if (buffer == nullptr) {
+				std::cerr << "IPP malloc error " << std::endl;
+				std::exit(1);
+			}
+		};
+
+		~MedianFilterCPU() { ippFree(buffer); }
+
+		void filter(Ipp32f* src, Ipp32f* dst)
+		{
+			ippiFilterMedianBorder_32f_C1R(
+			    src, nstep, dst, nstep, roi, mask, ippBorderRepl, 0, buffer);
 		}
 	};
 }; // namespace median_filter

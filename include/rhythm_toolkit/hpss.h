@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "io.h"
+#include "rhythm_toolkit.h"
 
 /*
  * Adaptation of Real-Time HPSS
@@ -55,7 +56,9 @@ namespace hpss {
 		rhythm_toolkit_private::hpss::HPROfflineGPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
-		rhythm_toolkit::io::IOGPU io_h, io_p;
+		int h_p_hop_multiplier;
+		rhythm_toolkit::io::IOGPU io_h;
+		rhythm_toolkit::io::IOGPU io_p;
 	};
 
 	class PRealtimeGPU {

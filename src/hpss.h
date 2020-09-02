@@ -124,6 +124,25 @@ namespace hpss {
 		}
 	};
 
+	struct spectral_subtraction_functor {
+		spectral_subtraction_functor() {}
+
+		__host__ __device__ thrust::complex<float>
+		operator()(const thrust::complex<float>& x,
+		           const thrust::complex<float>& y) const
+		{
+			float mag = thrust::abs(x);
+			float mag_noise = thrust::abs(y);
+
+			// clip negative values to 0
+			mag = mag > mag_noise ? mag - mag_noise : 0;
+
+			// apply original phase + corrected magnitude
+			return thrust::polar(mag, thrust::arg(x));
+			// return thrust::complex<float>{x.real() - y, x.imag() - y};
+		}
+	};
+
 	class HPROfflineGPU {
 	public:
 		float fs;
@@ -216,14 +235,8 @@ namespace hpss {
 			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 		};
 
-		void process_next_hop(thrust::device_ptr<float> in_hop);
-
-	private:
-		// generalize over percussive/harmonic/residual overlap-add
-		void overlap_add(thrust::device_vector<float>& mask,
-		                 thrust::device_vector<float>& out);
-
-		void rotate_out(thrust::device_vector<float>& out);
+		void process_next_hop(thrust::device_ptr<float> in_hop,
+		                      bool only_percussive = false);
 	};
 
 	class PRealtimeGPU {

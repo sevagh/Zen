@@ -7,6 +7,8 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
+#include "rhythm_toolkit/rhythm_toolkit.h"
+
 namespace rhythm_toolkit_private {
 namespace window {
 
