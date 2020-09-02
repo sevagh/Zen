@@ -197,7 +197,7 @@ endfunction()
 
 if(BUILD_BENCHES)
   message("LIBRHYTHM_TOOLKIT: Building benches")
-  rhythm_toolkit_gbench(hpss)
+  rhythm_toolkit_gbench(medianfilter)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping benches")
 endif()
