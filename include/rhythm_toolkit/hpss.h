@@ -27,6 +27,26 @@ namespace hpss {
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
 
+/*
+ * Adaptation of Real-Time HPSS
+ *     https://github.com/sevagh/Real-Time-HPSS
+ *
+ * The conclusions of Real-Time HPSS were that the percussive separation works
+ * better than the harmonic. If we drop the harmonic separation completely, we
+ * save some computation (although the harmonic mask is necessary for a
+ * percussive separation)
+ *
+ * 2 classes:
+ *
+ * "HPRIOffline" - Harmonic-Percussive-Residual Iterative Offline
+ * uses past, present, and future frames for optimal separation of harmonic
+ * uses a large block size for harmonic separation followed by a small block
+ * size for percussive
+ *
+ * "PRealtime" - Percussive Realtime
+ * this one only uses present and past frames to respect causality for
+ * real-time it omits the computation of the harmonic and residual
+ */
 namespace rhythm_toolkit {
 namespace hpss {
 	class HPRIOfflineGPU {

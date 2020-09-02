@@ -1,4 +1,5 @@
-#include "hpss.h"
+#include "hpri_offline.h"
+#include "hpss_common.h"
 #include "rhythm_toolkit/hpss.h"
 #include "rhythm_toolkit/rhythm_toolkit.h"
 #include <cuda/cuda.h>

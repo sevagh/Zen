@@ -195,8 +195,8 @@ namespace median_filter {
 			filter_len
 			    += (1 - (filter_len % 2)); // make sure filter length is odd
 
-			// roi selection and median filter parameters are much simpler for ipp
-			// since it handles border replication
+			// roi selection and median filter parameters are much simpler for
+			// ipp since it handles border replication
 			switch (dir) {
 			case MedianFilterDirection::TimeCausal:
 			case MedianFilterDirection::TimeAnticausal:

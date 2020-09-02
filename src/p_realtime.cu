@@ -1,4 +1,5 @@
-#include "hpss.h"
+#include "hpss_common.h"
+#include "p_realtime.h"
 #include "rhythm_toolkit/hpss.h"
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
