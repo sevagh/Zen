@@ -3,7 +3,6 @@
 #include <iostream>
 #include <chrono>
 #include <math.h>
-#include "noisegate.h"
 
 #include "rhythm_toolkit/hpss.h"
 #include "rhythm_toolkit/io.h"
@@ -16,7 +15,6 @@ DEFINE_int32(hop_h, 4096, "hop harmonic (samples)");
 DEFINE_int32(hop_p, 256, "hop percussive (samples)");
 DEFINE_double(beta_h, 2.0, "beta harmonic (separation factor, float)");
 DEFINE_double(beta_p, 2.0, "beta harmonic (separation factor, float)");
-DEFINE_bool(noisegate, false, "apply noise gate");
 DEFINE_bool(cpu, false, "use CPU variant instead of GPU by default");
 
 int
@@ -61,7 +59,6 @@ main(int argc, char **argv)
 	}
 	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
 
-	auto ng = NoiseGate(file_data->sampleRate);
 	std::vector<float> percussive_out;
 
 	if (!FLAGS_cpu) {
@@ -91,10 +88,6 @@ main(int argc, char **argv)
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {
 		percussive_out[i] /= real_perc_max;
-	}
-
-	if (FLAGS_noisegate) {
-		ng.run(audio.size(), percussive_out.data(), percussive_out.data());
 	}
 
 	nqr::EncoderParams encoder_params{

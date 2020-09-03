@@ -72,11 +72,11 @@ include_directories(
 include_directories(
   "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/include"
   ${GTEST_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${VENDOR_DIR}/libnyquist/include)
-link_directories(${GTEST_LIBRARY_DIRS} ${IPP_LIBRARIES})
+link_directories(${GTEST_LIBRARY_DIRS} ${IPP_LIBRARIES} ${SOUNDIO_LIBRARIES})
 
 set(RHYTHM_TOOLKIT_SOURCES src/hpri_offline.cu src/p_realtime.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu ${IPP_LIBRARY})
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu ${IPP_LIBRARY} ${SOUNDIO_LIBRARY})
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")
@@ -135,7 +135,7 @@ endfunction()
 if(BUILD_EXAMPLES)
   message("LIBRHYTHM_TOOLKIT: Building examples")
   rhythm_toolkit_example(wav_hpss_offline)
-  #rhythm_toolkit_example(wav_hpss_realtime)
+  rhythm_toolkit_example(wav_hpss_realtime)
 else()
   message("LIBRHYTHM_TOOLKIT: Skipping examples")
 endif()
