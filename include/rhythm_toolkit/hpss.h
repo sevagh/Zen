@@ -23,6 +23,7 @@
 namespace rhythm_toolkit_private {
 namespace hpss {
 	class HPROfflineGPU;
+	class HPROfflineCPU;
 	class PRealtimeGPU;
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
@@ -76,9 +77,37 @@ namespace hpss {
 		rhythm_toolkit_private::hpss::HPROfflineGPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
-		int h_p_hop_multiplier;
 		rhythm_toolkit::io::IOGPU io_h;
 		rhythm_toolkit::io::IOGPU io_p;
+	};
+
+	class HPRIOfflineCPU {
+	public:
+		HPRIOfflineCPU(float fs,
+		               std::size_t hop_h,
+		               std::size_t hop_p,
+		               float beta_h,
+		               float beta_p);
+		HPRIOfflineCPU(float fs, std::size_t hop_h, std::size_t hop_p);
+		HPRIOfflineCPU(float fs);
+
+		~HPRIOfflineCPU();
+
+		// pass the entire song in the in vec
+		// the vector is copied to be modified in-place
+		//
+		// returns a triplet of harmonic,percussive,residual results
+		// of audio.size()
+		std::vector<float> process(std::vector<float> audio);
+
+	private:
+		// https://en.cppreference.com/w/cpp/language/pimpl
+		// we use 2 cascading HPROffline objects to implement driedger's
+		// offline iterative algorithm "HPR-I"
+		rhythm_toolkit_private::hpss::HPROfflineCPU* p_impl_h;
+		rhythm_toolkit_private::hpss::HPROfflineCPU* p_impl_p;
+
+		std::size_t hop_h, hop_p;
 	};
 
 	class PRealtimeGPU {

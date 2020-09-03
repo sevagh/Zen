@@ -11,8 +11,8 @@ static constexpr int MAX_DIM = 16384;
 using namespace rhythm_toolkit_private::median_filter;
 using namespace rhythm_toolkit::io;
 
-// make a global IOGPU object because reinitializing it over and over in every benchmark
-// was causing some strange cuda errors
+// make a global IOGPU object because reinitializing it over and over in every
+// benchmark was causing some strange cuda errors
 IOGPU global_io = IOGPU(MAX_DIM * MAX_DIM);
 
 static void BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_NOMEM(benchmark::State& state)
@@ -53,7 +53,8 @@ static void BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_MEM(benchmark::State& state)
 		             ( Npp32f* )thrust::raw_pointer_cast(global_io.device_out));
 
 		// copy the median filtered data back out from the mapped output memory
-		std::copy(global_io.host_out, global_io.host_out + data.size(), result.begin());
+		std::copy(global_io.host_out, global_io.host_out + data.size(),
+		          result.begin());
 	}
 	state.SetComplexityN(state.range(0));
 }
@@ -96,7 +97,8 @@ static void BM_MEDIANFILTER_VERTICAL_GPUCUDA_MEM(benchmark::State& state)
 		             ( Npp32f* )thrust::raw_pointer_cast(global_io.device_out));
 
 		// copy the median filtered data back out from the mapped output memory
-		std::copy(global_io.host_out, global_io.host_out + data.size(), result.begin());
+		std::copy(global_io.host_out, global_io.host_out + data.size(),
+		          result.begin());
 	}
 	state.SetComplexityN(state.range(0));
 }
