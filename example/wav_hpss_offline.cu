@@ -1,7 +1,7 @@
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iostream>
-#include <chrono>
 #include <math.h>
 
 #include "rhythm_toolkit/hpss.h"
@@ -17,8 +17,7 @@ DEFINE_double(beta_h, 2.0, "beta harmonic (separation factor, float)");
 DEFINE_double(beta_p, 2.0, "beta harmonic (separation factor, float)");
 DEFINE_bool(cpu, false, "use CPU variant instead of GPU by default");
 
-int
-main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	gflags::SetUsageMessage("help\n");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -33,8 +32,8 @@ main(int argc, char **argv)
 
 	nqr::NyquistIO loader;
 
-	std::shared_ptr<nqr::AudioData> file_data =
-	    std::make_shared<nqr::AudioData>();
+	std::shared_ptr<nqr::AudioData> file_data
+	    = std::make_shared<nqr::AudioData>();
 	loader.Load(file_data.get(), argv[1]);
 
 	std::cout << "Audio file info:" << std::endl;
@@ -51,39 +50,55 @@ main(int argc, char **argv)
 		// convert stereo to mono
 		std::vector<float> audio_copy(file_data->samples.size() / 2);
 		nqr::StereoToMono(file_data->samples.data(), audio_copy.data(),
-		    file_data->samples.size());
+		                  file_data->samples.size());
 		audio = std::vector<float>(audio_copy.begin(), audio_copy.end());
-	} else {
+	}
+	else {
 		audio = std::vector<float>(
 		    file_data->samples.begin(), file_data->samples.end());
 	}
-	std::cout << "Processing input signal of size " << audio.size() << " with HPR-I separation using blocks of " << FLAGS_hop_h << ", " << FLAGS_hop_p << std::endl;
+	std::cout << "Processing input signal of size " << audio.size()
+	          << " with HPR-I separation using blocks of " << FLAGS_hop_h
+	          << ", " << FLAGS_hop_p << std::endl;
 
 	std::vector<float> percussive_out;
 
 	if (!FLAGS_cpu) {
-		auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
+		auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(
+		    file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h,
+		    FLAGS_beta_p);
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		percussive_out = hpss.process(audio);
 		auto t2 = std::chrono::high_resolution_clock::now();
-		auto dur = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+		auto dur
+		    = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+		          .count();
 
-		std::cout << "GPU/CUDA/thrust: 2-pass HPR-I-Offline took " << dur << " ms" << std::endl;
-	} else {
-		auto hpss = rhythm_toolkit::hpss::HPRIOfflineCPU(file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
+		std::cout << "GPU/CUDA/thrust: 2-pass HPR-I-Offline took " << dur
+		          << " ms" << std::endl;
+	}
+	else {
+		auto hpss = rhythm_toolkit::hpss::HPRIOfflineCPU(
+		    file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h,
+		    FLAGS_beta_p);
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		percussive_out = hpss.process(audio);
 		auto t2 = std::chrono::high_resolution_clock::now();
-		auto dur = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+		auto dur
+		    = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+		          .count();
 
-		std::cout << "CPU/IPP: 2-pass HPR-I-Offline took " << dur << " ms" << std::endl;
+		std::cout << "CPU/IPP: 2-pass HPR-I-Offline took " << dur << " ms"
+		          << std::endl;
 	}
 
-	auto percussive_limits = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
+	auto percussive_limits = std::minmax_element(
+	    std::begin(percussive_out), std::end(percussive_out));
 
-	float real_perc_max = std::max(-1*(*percussive_limits.first), *percussive_limits.second);
+	float real_perc_max
+	    = std::max(-1 * (*percussive_limits.first), *percussive_limits.second);
 
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {
@@ -91,18 +106,18 @@ main(int argc, char **argv)
 	}
 
 	nqr::EncoderParams encoder_params{
-		1,
-		nqr::PCMFormat::PCM_16,
-		nqr::DitherType::DITHER_NONE,
+	    1,
+	    nqr::PCMFormat::PCM_16,
+	    nqr::DitherType::DITHER_NONE,
 	};
 
 	const nqr::AudioData perc_out{
-		1,
-		file_data->sampleRate,
-		file_data->lengthSeconds,
-		file_data->frameSize,
-		percussive_out,
-		file_data->sourceFormat,
+	    1,
+	    file_data->sampleRate,
+	    file_data->lengthSeconds,
+	    file_data->frameSize,
+	    percussive_out,
+	    file_data->sourceFormat,
 	};
 
 	nqr::encode_wav_to_disk(encoder_params, &perc_out, "./perc_out.wav");

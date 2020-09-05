@@ -236,9 +236,9 @@ file(
   test/*.cu
   test/*.cpp
   test/*.h
-  examples/*.cpp
-  examples/*.cu
-  examples/*.h
+  example/*.cpp
+  example/*.cu
+  example/*.h
   )
 
 # Adding clang-format target if executable is found
