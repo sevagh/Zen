@@ -39,8 +39,8 @@ rhythm_toolkit::hpss::PRealtimeGPU::PRealtimeGPU(float fs,
 void rhythm_toolkit::hpss::PRealtimeGPU::process_next_hop()
 {
 	p_impl->process_next_hop(io.device_in);
-	thrust::copy(p_impl->percussive_out.begin(), p_impl->percussive_out.end(),
-	             io.device_out);
+	thrust::copy(p_impl->percussive_out.begin(),
+	             p_impl->percussive_out.begin() + p_impl->hop, io.device_out);
 }
 
 rhythm_toolkit::hpss::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }
@@ -92,7 +92,8 @@ void rhythm_toolkit_private::hpss::PRealtimeGPU::process_next_hop(
 	// the last column of percussive_matrix contains the mask to be applied to
 	// the initial fft
 	thrust::transform(percussive_matrix.end() - nfft, percussive_matrix.end(),
-	                  harmonic_matrix.end() - nfft, percussive_matrix.begin(),
+	                  harmonic_matrix.end() - nfft,
+	                  percussive_matrix.end() - nfft,
 	                  rhythm_toolkit_private::hpss::mask_functor(beta));
 
 	// apply last column of percussive mask to recover percussive audio from

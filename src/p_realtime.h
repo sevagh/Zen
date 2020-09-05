@@ -69,7 +69,7 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , time(stft_width,
 		           nfft,
-		           l_harm / 2,
+		           l_harm,
 		           median_filter::MedianFilterDirection::TimeCausal)
 		    , frequency(stft_width,
 		                nfft,
@@ -136,7 +136,7 @@ namespace hpss {
 		    , COLA_factor(0.0f)
 		    , time(stft_width,
 		           nfft,
-		           l_harm / 2,
+		           l_harm,
 		           median_filter::MedianFilterDirection::TimeCausal)
 		    , frequency(stft_width,
 		                nfft,

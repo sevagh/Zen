@@ -32,13 +32,17 @@ public:
 	BufferedHPSS(float latency_seconds,
 	             std::size_t ringbuf_capacity,
 	             std::size_t hpss_hop_size,
+	             float beta,
 	             int fs,
 	             struct SoundIo* soundio)
 	    : hop(hpss_hop_size)
 	    , latency_us(( int )(1000000.0F * latency_seconds))
 	    , capacity(ringbuf_capacity)
 	    , io(rhythm_toolkit::io::IOGPU(hpss_hop_size))
-	    , hpss(rhythm_toolkit::hpss::PRealtimeGPU(( float )fs, hpss_hop_size, io))
+	    , hpss(rhythm_toolkit::hpss::PRealtimeGPU(( float )fs,
+	                                              hpss_hop_size,
+	                                              beta,
+	                                              io))
 	{
 		ring_buffer_in = soundio_ring_buffer_create(soundio, capacity);
 		if (!ring_buffer_in)
@@ -47,6 +51,26 @@ public:
 		ring_buffer_out = soundio_ring_buffer_create(soundio, capacity);
 		if (!ring_buffer_out)
 			panic("unable to create ring buffer: out of memory");
+
+		std::cout << "warming up HPSS first..." << std::endl;
+		warmup_hpss();
+	}
+
+	// 1000 iterations to warm up the gpu apparatus
+	void warmup_hpss()
+	{
+		int test_iters = 1000;
+		std::vector<float> testdata(test_iters * hop);
+		std::vector<float> outdata(test_iters * hop);
+		std::iota(testdata.begin(), testdata.end(), 0.0F);
+
+		for (std::size_t i = 0; i < test_iters; ++i) {
+			thrust::copy(testdata.begin() + i * hop,
+			             testdata.begin() + (i + 1) * hop, io.host_in);
+			hpss.process_next_hop();
+			thrust::copy(
+			    io.host_out, io.host_out + hop, outdata.begin() + i * hop);
+		}
 	}
 
 	~BufferedHPSS()
@@ -60,28 +84,43 @@ public:
 		for (;;) {
 			int input_count = soundio_ring_buffer_fill_count(ring_buffer_in)
 			                  / sizeof(float);
-			std::cout << "HPSS BACKGROUND TICK! input: " << input_count
-			          << std::endl;
+			int output_free_count
+			    = soundio_ring_buffer_free_count(ring_buffer_out)
+			      / sizeof(float);
 
-			if (input_count >= hop) {
+			// if there are at least hop samples to write to the hpss object
+			// and at least hop space in the output ringbuffer in which to
+			// write the results
+			if (input_count >= hop && output_free_count >= hop) {
 				std::size_t rw_amount = hop * sizeof(float);
 
 				char* read_ptr = soundio_ring_buffer_read_ptr(ring_buffer_in);
+
+				memcpy(( char* )io.host_in, read_ptr, rw_amount);
+				soundio_ring_buffer_advance_read_ptr(ring_buffer_in, rw_amount);
+
+				hpss.process_next_hop();
+
+				auto percussive_limits
+				    = std::minmax_element(io.host_out, io.host_out + hop);
+
+				float real_perc_max = std::max(-1 * (*percussive_limits.first),
+				                               *percussive_limits.second);
+
+				// normalize between -1.0 and 1.0
+				for (std::size_t i = 0; i < hop; ++i) {
+					io.host_out[i] /= real_perc_max;
+				}
+
 				char* write_ptr
 				    = soundio_ring_buffer_write_ptr(ring_buffer_out);
 
-				// copy in back to in just to do a regular loopback
-				memcpy(( char* )io.host_in, read_ptr, rw_amount);
-				// hpss.process_next_hop();
-				memcpy(write_ptr, ( char* )io.host_in, rw_amount);
+				memcpy(write_ptr, ( char* )io.host_out, rw_amount);
 
-				soundio_ring_buffer_advance_read_ptr(ring_buffer_in, rw_amount);
 				soundio_ring_buffer_advance_write_ptr(
 				    ring_buffer_out, rw_amount);
 				input_count = soundio_ring_buffer_fill_count(ring_buffer_in);
 			}
-
-			std::this_thread::sleep_for(std::chrono::microseconds(latency_us));
 		}
 	}
 
@@ -216,7 +255,7 @@ static void write_callback(struct SoundIoOutStream* outstream,
 static void underflow_callback(struct SoundIoOutStream* outstream)
 {
 	static int count = 0;
-	fprintf(stderr, "underflow %d\n", ++count);
+	// fprintf(stderr, "underflow %d\n", ++count);
 }
 
 static int usage(char* exe)
@@ -244,7 +283,8 @@ int main(int argc, char** argv)
 	bool out_raw = false;
 
 	double microphone_latency = 0.02; // seconds
-	std::size_t hpss_hop = 256;       // samples
+	std::size_t hpss_hop = 1024;      // samples
+	float beta = 2.0;
 
 	for (int i = 1; i < argc; i += 1) {
 		char* arg = argv[i];
@@ -422,7 +462,7 @@ int main(int argc, char** argv)
 	               * instream->bytes_per_frame;
 
 	hpss = new BufferedHPSS(
-	    microphone_latency, capacity, hpss_hop, fs, soundio);
+	    microphone_latency, capacity, hpss_hop, beta, fs, soundio);
 
 	// execute buffered hpss in the background
 	std::thread([&]() { hpss->do_hpss(); }).detach();
