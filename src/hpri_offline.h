@@ -1,20 +1,16 @@
 #ifndef HPRI_OFFLINE_PRIVATE_H
 #define HPRI_OFFLINE_PRIVATE_H
 
+#include "fft_wrapper.h"
 #include "medianfilter.h"
 #include "window.h"
 #include <complex>
 #include <cstddef>
 #include <vector>
 
-#include <cufft.h>
 #include <thrust/complex.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-
-#include "npp.h"
-#include "nppdefs.h"
-#include "nppi.h"
 
 namespace rhythm_toolkit_private {
 namespace hpss {
@@ -36,7 +32,6 @@ namespace hpss {
 		window::WindowGPU win;
 
 		thrust::device_vector<thrust::complex<float>> sliding_stft;
-		thrust::device_vector<thrust::complex<float>> curr_fft;
 
 		thrust::device_vector<float> s_mag;
 		thrust::device_vector<float> harmonic_matrix;
@@ -52,14 +47,10 @@ namespace hpss {
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
-		// cufft specifics
-		cuFloatComplex* fft_ptr;
-
-		cufftHandle plan_forward;
-		cufftHandle plan_backward;
-
 		median_filter::MedianFilterGPU time;
 		median_filter::MedianFilterGPU frequency;
+
+		fft_wrapper::FFTWrapperGPU fft;
 
 		HPROfflineGPU(float fs, std::size_t hop, float beta)
 		    : fs(fs)
@@ -76,7 +67,6 @@ namespace hpss {
 		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
-		    , curr_fft(thrust::device_vector<thrust::complex<float>>(nfft, 0.0F))
 		    , s_mag(thrust::device_vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(
 		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
@@ -89,8 +79,6 @@ namespace hpss {
 		    , residual_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , harmonic_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
-		    , fft_ptr(
-		          ( cuFloatComplex* )thrust::raw_pointer_cast(curr_fft.data()))
 		    , time(stft_width,
 		           nfft,
 		           l_harm,
@@ -99,15 +87,13 @@ namespace hpss {
 		                nfft,
 		                l_perc,
 		                median_filter::MedianFilterDirection::Frequency)
+		    , fft(fft_wrapper::FFTWrapperGPU(nfft))
 		{
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
 				COLA_factor += win.window[i] * win.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
-
-			cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
-			cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
 		};
 
 		void process_next_hop(thrust::device_ptr<float> in_hop,
@@ -132,7 +118,6 @@ namespace hpss {
 		window::WindowCPU win;
 
 		std::vector<thrust::complex<float>> sliding_stft;
-		std::vector<thrust::complex<float>> curr_fft;
 
 		std::vector<float> s_mag;
 		std::vector<float> harmonic_matrix;
@@ -148,29 +133,15 @@ namespace hpss {
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
-		// ipp fft specifics
-		int fft_order;
-
-		Ipp32fc* fft_ptr;
-		IppsFFTSpec_C_32fc* fft_spec;
-
-		Ipp8u* p_mem_spec;
-		Ipp8u* p_mem_init;
-		Ipp8u* p_mem_buffer;
-
-		int size_spec;
-		int size_init;
-		int size_buffer;
-
 		median_filter::MedianFilterCPU time;
 		median_filter::MedianFilterCPU frequency;
+		fft_wrapper::FFTWrapperCPU fft;
 
 		HPROfflineCPU(float fs, std::size_t hop, float beta)
 		    : fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
 		    , nfft(4 * hop)
-		    , fft_order(( int )log2(nfft))
 		    , beta(beta)
 		    , l_harm(roundf(0.2 / (( float )(nfft - hop) / fs)))
 		    , lag(l_harm)
@@ -181,7 +152,6 @@ namespace hpss {
 		    , sliding_stft(std::vector<thrust::complex<float>>(
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
-		    , curr_fft(std::vector<thrust::complex<float>>(nfft, 0.0F))
 		    , s_mag(std::vector<float>(stft_width * nfft, 0.0F))
 		    , percussive_matrix(std::vector<float>(stft_width * nfft, 0.0F))
 		    , harmonic_matrix(std::vector<float>(stft_width * nfft, 0.0F))
@@ -192,7 +162,6 @@ namespace hpss {
 		    , residual_out(std::vector<float>(nwin, 0.0F))
 		    , harmonic_out(std::vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
-		    , fft_ptr(( Ipp32fc* )curr_fft.data())
 		    , time(stft_width,
 		           nfft,
 		           l_harm,
@@ -201,55 +170,14 @@ namespace hpss {
 		                nfft,
 		                l_perc,
 		                median_filter::MedianFilterDirection::Frequency)
-		    , p_mem_spec(nullptr)
-		    , p_mem_init(nullptr)
-		    , p_mem_buffer(nullptr)
-		    , size_spec(0)
-		    , size_init(0)
-		    , size_buffer(0)
+		    , fft(fft_wrapper::FFTWrapperCPU(nfft))
 		{
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
 				COLA_factor += win.window[i] * win.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
-
-			IppStatus ipp_status = ippsFFTGetSize_C_32fc(
-			    fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone, &size_spec,
-			    &size_init, &size_buffer);
-			if (ipp_status != ippStsNoErr) {
-				std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
-				          << ippGetStatusString(ipp_status) << std::endl;
-				std::exit(-1);
-			}
-
-			if (size_init > 0)
-				p_mem_init = ( Ipp8u* )ippMalloc(size_init);
-			if (size_buffer > 0)
-				p_mem_buffer = ( Ipp8u* )ippMalloc(size_buffer);
-			if (size_spec > 0)
-				p_mem_spec = ( Ipp8u* )ippMalloc(size_spec);
-
-			ipp_status = ippsFFTInit_C_32fc(
-			    &fft_spec, fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
-			    p_mem_spec, p_mem_init);
-			if (ipp_status != ippStsNoErr) {
-				std::cerr << "ippFFTInit error: " << ipp_status << ", "
-				          << ippGetStatusString(ipp_status) << std::endl;
-				std::exit(-1);
-			}
-
-			if (size_init > 0)
-				ippFree(p_mem_init);
 		};
-
-		~HPROfflineCPU()
-		{
-			if (size_buffer > 0)
-				ippFree(p_mem_buffer);
-			if (size_spec > 0)
-				ippFree(p_mem_spec);
-		}
 
 		void process_next_hop(float* in_hop, bool only_percussive = false);
 	};

@@ -4,7 +4,6 @@
 #include "rhythm_toolkit/rhythm_toolkit.h"
 #include <cuda/cuda.h>
 #include <cuda/cuda_runtime.h>
-#include <cufft.h>
 #include <math.h>
 #include <stdio.h>
 #include <thrust/complex.h>
@@ -171,19 +170,22 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process_next_hop(
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), win.window.begin(),
-	                  curr_fft.begin(),
+	                  fft.fft_vec.begin(),
 	                  rhythm_toolkit_private::hpss::window_functor());
 
 	// zero out the second half of the fft
-	thrust::fill(curr_fft.begin() + nwin, curr_fft.end(),
+	thrust::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
 	             thrust::complex<float>{0.0, 0.0});
-	cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
+
+	// perform the fft
+	fft.forward();
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
 	thrust::copy(
 	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
-	thrust::copy(curr_fft.begin(), curr_fft.end(), sliding_stft.end() - nfft);
+	thrust::copy(
+	    fft.fft_vec.begin(), fft.fft_vec.end(), sliding_stft.end() - nfft);
 
 	// calculate the magnitude of the stft
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
@@ -208,16 +210,15 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process_next_hop(
 	// original fft
 	thrust::transform(sliding_stft.end() - lag * nfft,
 	                  sliding_stft.end() - (lag - 1) * nfft,
-	                  percussive_mask.begin(), curr_fft.begin(),
+	                  percussive_mask.begin(), fft.fft_vec.begin(),
 	                  rhythm_toolkit_private::hpss::apply_mask_functor());
-
-	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
+	fft.backward();
 
 	// now curr_fft has the current iteration's fresh samples
 	// we overlap-add it the real part to the previous
 	thrust::transform(
-	    curr_fft.begin(), curr_fft.begin() + nwin, percussive_out.begin(),
-	    percussive_out.begin(),
+	    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+	    percussive_out.begin(), percussive_out.begin(),
 	    rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
 
 	if (only_percussive) {
@@ -240,25 +241,25 @@ void rhythm_toolkit_private::hpss::HPROfflineGPU::process_next_hop(
 
 	thrust::transform(sliding_stft.end() - lag * nfft,
 	                  sliding_stft.end() - (lag - 1) * nfft,
-	                  harmonic_mask.begin(), curr_fft.begin(),
+	                  harmonic_mask.begin(), fft.fft_vec.begin(),
 	                  rhythm_toolkit_private::hpss::apply_mask_functor());
 
-	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
+	fft.backward();
 
 	thrust::transform(
-	    curr_fft.begin(), curr_fft.begin() + nwin, harmonic_out.begin(),
+	    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin, harmonic_out.begin(),
 	    harmonic_out.begin(),
 	    rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
 
 	thrust::transform(sliding_stft.end() - lag * nfft,
 	                  sliding_stft.end() - (lag - 1) * nfft,
-	                  residual_mask.begin(), curr_fft.begin(),
+	                  residual_mask.begin(), fft.fft_vec.begin(),
 	                  rhythm_toolkit_private::hpss::apply_mask_functor());
 
-	cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
+	fft.backward();
 
 	thrust::transform(
-	    curr_fft.begin(), curr_fft.begin() + nwin, residual_out.begin(),
+	    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin, residual_out.begin(),
 	    residual_out.begin(),
 	    rhythm_toolkit_private::hpss::overlap_add_functor(COLA_factor));
 }
@@ -394,29 +395,23 @@ void rhythm_toolkit_private::hpss::HPROfflineCPU::process_next_hop(
 
 	// populate curr_fft with input .* square root von hann window
 	std::transform(input.begin(), input.end(), win.window.begin(),
-	               curr_fft.begin(), window_functor());
-	//[](float x, float y) -> std::complex<float> {
-	//        return std::complex<float>{x*y, 0.0F};
-	//});
+	               fft.fft_vec.begin(), window_functor());
 
 	// zero out the second half of the fft
-	std::fill(curr_fft.begin() + nwin, curr_fft.end(),
+	std::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
 	          thrust::complex<float>{0.0, 0.0});
-
-	ippsFFTFwd_CToC_32fc_I(fft_ptr, fft_spec, p_mem_buffer);
+	fft.forward();
 
 	// rotate stft matrix to move the oldest column to the end
 	// copy curr_fft into the last column of the stft
 	std::copy(
 	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
-	std::copy(curr_fft.begin(), curr_fft.end(), sliding_stft.end() - nfft);
+	std::copy(
+	    fft.fft_vec.begin(), fft.fft_vec.end(), sliding_stft.end() - nfft);
 
 	// calculate the magnitude of the stft
 	std::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
 	               complex_abs_functor());
-	//[](const std::complex<float>& x) -> float {
-	//        return std::abs(x);
-	//});
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
@@ -431,30 +426,20 @@ void rhythm_toolkit_private::hpss::HPROfflineCPU::process_next_hop(
 	               percussive_matrix.end() - (lag - 1) * nfft,
 	               harmonic_matrix.end() - lag * nfft, percussive_mask.begin(),
 	               mask_functor(beta));
-	//[this](const float& x, const float& y) -> float {
-	//        return float((x / (y + Eps)) >= beta);
-	//});
 
 	// apply lag column of percussive mask to recover percussive audio from
 	// original fft
 	std::transform(
 	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    percussive_mask.begin(), curr_fft.begin(), apply_mask_functor());
-	//[](const std::complex<float>&x, const float& y) -> std::complex<float> {
-	//		return x*y;
-	//});
+	    percussive_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
 
-	ippsFFTInv_CToC_32fc_I(fft_ptr, fft_spec, p_mem_buffer);
+	fft.backward();
 
 	// now curr_fft has the current iteration's fresh samples
 	// we overlap-add it the real part to the previous
-	std::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 	               percussive_out.begin(), percussive_out.begin(),
 	               overlap_add_functor(COLA_factor));
-	//[this](const std::complex<float>& x, const float&y) -> float {
-	//	return y + std::real(x) * COLA_factor;
-	//});
-
 	if (only_percussive) {
 		return;
 	}
@@ -466,47 +451,28 @@ void rhythm_toolkit_private::hpss::HPROfflineCPU::process_next_hop(
 	               harmonic_matrix.end() - (lag - 1) * nfft,
 	               percussive_matrix.end() - lag * nfft, harmonic_mask.begin(),
 	               mask_functor(beta - Eps));
-	//[this](const float& x, const float& y) -> float {
-	//       return float((x / (y + Eps)) >= beta);
-	//});
-
 	// compute residual mask from harmonic and percussive masks
 	std::transform(harmonic_mask.begin(), harmonic_mask.end(),
 	               percussive_mask.begin(), residual_mask.begin(),
 	               residual_mask_functor());
-	//[](const float& x, const float& y) -> float {
-	//	return 1 - (x + y);
-	//});
 
 	std::transform(
 	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    harmonic_mask.begin(), curr_fft.begin(), apply_mask_functor());
-	//[](const std::complex<float>&x, const float& y) -> std::complex<float> {
-	//		return x*y;
-	//});
+	    harmonic_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
 
-	ippsFFTInv_CToC_32fc_I(fft_ptr, fft_spec, p_mem_buffer);
+	fft.backward();
 
-	std::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 	               harmonic_out.begin(), harmonic_out.begin(),
 	               overlap_add_functor(COLA_factor));
-	//[this](const std::complex<float>& x, const float&y) -> float {
-	//	return y + std::real(x) * COLA_factor;
-	//});
 
 	std::transform(
 	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    residual_mask.begin(), curr_fft.begin(), apply_mask_functor());
-	//[](const std::complex<float>&x, const float& y) -> std::complex<float> {
-	//		return x*y;
-	//});
+	    residual_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
 
-	ippsFFTInv_CToC_32fc_I(fft_ptr, fft_spec, p_mem_buffer);
+	fft.backward();
 
-	std::transform(curr_fft.begin(), curr_fft.begin() + nwin,
+	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 	               residual_out.begin(), residual_out.begin(),
 	               overlap_add_functor(COLA_factor));
-	//[this](const std::complex<float>& x, const float&y) -> float {
-	//  	return y + std::real(x) * COLA_factor;
-	//  });
 }

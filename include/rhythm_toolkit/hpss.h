@@ -25,6 +25,7 @@ namespace hpss {
 	class HPROfflineGPU;
 	class HPROfflineCPU;
 	class PRealtimeGPU;
+	class PRealtimeCPU;
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
 
@@ -129,6 +130,23 @@ namespace hpss {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		rhythm_toolkit_private::hpss::PRealtimeGPU* p_impl;
 		rhythm_toolkit::io::IOGPU& io;
+	};
+
+	class PRealtimeCPU {
+	public:
+		PRealtimeCPU(float fs, std::size_t hop, float beta);
+		PRealtimeCPU(float fs, std::size_t hop);
+		PRealtimeCPU(float fs);
+
+		~PRealtimeCPU();
+
+		// copies hop samples from a pointer to a host vector
+		// copies separated samples to an output pointer to a host vector
+		void process_next_hop(const float* in_hop, float* out_hop);
+
+	private:
+		// https://en.cppreference.com/w/cpp/language/pimpl
+		rhythm_toolkit_private::hpss::PRealtimeCPU* p_impl;
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit

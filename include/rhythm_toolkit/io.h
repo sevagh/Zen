@@ -88,18 +88,6 @@ namespace io {
 		float* device_in_raw_ptr;
 		float* device_out_raw_ptr;
 	};
-
-	class IOCPU {
-	public:
-		std::vector<float> host_in;
-		std::vector<float> host_out;
-		std::size_t size;
-
-		IOCPU(std::size_t size)
-		    : size(size)
-		    , host_in(std::vector<float>(size))
-		    , host_out(std::vector<float>(size)){};
-	};
 }; // namespace io
 }; // namespace rhythm_toolkit
 
