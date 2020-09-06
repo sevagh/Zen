@@ -127,9 +127,9 @@ namespace median_filter {
 				roi.width -= filter_len;
 
 				mask = NppiSize{filter_len, 1};
-				anchor = NppiPoint{0, 0};
+				anchor = NppiPoint{filter_mid, 0};
 
-				start_pixel_offset = 0;
+				start_pixel_offset = filter_mid * sizeof(Npp32f);
 
 				break;
 			}
