@@ -27,8 +27,7 @@ static void BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_NOMEM(benchmark::State& state)
 	auto mfilt = MedianFilterGPU(
 	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::Frequency);
 	for (auto _ : state) {
-		mfilt.filter(( Npp32f* )thrust::raw_pointer_cast(data.data()),
-		             ( Npp32f* )thrust::raw_pointer_cast(result.data()));
+		mfilt.filter(data, result);
 	}
 	state.SetComplexityN(state.range(0));
 }
@@ -49,8 +48,7 @@ static void BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_MEM(benchmark::State& state)
 		std::copy(data.begin(), data.end(), global_io.host_in);
 
 		// operate on the device mapped pointer
-		mfilt.filter(( Npp32f* )thrust::raw_pointer_cast(global_io.device_in),
-		             ( Npp32f* )thrust::raw_pointer_cast(global_io.device_out));
+		mfilt.filter(global_io.device_in, global_io.device_out);
 
 		// copy the median filtered data back out from the mapped output memory
 		std::copy(global_io.host_out, global_io.host_out + data.size(),
@@ -71,8 +69,7 @@ static void BM_MEDIANFILTER_VERTICAL_GPUCUDA_NOMEM(benchmark::State& state)
 	auto mfilt = MedianFilterGPU(
 	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::TimeCausal);
 	for (auto _ : state) {
-		mfilt.filter(( Npp32f* )thrust::raw_pointer_cast(data.data()),
-		             ( Npp32f* )thrust::raw_pointer_cast(result.data()));
+		mfilt.filter(data, result);
 	}
 	state.SetComplexityN(state.range(0));
 }
@@ -93,8 +90,7 @@ static void BM_MEDIANFILTER_VERTICAL_GPUCUDA_MEM(benchmark::State& state)
 		std::copy(data.begin(), data.end(), global_io.host_in);
 
 		// operate on the device mapped pointer
-		mfilt.filter(( Npp32f* )thrust::raw_pointer_cast(global_io.device_in),
-		             ( Npp32f* )thrust::raw_pointer_cast(global_io.device_out));
+		mfilt.filter(global_io.device_in, global_io.device_out);
 
 		// copy the median filtered data back out from the mapped output memory
 		std::copy(global_io.host_out, global_io.host_out + data.size(),
@@ -115,7 +111,7 @@ static void BM_MEDIANFILTER_HORIZONTAL_CPUIPP(benchmark::State& state)
 	auto mfilt = MedianFilterCPU(
 	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::Frequency);
 	for (auto _ : state) {
-		mfilt.filter(( Ipp32f* )data.data(), ( Ipp32f* )result.data());
+		mfilt.filter(data, result);
 	}
 	state.SetComplexityN(state.range(0));
 }
@@ -132,7 +128,7 @@ static void BM_MEDIANFILTER_VERTICAL_CPUIPP(benchmark::State& state)
 	auto mfilt = MedianFilterCPU(
 	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::TimeCausal);
 	for (auto _ : state) {
-		mfilt.filter(( Ipp32f* )data.data(), ( Ipp32f* )result.data());
+		mfilt.filter(data, result);
 	}
 	state.SetComplexityN(state.range(0));
 }

@@ -178,8 +178,142 @@ void rhythm_toolkit::hpss::PRealtimeGPU::process_next_hop()
 
 rhythm_toolkit::hpss::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }
 
-void rhythm_toolkit_private::hpss::HPRGPU::process_next_hop(
-    thrust::device_ptr<float> in_hop)
+rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
+                                                     std::size_t hop_h,
+                                                     std::size_t hop_p,
+                                                     float beta_h,
+                                                     float beta_p)
+    : hop_h(hop_h)
+    , hop_p(hop_p)
+{
+	if (hop_h % hop_p != 0) {
+		throw rhythm_toolkit::RtkException("hop_h and hop_p should be evenly "
+		                                   "divisible");
+	}
+	p_impl_h = new rhythm_toolkit_private::hpss::HPRCPU(
+	    fs, hop_h, beta_h,
+	    rhythm_toolkit_private::hpss::HPSS_HARMONIC
+	        | rhythm_toolkit_private::hpss::HPSS_PERCUSSIVE
+	        | rhythm_toolkit_private::hpss::HPSS_RESIDUAL,
+	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal);
+	p_impl_p = new rhythm_toolkit_private::hpss::HPRCPU(
+	    fs, hop_p, beta_p, rhythm_toolkit_private::hpss::HPSS_PERCUSSIVE,
+	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal);
+}
+
+rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
+                                                     std::size_t hop_h,
+                                                     std::size_t hop_p)
+    : HPRIOfflineCPU(fs, hop_h, hop_p, 2.0, 2.0){};
+
+rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs)
+    : HPRIOfflineCPU(fs, 4096, 256, 2.0, 2.0){};
+
+std::vector<float>
+rhythm_toolkit::hpss::HPRIOfflineCPU::process(std::vector<float> audio)
+{
+	// loop over whole song here
+	int audio_size = audio.size();
+
+	// return same-sized vectors as a result
+	int original_size = audio_size;
+
+	int n_chunks_ceil_iter1
+	    = ( int )(ceilf(( float )audio_size / ( float )hop_h));
+	int pad = n_chunks_ceil_iter1 * hop_h - audio_size;
+
+	int lag1 = p_impl_h->lag;
+
+	// pad with extra lag frames since offline/anticausal HPSS uses future
+	// audio to produce past samples
+	pad += lag1 * hop_h;
+
+	// first lag frames are simply for prefilling the future frames of the stft
+	n_chunks_ceil_iter1 += lag1;
+
+	audio.resize(audio.size() + pad, 0.0F);
+
+	std::vector<float> percussive_out(audio.size());
+
+	// 2nd iteration uses xp1 + xr1 as the total content
+	std::vector<float> intermediate(audio.size());
+
+	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
+		// first apply HPR with hop size 4096 for good harmonic separation
+		p_impl_h->process_next_hop(audio.data() + i * hop_h);
+
+		// use xp1 + xr1 as input for the second iteration of HPR with hop size
+		// 256 for good percussive separation copy them into separate vectors
+		std::transform(p_impl_h->percussive_out.begin(),
+		               p_impl_h->percussive_out.begin() + hop_h,
+		               p_impl_h->residual_out.begin(),
+		               intermediate.begin() + i * hop_h,
+		               rhythm_toolkit_private::hpss::sum_vectors_functor());
+	}
+
+	int n_chunks_ceil_iter2
+	    = ( int )(ceilf(( float )original_size / ( float )hop_p));
+
+	int lag2 = p_impl_p->lag;
+
+	// padded with extra lag frames since offline/anticausal HPSS uses future
+	// audio to produce past samples
+	n_chunks_ceil_iter2 += lag2;
+
+	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
+		// next apply HPR with hop size 256 for good harmonic separation
+		p_impl_p->process_next_hop(intermediate.data() + lag1 * hop_h
+		                           + i * hop_p);
+
+		std::copy(p_impl_p->percussive_out.begin(),
+		          p_impl_p->percussive_out.begin() + hop_p,
+		          percussive_out.begin() + i * hop_p);
+	}
+
+	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
+	// iter2
+	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
+	          percussive_out.begin());
+
+	// truncate all padding
+	percussive_out.resize(original_size);
+
+	return percussive_out;
+}
+
+rhythm_toolkit::hpss::HPRIOfflineCPU::~HPRIOfflineCPU()
+{
+	delete p_impl_h;
+	delete p_impl_p;
+}
+
+template <typename A, typename B, typename C, typename D, typename E, typename F>
+static void _process_next_hop(A in_hop,
+                              B input,
+                              B percussive_out,
+                              B harmonic_out,
+                              B residual_out,
+                              B s_mag,
+                              B harmonic_matrix,
+                              B percussive_matrix,
+                              B harmonic_mask,
+                              B percussive_mask,
+                              B residual_mask,
+                              C sliding_stft,
+                              D time,
+                              D frequency,
+                              E fft,
+                              F win,
+                              bool output_percussive,
+                              bool output_harmonic,
+                              bool output_residual,
+                              std::size_t hop,
+                              std::size_t nfft,
+                              std::size_t nwin,
+                              std::size_t lag,
+                              float beta,
+                              float Eps,
+                              float COLA_factor)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
@@ -229,11 +363,8 @@ void rhythm_toolkit_private::hpss::HPRGPU::process_next_hop(
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
-	time.filter(( Npp32f* )thrust::raw_pointer_cast(s_mag.data()),
-	            ( Npp32f* )thrust::raw_pointer_cast(harmonic_matrix.data()));
-	frequency.filter(
-	    ( Npp32f* )thrust::raw_pointer_cast(s_mag.data()),
-	    ( Npp32f* )thrust::raw_pointer_cast(percussive_matrix.data()));
+	time.filter(s_mag, harmonic_matrix);
+	frequency.filter(s_mag, percussive_matrix);
 
 	if (output_percussive) {
 		// compute percussive mask from harmonic + percussive magnitude spectra
@@ -303,215 +434,31 @@ void rhythm_toolkit_private::hpss::HPRGPU::process_next_hop(
 	}
 }
 
-rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p,
-                                                     float beta_h,
-                                                     float beta_p)
-    : hop_h(hop_h)
-    , hop_p(hop_p)
+void rhythm_toolkit_private::hpss::HPRCPU::process_next_hop(float* in_hop)
 {
-	if (hop_h % hop_p != 0) {
-		throw rhythm_toolkit::RtkException("hop_h and hop_p should be evenly "
-		                                   "divisible");
-	}
-	p_impl_h
-	    = new rhythm_toolkit_private::hpss::HPROfflineCPU(fs, hop_h, beta_h);
-	p_impl_p
-	    = new rhythm_toolkit_private::hpss::HPROfflineCPU(fs, hop_p, beta_p);
+	_process_next_hop<float*, std::vector<float>&,
+	                  std::vector<thrust::complex<float>>&,
+	                  rhythm_toolkit_private::median_filter::MedianFilterCPU&,
+	                  rhythm_toolkit_private::fft_wrapper::FFTWrapperCPU&,
+	                  rhythm_toolkit_private::window::WindowCPU&>(
+	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
+	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
+	    residual_mask, sliding_stft, time, frequency, fft, win,
+	    output_percussive, output_harmonic, output_residual, hop, nfft, nwin,
+	    lag, beta, Eps, COLA_factor);
 }
 
-rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p)
-    : HPRIOfflineCPU(fs, hop_h, hop_p, 2.0, 2.0){};
-
-rhythm_toolkit::hpss::HPRIOfflineCPU::HPRIOfflineCPU(float fs)
-    : HPRIOfflineCPU(fs, 4096, 256, 2.0, 2.0){};
-
-std::vector<float>
-rhythm_toolkit::hpss::HPRIOfflineCPU::process(std::vector<float> audio)
+void rhythm_toolkit_private::hpss::HPRGPU::process_next_hop(
+    thrust::device_ptr<float> in_hop)
 {
-	// loop over whole song here
-	int audio_size = audio.size();
-
-	// return same-sized vectors as a result
-	int original_size = audio_size;
-
-	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio_size / ( float )hop_h));
-	int pad = n_chunks_ceil_iter1 * hop_h - audio_size;
-
-	int lag1 = p_impl_h->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad += lag1 * hop_h;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter1 += lag1;
-
-	audio.resize(audio.size() + pad, 0.0F);
-
-	std::vector<float> percussive_out(audio.size());
-
-	// 2nd iteration uses xp1 + xr1 as the total content
-	std::vector<float> intermediate(audio.size());
-
-	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
-		// first apply HPR with hop size 4096 for good harmonic separation
-		p_impl_h->process_next_hop(audio.data() + i * hop_h);
-
-		// use xp1 + xr1 as input for the second iteration of HPR with hop size
-		// 256 for good percussive separation copy them into separate vectors
-		std::transform(p_impl_h->percussive_out.begin(),
-		               p_impl_h->percussive_out.begin() + hop_h,
-		               p_impl_h->residual_out.begin(),
-		               intermediate.begin() + i * hop_h,
-		               rhythm_toolkit_private::hpss::sum_vectors_functor());
-	}
-
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )original_size / ( float )hop_p));
-
-	int lag2 = p_impl_p->lag;
-
-	// padded with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	n_chunks_ceil_iter2 += lag2;
-
-	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
-		// next apply HPR with hop size 256 for good harmonic separation
-		p_impl_p->process_next_hop(
-		    intermediate.data() + lag1 * hop_h + i * hop_p, true);
-
-		std::copy(p_impl_p->percussive_out.begin(),
-		          p_impl_p->percussive_out.begin() + hop_p,
-		          percussive_out.begin() + i * hop_p);
-	}
-
-	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
-	// iter2
-	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
-	          percussive_out.begin());
-
-	// truncate all padding
-	percussive_out.resize(original_size);
-
-	return percussive_out;
-}
-
-rhythm_toolkit::hpss::HPRIOfflineCPU::~HPRIOfflineCPU()
-{
-	delete p_impl_h;
-	delete p_impl_p;
-}
-
-void rhythm_toolkit_private::hpss::HPROfflineCPU::process_next_hop(
-    float* in_hop,
-    bool only_percussive)
-{
-	// following the previous iteration
-	// we rotate the percussive and harmonic arrays to get them ready
-	// for the next hop and next overlap add
-	std::copy(percussive_out.begin() + hop, percussive_out.end(),
-	          percussive_out.begin());
-	std::fill(percussive_out.begin() + hop, percussive_out.end(), 0.0);
-
-	if (!only_percussive) {
-		std::copy(harmonic_out.begin() + hop, harmonic_out.end(),
-		          harmonic_out.begin());
-		std::fill(harmonic_out.begin() + hop, harmonic_out.end(), 0.0);
-
-		std::copy(residual_out.begin() + hop, residual_out.end(),
-		          residual_out.begin());
-		std::fill(residual_out.begin() + hop, residual_out.end(), 0.0);
-	}
-
-	// append latest hop samples e.g. input = input[hop:] + current_hop
-	std::copy(input.begin() + hop, input.end(), input.begin());
-	std::copy(in_hop, in_hop + hop, input.begin() + hop);
-
-	// populate curr_fft with input .* square root von hann window
-	std::transform(input.begin(), input.end(), win.window.begin(),
-	               fft.fft_vec.begin(), window_functor());
-
-	// zero out the second half of the fft
-	std::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
-	          thrust::complex<float>{0.0, 0.0});
-	fft.forward();
-
-	// rotate stft matrix to move the oldest column to the end
-	// copy curr_fft into the last column of the stft
-	std::copy(
-	    sliding_stft.begin() + nfft, sliding_stft.end(), sliding_stft.begin());
-	std::copy(
-	    fft.fft_vec.begin(), fft.fft_vec.end(), sliding_stft.end() - nfft);
-
-	// calculate the magnitude of the stft
-	std::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
-	               complex_abs_functor());
-
-	// apply median filter in horizontal and vertical directions with NPP
-	// to create percussive and harmonic spectra
-	time.filter(( Ipp32f* )thrust::raw_pointer_cast(s_mag.data()),
-	            ( Ipp32f* )thrust::raw_pointer_cast(harmonic_matrix.data()));
-	frequency.filter(
-	    ( Ipp32f* )thrust::raw_pointer_cast(s_mag.data()),
-	    ( Ipp32f* )thrust::raw_pointer_cast(percussive_matrix.data()));
-
-	// compute percussive mask from harmonic + percussive magnitude spectra
-	std::transform(percussive_matrix.end() - lag * nfft,
-	               percussive_matrix.end() - (lag - 1) * nfft,
-	               harmonic_matrix.end() - lag * nfft, percussive_mask.begin(),
-	               mask_functor(beta));
-
-	// apply lag column of percussive mask to recover percussive audio from
-	// original fft
-	std::transform(
-	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    percussive_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
-
-	fft.backward();
-
-	// now curr_fft has the current iteration's fresh samples
-	// we overlap-add it the real part to the previous
-	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-	               percussive_out.begin(), percussive_out.begin(),
-	               overlap_add_functor(COLA_factor));
-	if (only_percussive) {
-		return;
-	}
-
-	// otherwise proceed to reconstruct harmonic and residuals from masks
-
-	// compute harmonic mask from harmonic + percussive magnitude spectra
-	std::transform(harmonic_matrix.end() - lag * nfft,
-	               harmonic_matrix.end() - (lag - 1) * nfft,
-	               percussive_matrix.end() - lag * nfft, harmonic_mask.begin(),
-	               mask_functor(beta - Eps));
-	// compute residual mask from harmonic and percussive masks
-	std::transform(harmonic_mask.begin(), harmonic_mask.end(),
-	               percussive_mask.begin(), residual_mask.begin(),
-	               residual_mask_functor());
-
-	std::transform(
-	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    harmonic_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
-
-	fft.backward();
-
-	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-	               harmonic_out.begin(), harmonic_out.begin(),
-	               overlap_add_functor(COLA_factor));
-
-	std::transform(
-	    sliding_stft.end() - lag * nfft, sliding_stft.end() - (lag - 1) * nfft,
-	    residual_mask.begin(), fft.fft_vec.begin(), apply_mask_functor());
-
-	fft.backward();
-
-	std::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-	               residual_out.begin(), residual_out.begin(),
-	               overlap_add_functor(COLA_factor));
+	_process_next_hop<thrust::device_ptr<float>, thrust::device_vector<float>&,
+	                  thrust::device_vector<thrust::complex<float>>&,
+	                  rhythm_toolkit_private::median_filter::MedianFilterGPU&,
+	                  rhythm_toolkit_private::fft_wrapper::FFTWrapperGPU&,
+	                  rhythm_toolkit_private::window::WindowGPU&>(
+	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
+	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
+	    residual_mask, sliding_stft, time, frequency, fft, win,
+	    output_percussive, output_harmonic, output_residual, hop, nfft, nwin,
+	    lag, beta, Eps, COLA_factor);
 }

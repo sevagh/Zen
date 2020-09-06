@@ -125,15 +125,12 @@ namespace hpss {
 			if (output_flags & HPSS_RESIDUAL) {
 				output_residual = true;
 			}
-			std::cout << "OUTPUTTING H: " << output_harmonic << std::endl;
-			std::cout << "OUTPUTTING P: " << output_percussive << std::endl;
-			std::cout << "OUTPUTTING R: " << output_residual << std::endl;
 		};
 
 		void process_next_hop(thrust::device_ptr<float> in_hop);
 	};
 
-	class HPROfflineCPU {
+	class HPRCPU {
 	public:
 		float fs;
 		std::size_t hop;
@@ -168,9 +165,18 @@ namespace hpss {
 
 		median_filter::MedianFilterCPU time;
 		median_filter::MedianFilterCPU frequency;
+
 		fft_wrapper::FFTWrapperCPU fft;
 
-		HPROfflineCPU(float fs, std::size_t hop, float beta)
+		bool output_percussive;
+		bool output_harmonic;
+		bool output_residual;
+
+		HPRCPU(float fs,
+		       std::size_t hop,
+		       float beta,
+		       int output_flags,
+		       median_filter::MedianFilterDirection causality)
 		    : fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
@@ -180,20 +186,19 @@ namespace hpss {
 		    , lag(l_harm)
 		    , l_perc(roundf(500 / (fs / ( float )nfft)))
 		    , stft_width(2 * l_harm)
-		    , input(std::vector<float>(nwin, 0.0F))
-		    , win(window::WindowCPU(window::WindowType::SqrtVonHann, nwin))
-		    , sliding_stft(std::vector<thrust::complex<float>>(
-		          stft_width * nfft,
-		          thrust::complex<float>{0.0F, 0.0F}))
-		    , s_mag(std::vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_matrix(std::vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_matrix(std::vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_mask(std::vector<float>(lag * nfft, 0.0F))
-		    , harmonic_mask(std::vector<float>(lag * nfft, 0.0F))
-		    , residual_mask(std::vector<float>(lag * nfft, 0.0F))
-		    , percussive_out(std::vector<float>(nwin, 0.0F))
-		    , residual_out(std::vector<float>(nwin, 0.0F))
-		    , harmonic_out(std::vector<float>(nwin, 0.0F))
+		    , input(nwin, 0.0F)
+		    , win(window::WindowType::SqrtVonHann, nwin)
+		    , sliding_stft(stft_width * nfft,
+		                   thrust::complex<float>{0.0F, 0.0F})
+		    , s_mag(stft_width * nfft, 0.0F)
+		    , percussive_matrix(stft_width * nfft, 0.0F)
+		    , harmonic_matrix(stft_width * nfft, 0.0F)
+		    , percussive_mask(stft_width * nfft, 0.0F)
+		    , harmonic_mask(stft_width * nfft, 0.0F)
+		    , residual_mask(stft_width * nfft, 0.0F)
+		    , percussive_out(nwin, 0.0F)
+		    , residual_out(nwin, 0.0F)
+		    , harmonic_out(nwin, 0.0F)
 		    , COLA_factor(0.0f)
 		    , time(stft_width,
 		           nfft,
@@ -203,16 +208,35 @@ namespace hpss {
 		                nfft,
 		                l_perc,
 		                median_filter::MedianFilterDirection::Frequency)
-		    , fft(fft_wrapper::FFTWrapperCPU(nfft))
+		    , fft(nfft)
+		    , output_harmonic(false)
+		    , output_percussive(false)
+		    , output_residual(false)
 		{
+			// causal = realtime
+			if (causality == median_filter::MedianFilterDirection::TimeCausal) {
+				// no lagging frames, output = latest frame
+				lag = 1;
+			}
+
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
 				COLA_factor += win.window[i] * win.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
+
+			if (output_flags & HPSS_HARMONIC) {
+				output_harmonic = true;
+			}
+			if (output_flags & HPSS_PERCUSSIVE) {
+				output_percussive = true;
+			}
+			if (output_flags & HPSS_RESIDUAL) {
+				output_residual = true;
+			}
 		};
 
-		void process_next_hop(float* in_hop, bool only_percussive = false);
+		void process_next_hop(float* in_hop);
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private

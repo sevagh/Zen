@@ -150,11 +150,26 @@ namespace median_filter {
 
 		~MedianFilterGPU() { cudaFree(buffer); }
 
-		void filter(Npp32f* src, Npp32f* dst)
+		void filter(thrust::device_vector<float>& src,
+		            thrust::device_vector<float>& dst)
 		{
-			nppiFilterMedian_32f_C1R(src + start_pixel_offset, nstep,
-			                         dst + start_pixel_offset, nstep, roi,
-			                         mask, anchor, buffer);
+			nppiFilterMedian_32f_C1R(
+			    ( Npp32f* )thrust::raw_pointer_cast(src.data())
+			        + start_pixel_offset,
+			    nstep,
+			    ( Npp32f* )thrust::raw_pointer_cast(dst.data())
+			        + start_pixel_offset,
+			    nstep, roi, mask, anchor, buffer);
+		}
+
+		void filter(thrust::device_ptr<float>& src,
+		            thrust::device_ptr<float>& dst)
+		{
+			nppiFilterMedian_32f_C1R(
+			    ( Npp32f* )thrust::raw_pointer_cast(src) + start_pixel_offset,
+			    nstep,
+			    ( Npp32f* )thrust::raw_pointer_cast(dst) + start_pixel_offset,
+			    nstep, roi, mask, anchor, buffer);
 		}
 	};
 
@@ -223,10 +238,11 @@ namespace median_filter {
 
 		~MedianFilterCPU() { ippsFree(buffer); }
 
-		void filter(Ipp32f* src, Ipp32f* dst)
+		void filter(std::vector<float>& src, std::vector<float>& dst)
 		{
-			ippiFilterMedianBorder_32f_C1R(
-			    src, nstep, dst, nstep, roi, mask, ippBorderRepl, 0, buffer);
+			ippiFilterMedianBorder_32f_C1R(( Ipp32f* )src.data(), nstep,
+			                               ( Ipp32f* )dst.data(), nstep, roi,
+			                               mask, ippBorderRepl, 0, buffer);
 		}
 	};
 }; // namespace median_filter

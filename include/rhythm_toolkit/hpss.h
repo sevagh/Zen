@@ -23,7 +23,7 @@
 namespace rhythm_toolkit_private {
 namespace hpss {
 	class HPRGPU;
-	class HPROfflineCPU;
+	class HPRCPU;
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
 
@@ -70,7 +70,7 @@ namespace hpss {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		// we use 2 cascading HPROffline objects to implement driedger's
+		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
 		rhythm_toolkit_private::hpss::HPRGPU* p_impl_h;
 		rhythm_toolkit_private::hpss::HPRGPU* p_impl_p;
@@ -101,10 +101,10 @@ namespace hpss {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		// we use 2 cascading HPROffline objects to implement driedger's
+		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		rhythm_toolkit_private::hpss::HPROfflineCPU* p_impl_h;
-		rhythm_toolkit_private::hpss::HPROfflineCPU* p_impl_p;
+		rhythm_toolkit_private::hpss::HPRCPU* p_impl_h;
+		rhythm_toolkit_private::hpss::HPRCPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
 	};

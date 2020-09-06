@@ -19,7 +19,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # cause FindCUDAToolkit isn't working so well with negativo17's cuda install paths
 set(VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 14)
 
 set(BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
@@ -28,7 +28,8 @@ add_definitions("-Wextra")
 add_definitions("-Wundef")
 add_definitions("-Wunreachable-code")
 
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "--default-stream-per-thread" -ggdb)
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "--default-stream-per-thread")
+set(CMAKE_CUDA_FLAGS"-std=c++14 -ggdb")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 

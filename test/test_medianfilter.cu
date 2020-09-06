@@ -14,11 +14,9 @@ using namespace rhythm_toolkit;
 class MedianFilterGPUTest : public ::testing::Test {
 
 public:
-	thrust::device_vector<float> _testdata;
-	thrust::device_vector<float> _result;
+	thrust::device_vector<float> testdata;
+	thrust::device_vector<float> result;
 
-	Npp32f* testdata;
-	Npp32f* result;
 	MedianFilterGPU* causal_time_mfilt;
 	MedianFilterGPU* anticausal_time_mfilt;
 	MedianFilterGPU* freq_mfilt;
@@ -28,25 +26,16 @@ public:
 	MedianFilterGPUTest(int x, int y, int f)
 	    : x(x)
 	    , y(y)
-	    , _testdata(thrust::device_vector<float>(x * y))
-	    , _result(thrust::device_vector<float>(x * y))
+	    , testdata(thrust::device_vector<float>(x * y))
+	    , result(thrust::device_vector<float>(x * y))
 	{
-		testdata = ( Npp32f* )thrust::raw_pointer_cast(_testdata.data());
-		result = ( Npp32f* )thrust::raw_pointer_cast(_result.data());
-
-		if (testdata == nullptr) {
-			std::cerr << "couldn't allocate device memory for test vectors"
-			          << std::endl;
-			std::exit(1);
-		}
-
 		// fill middle row and middle column
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
 				if (i == x / 2)
-					_testdata[i * y + j] = 5;
+					testdata[i * y + j] = 5;
 				if (j == y / 2)
-					_testdata[i * y + j] = 8;
+					testdata[i * y + j] = 8;
 			}
 		}
 
@@ -70,7 +59,7 @@ public:
 		std::cout << "before" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
-				auto elem = _testdata[i * y + j];
+				auto elem = testdata[i * y + j];
 				std::cout << elem << " ";
 			}
 			std::cout << std::endl;
@@ -82,7 +71,7 @@ public:
 		std::cout << "after" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
-				auto elem = _result[i * y + j];
+				auto elem = result[i * y + j];
 				std::cout << elem << " ";
 			}
 			std::cout << std::endl;
@@ -134,7 +123,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -153,7 +142,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 5) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -172,7 +161,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 5) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -191,7 +180,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			// allow 0s on the outermost edges from the limited roi
 			if (i == x / 2 && j < y - 3) {
@@ -212,7 +201,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
@@ -232,7 +221,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
@@ -263,7 +252,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -282,7 +271,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -301,7 +290,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -315,11 +304,9 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, AnticausalTime)
 class MedianFilterCPUTest : public ::testing::Test {
 
 public:
-	std::vector<float> _testdata;
-	std::vector<float> _result;
+	std::vector<float> testdata;
+	std::vector<float> result;
 
-	Ipp32f* testdata;
-	Ipp32f* result;
 	MedianFilterCPU* causal_time_mfilt;
 	MedianFilterCPU* anticausal_time_mfilt;
 	MedianFilterCPU* freq_mfilt;
@@ -329,25 +316,16 @@ public:
 	MedianFilterCPUTest(int x, int y, int f)
 	    : x(x)
 	    , y(y)
-	    , _testdata(std::vector<float>(x * y))
-	    , _result(std::vector<float>(x * y))
+	    , testdata(std::vector<float>(x * y))
+	    , result(std::vector<float>(x * y))
 	{
-		testdata = ( Ipp32f* )_testdata.data();
-		result = ( Ipp32f* )_result.data();
-
-		if (testdata == nullptr) {
-			std::cerr << "couldn't allocate device memory for test vectors"
-			          << std::endl;
-			std::exit(1);
-		}
-
 		// fill middle row and middle column
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
 				if (i == x / 2)
-					_testdata[i * y + j] = 5;
+					testdata[i * y + j] = 5;
 				if (j == y / 2)
-					_testdata[i * y + j] = 8;
+					testdata[i * y + j] = 8;
 			}
 		}
 
@@ -371,7 +349,7 @@ public:
 		std::cout << "before" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
-				auto elem = _testdata[i * y + j];
+				auto elem = testdata[i * y + j];
 				std::cout << elem << " ";
 			}
 			std::cout << std::endl;
@@ -383,7 +361,7 @@ public:
 		std::cout << "after" << std::endl;
 		for (int i = 0; i < x; ++i) {
 			for (int j = 0; j < y; ++j) {
-				auto elem = _result[i * y + j];
+				auto elem = result[i * y + j];
 				std::cout << elem << " ";
 			}
 			std::cout << std::endl;
@@ -435,7 +413,7 @@ TEST_F(MedianFilterSmallSquareUnitTestCPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -454,7 +432,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestCPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 5) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -473,7 +451,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestCPU, CausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 5) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -492,7 +470,7 @@ TEST_F(MedianFilterSmallSquareUnitTestCPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			// allow 0s on the outermost edges from the limited roi
 			if (i == x / 2 && j < y - 3) {
@@ -513,7 +491,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestCPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
@@ -533,7 +511,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestCPU, Frequency)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 
 			if (i == x / 2 && j < y - 5) {
 				EXPECT_EQ(elem, 5);
@@ -564,7 +542,7 @@ TEST_F(MedianFilterSmallSquareUnitTestCPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -583,7 +561,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestCPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
@@ -602,7 +580,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestCPU, AnticausalTime)
 
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
-			auto elem = _result[i * y + j];
+			auto elem = result[i * y + j];
 			if (j == y / 2 && i > 2 && i < x - 3) {
 				EXPECT_EQ(elem, 8);
 			}
