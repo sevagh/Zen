@@ -22,10 +22,8 @@
 // forward declare the private implementation of HPSS
 namespace rhythm_toolkit_private {
 namespace hpss {
-	class HPROfflineGPU;
+	class HPRGPU;
 	class HPROfflineCPU;
-	class PRealtimeGPU;
-	class PRealtimeCPU;
 }; // namespace hpss
 }; // namespace rhythm_toolkit_private
 
@@ -74,8 +72,8 @@ namespace hpss {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPROffline objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		rhythm_toolkit_private::hpss::HPROfflineGPU* p_impl_h;
-		rhythm_toolkit_private::hpss::HPROfflineGPU* p_impl_p;
+		rhythm_toolkit_private::hpss::HPRGPU* p_impl_h;
+		rhythm_toolkit_private::hpss::HPRGPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
 		rhythm_toolkit::io::IOGPU io_h;
@@ -128,25 +126,8 @@ namespace hpss {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		rhythm_toolkit_private::hpss::PRealtimeGPU* p_impl;
+		rhythm_toolkit_private::hpss::HPRGPU* p_impl;
 		rhythm_toolkit::io::IOGPU& io;
-	};
-
-	class PRealtimeCPU {
-	public:
-		PRealtimeCPU(float fs, std::size_t hop, float beta);
-		PRealtimeCPU(float fs, std::size_t hop);
-		PRealtimeCPU(float fs);
-
-		~PRealtimeCPU();
-
-		// copies hop samples from a pointer to a host vector
-		// copies separated samples to an output pointer to a host vector
-		void process_next_hop(const float* in_hop, float* out_hop);
-
-	private:
-		// https://en.cppreference.com/w/cpp/language/pimpl
-		rhythm_toolkit_private::hpss::PRealtimeCPU* p_impl;
 	};
 }; // namespace hpss
 }; // namespace rhythm_toolkit

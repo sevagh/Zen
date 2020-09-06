@@ -48,7 +48,8 @@ namespace io {
 			    cuda_malloc_flags | cudaHostAllocWriteCombined);
 
 			if (cuda_error != cudaSuccess) {
-				std::cerr << "IOGPU: cuda malloc error: " << cudaGetErrorString(cuda_error) << std::endl;
+				std::cerr << "IOGPU: cuda malloc error: "
+				          << cudaGetErrorString(cuda_error) << std::endl;
 				std::exit(-1);
 			}
 
@@ -56,21 +57,24 @@ namespace io {
 			    ( void** )&host_out, size * sizeof(float), cuda_malloc_flags);
 
 			if (cuda_error != cudaSuccess) {
-				std::cerr << "IOGPU: cuda malloc error: " << cudaGetErrorString(cuda_error) << std::endl;
+				std::cerr << "IOGPU: cuda malloc error: "
+				          << cudaGetErrorString(cuda_error) << std::endl;
 				std::exit(-1);
 			}
 
 			cuda_error = cudaHostGetDevicePointer(
 			    ( void** )(&device_in_raw_ptr), ( void* )host_in, 0);
 			if (cuda_error != cudaSuccess) {
-				std::cerr << "IOGPU: cuda devptr error: " << cudaGetErrorString(cuda_error) << std::endl;
+				std::cerr << "IOGPU: cuda devptr error: "
+				          << cudaGetErrorString(cuda_error) << std::endl;
 				std::exit(-1);
 			}
 
 			cuda_error = cudaHostGetDevicePointer(
 			    ( void** )(&device_out_raw_ptr), ( void* )host_out, 0);
 			if (cuda_error != cudaSuccess) {
-				std::cerr << "IOGPU: cuda devptr error: " << cudaGetErrorString(cuda_error) << std::endl;
+				std::cerr << "IOGPU: cuda devptr error: "
+				          << cudaGetErrorString(cuda_error) << std::endl;
 				std::exit(-1);
 			}
 

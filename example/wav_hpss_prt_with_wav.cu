@@ -1,7 +1,7 @@
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iostream>
-#include <chrono>
 
 #include "rhythm_toolkit/hpss.h"
 #include "rhythm_toolkit/io.h"
@@ -14,7 +14,7 @@ DEFINE_int32(hop, 256, "hop (samples)");
 DEFINE_double(beta, 2.6, "beta (separation factor, float)");
 
 std::vector<std::pair<std::size_t, std::size_t>>
-get_chunk_limits(std::vector<float> &container, size_t k)
+get_chunk_limits(std::vector<float>& container, size_t k)
 {
 	std::vector<std::pair<std::size_t, std::size_t>> ret;
 
@@ -28,15 +28,13 @@ get_chunk_limits(std::vector<float> &container, size_t k)
 	}
 
 	if (i % k) {
-		ret.push_back(
-		    std::pair<std::size_t, std::size_t>(i, i + (i % k)));
+		ret.push_back(std::pair<std::size_t, std::size_t>(i, i + (i % k)));
 	}
 
 	return ret;
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	gflags::SetUsageMessage("help\n");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -51,8 +49,8 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	std::shared_ptr<nqr::AudioData> file_data =
-	    std::make_shared<nqr::AudioData>();
+	std::shared_ptr<nqr::AudioData> file_data
+	    = std::make_shared<nqr::AudioData>();
 	loader.Load(file_data.get(), argv[1]);
 
 	std::cout << "Audio file info:" << std::endl;
@@ -69,9 +67,10 @@ main(int argc, char **argv)
 		// convert stereo to mono
 		std::vector<float> audio_copy(file_data->samples.size() / 2);
 		nqr::StereoToMono(file_data->samples.data(), audio_copy.data(),
-		    file_data->samples.size());
+		                  file_data->samples.size());
 		audio = std::vector<float>(audio_copy.begin(), audio_copy.end());
-	} else {
+	}
+	else {
 		audio = std::vector<float>(
 		    file_data->samples.begin(), file_data->samples.end());
 	}
@@ -82,46 +81,52 @@ main(int argc, char **argv)
 	auto chunk_limits = get_chunk_limits(audio, chunk_size);
 
 	std::cout << "Slicing buffer size " << audio.size() << " into "
-	          << chunk_limits.size() << " chunks of size " << chunk_size << std::endl;
+	          << chunk_limits.size() << " chunks of size " << chunk_size
+	          << std::endl;
 
 	std::size_t n = 0;
-	float delta_t = 1000 * (float)FLAGS_hop/file_data->sampleRate;
+	float delta_t = 1000 * ( float )FLAGS_hop / file_data->sampleRate;
 
-	std::cout << "before io of size " << FLAGS_hop << std::endl;
 	auto io = rhythm_toolkit::io::IOGPU(FLAGS_hop);
-	std::cout << "after io" << std::endl;
-
-	auto hpss = rhythm_toolkit::hpss::PRealtimeGPU(file_data->sampleRate, FLAGS_hop, FLAGS_beta, io);
-
-	std::cout << "A" << std::endl;
+	auto hpss = rhythm_toolkit::hpss::PRealtimeGPU(
+	    file_data->sampleRate, FLAGS_hop, FLAGS_beta, io);
 
 	float iters = 0.0F;
 	int time_tot = 0;
 
-	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it = chunk_limits.begin() ; chunk_it != chunk_limits.end(); ++chunk_it) {
+	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it
+	     = chunk_limits.begin();
+	     chunk_it != chunk_limits.end(); ++chunk_it) {
 		auto t1 = std::chrono::high_resolution_clock::now();
 
 		// copy input samples into io object
-		std::copy(audio.begin() + chunk_it->first, audio.begin() + chunk_it->second, io.host_in);
+		std::copy(audio.begin() + chunk_it->first,
+		          audio.begin() + chunk_it->second, io.host_in);
 
-		std::cout << "B" << std::endl;
 		// process input samples
 		hpss.process_next_hop();
 
 		// copy output samples from io object
-		std::copy(io.host_out, io.host_out + FLAGS_hop, percussive_out.begin() + n);
+		std::copy(
+		    io.host_out, io.host_out + FLAGS_hop, percussive_out.begin() + n);
 
 		auto t2 = std::chrono::high_resolution_clock::now();
-		time_tot += std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+		time_tot
+		    += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1)
+		           .count();
 
 		n += FLAGS_hop;
 		iters += 1.0F;
 	}
 
-	std::cout << "Δn = " << FLAGS_hop << ", Δt(ms) = " << delta_t  << ", average hpss duration(us) = " << (float)time_tot/iters << std::endl;
+	std::cout << "Δn = " << FLAGS_hop << ", Δt(ms) = " << delta_t
+	          << ", average hpss duration(us) = " << ( float )time_tot / iters
+	          << std::endl;
 
-	auto percussive_limits = std::minmax_element(std::begin(percussive_out), std::end(percussive_out));
-	float real_perc_max = std::max(-1*(*percussive_limits.first), *percussive_limits.second);
+	auto percussive_limits = std::minmax_element(
+	    std::begin(percussive_out), std::end(percussive_out));
+	float real_perc_max
+	    = std::max(-1 * (*percussive_limits.first), *percussive_limits.second);
 
 	// normalize between -1.0 and 1.0
 	for (std::size_t i = 0; i < audio.size(); ++i) {
@@ -129,18 +134,18 @@ main(int argc, char **argv)
 	}
 
 	nqr::EncoderParams encoder_params{
-		1,
-		nqr::PCMFormat::PCM_16,
-		nqr::DitherType::DITHER_NONE,
+	    1,
+	    nqr::PCMFormat::PCM_16,
+	    nqr::DitherType::DITHER_NONE,
 	};
 
 	const nqr::AudioData perc_out{
-		1,
-		file_data->sampleRate,
-		file_data->lengthSeconds,
-		file_data->frameSize,
-		percussive_out,
-		file_data->sourceFormat,
+	    1,
+	    file_data->sampleRate,
+	    file_data->lengthSeconds,
+	    file_data->frameSize,
+	    percussive_out,
+	    file_data->sourceFormat,
 	};
 
 	nqr::encode_wav_to_disk(encoder_params, &perc_out, "./perc_out.wav");
