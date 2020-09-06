@@ -33,31 +33,49 @@ namespace median_filter {
 
 	class MedianFilterGPU {
 	public:
+		MedianFilterDirection mydir;
+
 		int time;
 		int frequency;
 		int filter_len;
 
+		NppiSize smaller_roi;
+		NppiSize bigger_roi;
 		NppiSize roi;
+
 		int filter_mid;
 		NppiSize mask;
 		NppiPoint anchor;
 		Npp8u* buffer;
 		Npp32u buffer_size;
 
-		int nstep;
-		int start_pixel_offset;
+		int smaller_nstep;
+		int bigger_nstep;
+		int smaller_start_pixel_offset;
+		int bigger_start_pixel_offset;
+
+		bool copy_bord;
+		Npp32f* tmp_bigger_src;
+		Npp32f* tmp_bigger_dst;
 
 		// use time and frequency as axis names
 		MedianFilterGPU(int time,
 		                int frequency,
 		                int filter_len,
-		                MedianFilterDirection dir)
-		    : time(time)
+		                MedianFilterDirection dir,
+		                bool copy_bord
+		                = false) // copy borders - better results, slower
+		    : mydir(dir)
+		    , time(time)
 		    , frequency(frequency)
 		    , filter_len(filter_len)
-		    , nstep(frequency * sizeof(Npp32f)) // expect 1D linear memory
-		                                        // layout e.g. i*y + j
+		    , smaller_nstep(frequency * sizeof(Npp32f)) // expect 1D linear
+		                                                // memory layout e.g.
+		                                                // i*y + j
+		    , smaller_roi(NppiSize{frequency, time})
+		    , bigger_roi(NppiSize{frequency, time})
 		    , roi(NppiSize{frequency, time})
+		    , copy_bord(copy_bord)
 		{
 			if (((dir == MedianFilterDirection::TimeCausal
 			      || dir == MedianFilterDirection::TimeAnticausal)
@@ -87,14 +105,16 @@ namespace median_filter {
 				// the tip of the mask this is because the current frame is the
 				// last frame, and should have the most median filtering - the
 				// earlier frames, or past, lose importance rapidly
-				roi.height -= filter_len;
+				smaller_roi.height -= filter_len;
+				bigger_roi.height += filter_len;
 
 				mask = NppiSize{1, filter_len};
 				anchor = NppiPoint{0, filter_len};
 
 				// start one entire mask past the beginning so the mask can
 				// validly extend backwards
-				start_pixel_offset = filter_len * nstep / sizeof(Npp32f);
+				smaller_start_pixel_offset
+				    = filter_len * smaller_nstep / sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::TimeAnticausal:
@@ -108,14 +128,16 @@ namespace median_filter {
 				// therefore the anchor should be in the middle of the mask, to
 				// get the best median filtering at the middle frame which
 				// contains the audio to be reconstructed
-				roi.height -= filter_len;
+				smaller_roi.height -= filter_len;
+				bigger_roi.height += filter_len;
 
 				mask = NppiSize{1, filter_len};
 				anchor = NppiPoint{0, filter_mid};
 
 				// start half a mask past the beginning so the mask can validly
 				// extend backwards
-				start_pixel_offset = filter_mid * nstep / sizeof(Npp32f);
+				smaller_start_pixel_offset
+				    = filter_mid * smaller_nstep / sizeof(Npp32f);
 
 				break;
 			case MedianFilterDirection::Frequency:
@@ -124,23 +146,60 @@ namespace median_filter {
 				//
 				// since we're discarding the second half of the fft, it's less
 				// important
-				roi.width -= filter_len;
+				smaller_roi.width -= filter_len;
+				bigger_roi.width += filter_len;
 
 				mask = NppiSize{filter_len, 1};
-				anchor = NppiPoint{filter_mid, 0};
+				anchor = NppiPoint{0, 0};
 
-				start_pixel_offset = filter_mid * sizeof(Npp32f);
+				smaller_start_pixel_offset = 0;
 
 				break;
 			}
 
-			NppStatus npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
-			    roi, mask, &buffer_size);
-			if (npp_status != NPP_NO_ERROR) {
-				std::cerr << "NPP error " << npp_status << std::endl;
-				std::exit(1);
-			}
+			if (copy_bord) {
+				tmp_bigger_src = nppiMalloc_32f_C1(
+				    bigger_roi.width, bigger_roi.height, &bigger_nstep);
+				if (tmp_bigger_src == 0) {
+					std::cerr << "nppiMalloc error" << std::endl;
+					std::exit(1);
+				}
+				tmp_bigger_dst = nppiMalloc_32f_C1(
+				    bigger_roi.width, bigger_roi.height, &bigger_nstep);
+				if (tmp_bigger_dst == 0) {
+					std::cerr << "nppiMalloc error" << std::endl;
+					std::exit(1);
+				}
 
+				// adjust starting offset for padded/border-copied bigger line
+				// size
+				if (dir == MedianFilterDirection::Frequency) {
+					bigger_start_pixel_offset = 0;
+				}
+				else if (dir == MedianFilterDirection::TimeCausal) {
+					bigger_start_pixel_offset
+					    = filter_len * bigger_nstep / sizeof(Npp32f);
+				}
+				else if (dir == MedianFilterDirection::TimeAnticausal) {
+					bigger_start_pixel_offset
+					    = filter_mid * bigger_nstep / sizeof(Npp32f);
+				}
+
+				NppStatus npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+				    roi, mask, &buffer_size);
+				if (npp_status != NPP_NO_ERROR) {
+					std::cerr << "NPP error " << npp_status << std::endl;
+					std::exit(1);
+				}
+			}
+			else {
+				NppStatus npp_status = nppiFilterMedianGetBufferSize_32f_C1R(
+				    smaller_roi, mask, &buffer_size);
+				if (npp_status != NPP_NO_ERROR) {
+					std::cerr << "NPP error " << npp_status << std::endl;
+					std::exit(1);
+				}
+			}
 			cudaError cuda_status = cudaMalloc(( void** )&buffer, buffer_size);
 			if (cuda_status != cudaSuccess) {
 				std::cerr << cudaGetErrorString(cuda_status);
@@ -148,28 +207,53 @@ namespace median_filter {
 			}
 		};
 
-		~MedianFilterGPU() { cudaFree(buffer); }
+		~MedianFilterGPU()
+		{
+			cudaFree(buffer);
+			if (copy_bord) {
+				nppsFree(tmp_bigger_src);
+				nppsFree(tmp_bigger_dst);
+			}
+		}
 
 		void filter(thrust::device_vector<float>& src,
 		            thrust::device_vector<float>& dst)
 		{
-			nppiFilterMedian_32f_C1R(
-			    ( Npp32f* )thrust::raw_pointer_cast(src.data())
-			        + start_pixel_offset,
-			    nstep,
-			    ( Npp32f* )thrust::raw_pointer_cast(dst.data())
-			        + start_pixel_offset,
-			    nstep, roi, mask, anchor, buffer);
+			filter(src.data(), dst.data());
 		}
 
-		void filter(thrust::device_ptr<float>& src,
-		            thrust::device_ptr<float>& dst)
+		void filter(thrust::device_ptr<float> src,
+		            thrust::device_ptr<float> dst)
 		{
-			nppiFilterMedian_32f_C1R(
-			    ( Npp32f* )thrust::raw_pointer_cast(src) + start_pixel_offset,
-			    nstep,
-			    ( Npp32f* )thrust::raw_pointer_cast(dst) + start_pixel_offset,
-			    nstep, roi, mask, anchor, buffer);
+			auto src_ptr = ( Npp32f* )thrust::raw_pointer_cast(src);
+			auto dst_ptr = ( Npp32f* )thrust::raw_pointer_cast(dst);
+
+			if (!copy_bord) {
+				nppiFilterMedian_32f_C1R(
+				    src_ptr + smaller_start_pixel_offset, smaller_nstep,
+				    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
+				    smaller_roi, mask, anchor, buffer);
+			}
+			else {
+				if (mydir == MedianFilterDirection::Frequency) {
+					nppiCopyWrapBorder_32f_C1R(src_ptr, smaller_nstep, roi,
+					                           tmp_bigger_src, bigger_nstep,
+					                           bigger_roi, filter_mid, 0);
+				}
+				else {
+					nppiCopyWrapBorder_32f_C1R(src_ptr, smaller_nstep, roi,
+					                           tmp_bigger_src, bigger_nstep,
+					                           bigger_roi, 0, filter_mid);
+				}
+
+				nppiFilterMedian_32f_C1R(
+				    tmp_bigger_src + bigger_start_pixel_offset, bigger_nstep,
+				    tmp_bigger_dst + bigger_start_pixel_offset, bigger_nstep,
+				    roi, mask, anchor, buffer);
+
+				nppiCopy_32f_C1R(tmp_bigger_dst + bigger_start_pixel_offset,
+				                 bigger_nstep, dst_ptr, smaller_nstep, roi);
+			}
 		}
 	};
 

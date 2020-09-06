@@ -77,7 +77,7 @@ link_directories(${GTEST_LIBRARY_DIRS} ${IPP_LIBRARIES} ${SOUNDIO_LIBRARIES})
 
 set(RHYTHM_TOOLKIT_SOURCES src/hpr.cu)
 
-set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu ${IPP_LIBRARY} ${SOUNDIO_LIBRARY})
+set(RHYTHM_TOOLKIT_DEPS rhythm_toolkit CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY} ${SOUNDIO_LIBRARY})
 
 if(BUILD_STATIC)
   message("LIBRHYTHM_TOOLKIT: Building static library")

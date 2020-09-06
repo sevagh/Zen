@@ -590,3 +590,299 @@ TEST_F(MedianFilterLargeRectangleUnitTestCPU, AnticausalTime)
 		}
 	}
 }
+
+class MedianFilterGPUCOPYBORDTest : public ::testing::Test {
+
+public:
+	thrust::device_vector<float> testdata;
+	thrust::device_vector<float> result;
+
+	MedianFilterGPU* causal_time_mfilt;
+	MedianFilterGPU* anticausal_time_mfilt;
+	MedianFilterGPU* freq_mfilt;
+	int x;
+	int y;
+
+	MedianFilterGPUCOPYBORDTest(int x, int y, int f)
+	    : x(x)
+	    , y(y)
+	    , testdata(thrust::device_vector<float>(x * y))
+	    , result(thrust::device_vector<float>(x * y))
+	{
+		// fill middle row and middle column
+		for (int i = 0; i < x; ++i) {
+			for (int j = 0; j < y; ++j) {
+				if (i == x / 2)
+					testdata[i * y + j] = 5;
+				if (j == y / 2)
+					testdata[i * y + j] = 8;
+			}
+		}
+
+		causal_time_mfilt = new MedianFilterGPU(
+		    x, y, f, MedianFilterDirection::TimeCausal, true);
+		anticausal_time_mfilt = new MedianFilterGPU(
+		    x, y, f, MedianFilterDirection::TimeAnticausal, true);
+		freq_mfilt = new MedianFilterGPU(
+		    x, y, f, MedianFilterDirection::Frequency, true);
+	}
+
+	virtual ~MedianFilterGPUCOPYBORDTest()
+	{
+		delete causal_time_mfilt;
+		delete anticausal_time_mfilt;
+		delete freq_mfilt;
+	}
+
+	void printPre()
+	{
+		std::cout << "before" << std::endl;
+		for (int i = 0; i < x; ++i) {
+			for (int j = 0; j < y; ++j) {
+				auto elem = testdata[i * y + j];
+				std::cout << elem << " ";
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	void printPost()
+	{
+		std::cout << "after" << std::endl;
+		for (int i = 0; i < x; ++i) {
+			for (int j = 0; j < y; ++j) {
+				auto elem = result[i * y + j];
+				std::cout << elem << " ";
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	virtual void SetUp() {}
+
+	virtual void TearDown() {}
+};
+
+class MedianFilterSmallSquareUnitTestGPUCOPYBORD
+    : public MedianFilterGPUCOPYBORDTest {
+protected:
+	MedianFilterSmallSquareUnitTestGPUCOPYBORD()
+	    : MedianFilterGPUCOPYBORDTest(9, 9, 3)
+	{
+	}
+};
+
+class MedianFilterLargeSquareUnitTestGPUCOPYBORD
+    : public MedianFilterGPUCOPYBORDTest {
+protected:
+	MedianFilterLargeSquareUnitTestGPUCOPYBORD()
+	    : MedianFilterGPUCOPYBORDTest(1024, 1024, 21)
+	{
+	}
+};
+
+class MedianFilterSmallRectangleUnitTestGPUCOPYBORD
+    : public MedianFilterGPUCOPYBORDTest {
+protected:
+	MedianFilterSmallRectangleUnitTestGPUCOPYBORD()
+	    : MedianFilterGPUCOPYBORDTest(10, 20, 5)
+	{
+	}
+};
+
+class MedianFilterLargeRectangleUnitTestGPUCOPYBORD
+    : public MedianFilterGPUCOPYBORDTest {
+protected:
+	MedianFilterLargeRectangleUnitTestGPUCOPYBORD()
+	    : MedianFilterGPUCOPYBORDTest(1024, 17, 5)
+	{
+	}
+};
+
+TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, CausalTime)
+{
+	// printPre();
+	causal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 3) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, CausalTime)
+{
+	// printPre();
+	causal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 5) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, CausalTime)
+{
+	// printPre();
+	causal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 5) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, Frequency)
+{
+	// printPre();
+	freq_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+
+			// allow 0s on the outermost edges from the limited roi
+			if (i == x / 2 && j < y - 3) {
+				EXPECT_EQ(elem, 5);
+			}
+			else if (i != x / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, Frequency)
+{
+	// printPre();
+	freq_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+
+			if (i == x / 2 && j < y - 5) {
+				EXPECT_EQ(elem, 5);
+			}
+			else if (i != x / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, Frequency)
+{
+	// printPre();
+	freq_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+
+			if (i == x / 2 && j < y - 5) {
+				EXPECT_EQ(elem, 5);
+			}
+			else if (i != x / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST(MedianFilterUnitTestGPUCOPYBORD, DegenerateInputFilterTooBig)
+{
+	EXPECT_THROW(
+	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency, true),
+	    rhythm_toolkit::RtkException);
+	EXPECT_THROW(
+	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeCausal, true),
+	    rhythm_toolkit::RtkException);
+	EXPECT_THROW(
+	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal, true),
+	    rhythm_toolkit::RtkException);
+}
+
+TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, AnticausalTime)
+{
+	// printPre();
+	anticausal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 2 && i < x - 3) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, AnticausalTime)
+{
+	// printPre();
+	anticausal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 2 && i < x - 3) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
+
+TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, AnticausalTime)
+{
+	// printPre();
+	anticausal_time_mfilt->filter(testdata, result);
+	// printPost();
+
+	for (int i = 0; i < x; ++i) {
+		for (int j = 0; j < y; ++j) {
+			auto elem = result[i * y + j];
+			if (j == y / 2 && i > 2 && i < x - 3) {
+				EXPECT_EQ(elem, 8);
+			}
+			else if (j != y / 2) {
+				EXPECT_EQ(elem, 0);
+			}
+		}
+	}
+}
