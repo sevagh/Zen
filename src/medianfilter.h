@@ -20,8 +20,6 @@
 
 #include "rhythm_toolkit/rhythm_toolkit.h"
 
-// TODO rename freq/time to x/y vertical/horizontal
-
 namespace rhythm_toolkit_private {
 namespace median_filter {
 
@@ -64,7 +62,7 @@ namespace median_filter {
 		                int filter_len,
 		                MedianFilterDirection dir,
 		                bool copy_bord
-		                = false) // copy borders - better results, slower
+		                = true) // copy borders - better results, slower
 		    : mydir(dir)
 		    , time(time)
 		    , frequency(frequency)
@@ -238,12 +236,12 @@ namespace median_filter {
 				if (mydir == MedianFilterDirection::Frequency) {
 					nppiCopyWrapBorder_32f_C1R(src_ptr, smaller_nstep, roi,
 					                           tmp_bigger_src, bigger_nstep,
-					                           bigger_roi, filter_mid, 0);
+					                           bigger_roi, 0, filter_mid);
 				}
 				else {
 					nppiCopyWrapBorder_32f_C1R(src_ptr, smaller_nstep, roi,
 					                           tmp_bigger_src, bigger_nstep,
-					                           bigger_roi, 0, filter_mid);
+					                           bigger_roi, filter_mid, 0);
 				}
 
 				nppiFilterMedian_32f_C1R(

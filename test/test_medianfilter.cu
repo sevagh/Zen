@@ -708,7 +708,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, CausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 3) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
@@ -727,7 +727,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, CausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 5) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
@@ -746,7 +746,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, CausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 5) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
@@ -766,8 +766,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, Frequency)
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
 
-			// allow 0s on the outermost edges from the limited roi
-			if (i == x / 2 && j < y - 3) {
+			if (i == x / 2) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -787,7 +786,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, Frequency)
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
 
-			if (i == x / 2 && j < y - 5) {
+			if (i == x / 2) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -807,7 +806,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, Frequency)
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
 
-			if (i == x / 2 && j < y - 5) {
+			if (i == x / 2) {
 				EXPECT_EQ(elem, 5);
 			}
 			else if (i != x / 2) {
@@ -839,7 +838,7 @@ TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, AnticausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 2 && i < x - 3) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
@@ -858,7 +857,7 @@ TEST_F(MedianFilterSmallRectangleUnitTestGPUCOPYBORD, AnticausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 2 && i < x - 3) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
@@ -877,7 +876,7 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPUCOPYBORD, AnticausalTime)
 	for (int i = 0; i < x; ++i) {
 		for (int j = 0; j < y; ++j) {
 			auto elem = result[i * y + j];
-			if (j == y / 2 && i > 2 && i < x - 3) {
+			if (j == y / 2) {
 				EXPECT_EQ(elem, 8);
 			}
 			else if (j != y / 2) {
