@@ -133,11 +133,106 @@ static void BM_MEDIANFILTER_VERTICAL_CPUIPP(benchmark::State& state)
 	state.SetComplexityN(state.range(0));
 }
 
+static void
+BM_MEDIANFILTER_HORIZONTAL_GPUCUDACOPYBORD_NOMEM(benchmark::State& state)
+{
+	// NxN square
+	auto dim = state.range(0);
+
+	auto data = thrust::device_vector<float>(dim * dim);
+	thrust::sequence(data.begin(), data.end(), 0.0F);
+	auto result = thrust::device_vector<float>(dim * dim);
+
+	auto mfilt = MedianFilterGPU(
+	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::Frequency, true);
+	for (auto _ : state) {
+		mfilt.filter(data, result);
+	}
+	state.SetComplexityN(state.range(0));
+}
+
+static void
+BM_MEDIANFILTER_HORIZONTAL_GPUCUDACOPYBORD_MEM(benchmark::State& state)
+{
+	// NxN square
+	auto dim = state.range(0);
+
+	auto data = std::vector<float>(dim * dim);
+	std::iota(data.begin(), data.end(), 0.0F);
+	auto result = std::vector<float>(dim * dim);
+
+	auto mfilt = MedianFilterGPU(
+	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::Frequency, true);
+	for (auto _ : state) {
+		// copy into the mapped host-device input memory
+		std::copy(data.begin(), data.end(), global_io.host_in);
+
+		// operate on the device mapped pointer
+		mfilt.filter(global_io.device_in, global_io.device_out);
+
+		// copy the median filtered data back out from the mapped output memory
+		std::copy(global_io.host_out, global_io.host_out + data.size(),
+		          result.begin());
+	}
+	state.SetComplexityN(state.range(0));
+}
+
+static void
+BM_MEDIANFILTER_VERTICAL_GPUCUDACOPYBORD_NOMEM(benchmark::State& state)
+{
+	// NxN square
+	auto dim = state.range(0);
+
+	auto data = thrust::device_vector<float>(dim * dim);
+	thrust::sequence(data.begin(), data.end(), 0.0F);
+	auto result = thrust::device_vector<float>(dim * dim);
+
+	auto mfilt = MedianFilterGPU(
+	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::TimeCausal, true);
+	for (auto _ : state) {
+		mfilt.filter(data, result);
+	}
+	state.SetComplexityN(state.range(0));
+}
+
+static void BM_MEDIANFILTER_VERTICAL_GPUCUDACOPYBORD_MEM(benchmark::State& state)
+{
+	// NxN square
+	auto dim = state.range(0);
+
+	auto data = std::vector<float>(dim * dim);
+	std::iota(data.begin(), data.end(), 0.0F);
+	auto result = std::vector<float>(dim * dim);
+
+	auto mfilt = MedianFilterGPU(
+	    dim, dim, TYPICAL_FILTER_LEN, MedianFilterDirection::TimeCausal, true);
+	for (auto _ : state) {
+		// copy into the mapped host-device input memory
+		std::copy(data.begin(), data.end(), global_io.host_in);
+
+		// operate on the device mapped pointer
+		mfilt.filter(global_io.device_in, global_io.device_out);
+
+		// copy the median filtered data back out from the mapped output memory
+		std::copy(global_io.host_out, global_io.host_out + data.size(),
+		          result.begin());
+	}
+	state.SetComplexityN(state.range(0));
+}
+
 BENCHMARK(BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_NOMEM)
     ->RangeMultiplier(2)
     ->Range(1 << 5, 1 << 14)
     ->Complexity();
 BENCHMARK(BM_MEDIANFILTER_HORIZONTAL_GPUCUDA_MEM)
+    ->RangeMultiplier(2)
+    ->Range(1 << 5, 1 << 14)
+    ->Complexity();
+BENCHMARK(BM_MEDIANFILTER_HORIZONTAL_GPUCUDACOPYBORD_NOMEM)
+    ->RangeMultiplier(2)
+    ->Range(1 << 5, 1 << 14)
+    ->Complexity();
+BENCHMARK(BM_MEDIANFILTER_HORIZONTAL_GPUCUDACOPYBORD_MEM)
     ->RangeMultiplier(2)
     ->Range(1 << 5, 1 << 14)
     ->Complexity();
@@ -151,6 +246,14 @@ BENCHMARK(BM_MEDIANFILTER_VERTICAL_GPUCUDA_NOMEM)
     ->Range(1 << 5, 1 << 14)
     ->Complexity();
 BENCHMARK(BM_MEDIANFILTER_VERTICAL_GPUCUDA_MEM)
+    ->RangeMultiplier(2)
+    ->Range(1 << 5, 1 << 14)
+    ->Complexity();
+BENCHMARK(BM_MEDIANFILTER_VERTICAL_GPUCUDACOPYBORD_NOMEM)
+    ->RangeMultiplier(2)
+    ->Range(1 << 5, 1 << 14)
+    ->Complexity();
+BENCHMARK(BM_MEDIANFILTER_VERTICAL_GPUCUDACOPYBORD_MEM)
     ->RangeMultiplier(2)
     ->Range(1 << 5, 1 << 14)
     ->Complexity();

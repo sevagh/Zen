@@ -38,10 +38,12 @@ rhythm_toolkit::hpss::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
 	    rhythm_toolkit_private::hpss::HPSS_HARMONIC
 	        | rhythm_toolkit_private::hpss::HPSS_PERCUSSIVE
 	        | rhythm_toolkit_private::hpss::HPSS_RESIDUAL,
-	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal);
+	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal,
+	    true);
 	p_impl_p = new rhythm_toolkit_private::hpss::HPRGPU(
 	    fs, hop_p, beta_p, rhythm_toolkit_private::hpss::HPSS_PERCUSSIVE,
-	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal);
+	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeAnticausal,
+	    true);
 }
 
 rhythm_toolkit::hpss::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
@@ -156,7 +158,8 @@ rhythm_toolkit::hpss::PRealtimeGPU::PRealtimeGPU(float fs,
 {
 	p_impl = new rhythm_toolkit_private::hpss::HPRGPU(
 	    fs, hop, beta, rhythm_toolkit_private::hpss::HPSS_PERCUSSIVE,
-	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeCausal);
+	    rhythm_toolkit_private::median_filter::MedianFilterDirection::TimeCausal,
+	    true);
 }
 
 rhythm_toolkit::hpss::PRealtimeGPU::PRealtimeGPU(float fs,
@@ -174,6 +177,24 @@ void rhythm_toolkit::hpss::PRealtimeGPU::process_next_hop()
 	p_impl->process_next_hop(io.device_in);
 	thrust::copy(p_impl->percussive_out.begin(),
 	             p_impl->percussive_out.begin() + p_impl->hop, io.device_out);
+}
+
+void rhythm_toolkit::hpss::PRealtimeGPU::warmup()
+{
+	int test_iters = 1000; // this is good enough in my experience
+	std::vector<float> testdata(test_iters * p_impl->hop);
+	std::vector<float> outdata(test_iters * p_impl->hop);
+	std::iota(testdata.begin(), testdata.end(), 0.0F);
+
+	for (std::size_t i = 0; i < test_iters; ++i) {
+		thrust::copy(testdata.begin() + i * p_impl->hop,
+		             testdata.begin() + (i + 1) * p_impl->hop, io.host_in);
+		p_impl->process_next_hop(io.device_in);
+		thrust::copy(io.host_out, io.host_out + p_impl->hop,
+		             outdata.begin() + i * p_impl->hop);
+	}
+
+	p_impl->reset_buffers();
 }
 
 rhythm_toolkit::hpss::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }

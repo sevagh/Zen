@@ -64,7 +64,8 @@ namespace hpss {
 		       std::size_t hop,
 		       float beta,
 		       int output_flags,
-		       median_filter::MedianFilterDirection causality)
+		       median_filter::MedianFilterDirection causality,
+		       bool copy_bord)
 		    : fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
@@ -94,11 +95,12 @@ namespace hpss {
 		    , residual_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , harmonic_out(thrust::device_vector<float>(nwin, 0.0F))
 		    , COLA_factor(0.0f)
-		    , time(stft_width, nfft, l_harm, causality)
+		    , time(stft_width, nfft, l_harm, causality, copy_bord)
 		    , frequency(stft_width,
 		                nfft,
 		                l_perc,
-		                median_filter::MedianFilterDirection::Frequency)
+		                median_filter::MedianFilterDirection::Frequency,
+		                copy_bord)
 		    , fft(fft_wrapper::FFTWrapperGPU(nfft))
 		    , output_harmonic(false)
 		    , output_percussive(false)
@@ -128,6 +130,29 @@ namespace hpss {
 		};
 
 		void process_next_hop(thrust::device_ptr<float> in_hop);
+
+		void reset_buffers()
+		{
+			thrust::fill(input.begin(), input.end(), 0.0F);
+
+			thrust::fill(percussive_out.begin(), percussive_out.end(), 0.0F);
+			thrust::fill(harmonic_out.begin(), harmonic_out.end(), 0.0F);
+			thrust::fill(residual_out.begin(), residual_out.end(), 0.0F);
+
+			thrust::fill(fft.fft_vec.begin(), fft.fft_vec.end(),
+			             thrust::complex<float>{0.0F, 0.0F});
+			thrust::fill(sliding_stft.begin(), sliding_stft.end(),
+			             thrust::complex<float>{0.0F, 0.0F});
+
+			thrust::fill(s_mag.begin(), s_mag.end(), 0.0F);
+			thrust::fill(harmonic_matrix.begin(), harmonic_matrix.end(), 0.0F);
+			thrust::fill(
+			    percussive_matrix.begin(), percussive_matrix.end(), 0.0F);
+
+			thrust::fill(harmonic_mask.begin(), harmonic_mask.end(), 0.0F);
+			thrust::fill(percussive_mask.begin(), percussive_mask.end(), 0.0F);
+			thrust::fill(residual_mask.begin(), residual_mask.end(), 0.0F);
+		}
 	};
 
 	class HPRCPU {

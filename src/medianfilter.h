@@ -62,7 +62,7 @@ namespace median_filter {
 		                int filter_len,
 		                MedianFilterDirection dir,
 		                bool copy_bord
-		                = true) // copy borders - better results, slower
+		                = false) // copy borders - better results, slower
 		    : mydir(dir)
 		    , time(time)
 		    , frequency(frequency)

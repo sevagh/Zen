@@ -124,6 +124,10 @@ namespace hpss {
 		// pass in a real-time stream of the input, one hop at a time
 		void process_next_hop();
 
+		// gpu benefits from some warmup, especially in real-time contexts
+		// where the slow early iterations cause latency issues
+		void warmup();
+
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		rhythm_toolkit_private::hpss::HPRGPU* p_impl;

@@ -91,6 +91,8 @@ int main(int argc, char** argv)
 	auto hpss = rhythm_toolkit::hpss::PRealtimeGPU(
 	    file_data->sampleRate, FLAGS_hop, FLAGS_beta, io);
 
+	hpss.warmup();
+
 	float iters = 0.0F;
 	int time_tot = 0;
 

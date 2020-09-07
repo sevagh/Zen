@@ -53,24 +53,7 @@ public:
 			panic("unable to create ring buffer: out of memory");
 
 		std::cout << "warming up HPSS first..." << std::endl;
-		warmup_hpss();
-	}
-
-	// 1000 iterations to warm up the gpu apparatus
-	void warmup_hpss()
-	{
-		int test_iters = 1000;
-		std::vector<float> testdata(test_iters * hop);
-		std::vector<float> outdata(test_iters * hop);
-		std::iota(testdata.begin(), testdata.end(), 0.0F);
-
-		for (std::size_t i = 0; i < test_iters; ++i) {
-			thrust::copy(testdata.begin() + i * hop,
-			             testdata.begin() + (i + 1) * hop, io.host_in);
-			hpss.process_next_hop();
-			thrust::copy(
-			    io.host_out, io.host_out + hop, outdata.begin() + i * hop);
-		}
+		hpss.warmup();
 	}
 
 	~BufferedHPSS()
@@ -255,7 +238,7 @@ static void write_callback(struct SoundIoOutStream* outstream,
 static void underflow_callback(struct SoundIoOutStream* outstream)
 {
 	static int count = 0;
-	// fprintf(stderr, "underflow %d\n", ++count);
+	fprintf(stderr, "underflow %d\n", ++count);
 }
 
 static int usage(char* exe)
