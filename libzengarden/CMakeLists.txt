@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 option(BUILD_DOCS "Build docs" OFF)
 option(BUILD_BENCHES "Build benchmarks" OFF)
 option(BUILD_TESTS "Build tests" ON)
+option(ENABLE_CLANG_TIDY "compile with clang-tidy" OFF)
 
 # ------------------------------------------------------------------------------#
 # DEPENDENCIES

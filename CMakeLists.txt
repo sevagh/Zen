@@ -12,29 +12,6 @@ enable_testing()
 include_directory(libzengarden)
 
 # ------------------------------------------------------------------------------#
-# CLANG-TIDY
-# ------------------------------------------------------------------------------#
-
-find_program(
-  CLANG_TIDY_EXE
-  NAMES "clang-tidy"
-  DOC "Path to clang-tidy executable")
-if(NOT CLANG_TIDY_EXE)
-  message(STATUS "clang-tidy not found.")
-else()
-  message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-  set(DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks=*,-clang-analyzer-alpha.*")
-endif()
-
-option(ENABLE_CLANG_TIDY "compile with clang-tidy" OFF)
-if(ENABLE_CLANG_TIDY AND CLANG_TIDY_EXE)
-  message("CLANG_TIDY: ENABLED")
-  set_target_properties(rhythm_toolkit PROPERTIES CXX_CLANG_TIDY "${DO_CLANG_TIDY}")
-else()
-  message("CLANG_TIDY: DISABLED")
-endif()
-
-# ------------------------------------------------------------------------------#
 # INSTALL
 # ------------------------------------------------------------------------------#
 
