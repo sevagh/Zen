@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.14)
 project(libzengarden LANGUAGES CXX CUDA)
 set(VERSION 0.0.1)
 
+include(GNUInstallDirs)
+
 enable_testing()
 
 set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-
 set(CMAKE_CXX_STANDARD 14)
 
 add_definitions("-Wall")
@@ -21,6 +22,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 option(BUILD_DOCS "Build docs" OFF)
 option(BUILD_BENCHES "Build benchmarks" OFF)
 option(BUILD_TESTS "Build tests" ON)
+#option(BUILD_STATIC "Build static library" OFF)
 option(ENABLE_CLANG_TIDY "compile with clang-tidy" OFF)
 
 # ------------------------------------------------------------------------------#
@@ -44,13 +46,33 @@ include_directories(
 # LIBZENGARDEN
 # ------------------------------------------------------------------------------#
 
-set(LIBZENGARDEN_SOURCES hps/hps.cu)
-set(LIBZENGARDEN_DEPS libzengarden CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
+set(LIBZENGARDEN_SOURCES ${PROJECT_SOURCE_DIR}/hps/hps.cu)
+
+file(
+	GLOB_RECURSE
+	LIBZENGARDEN_PUBLIC_HEADERS
+	${PROJECT_SOURCE_DIR}/libzengarden/*.h)
+
+set(LIBZENGARDEN_DEPS CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
 message("LIBZENGARDEN: Building dynamic library")
 add_library(libzengarden SHARED ${LIBZENGARDEN_SOURCES})
+set_target_properties(libzengarden PROPERTIES PUBLIC_HEADER "${LIBZENGARDEN_PUBLIC_HEADERS}")
+target_link_libraries(libzengarden ${LIBZENGARDEN_DEPS})
 
-target_link_libraries(${LIBZENGARDEN_DEPS})
+#if (BUILD_STATIC)
+#	message("LIBZENGARDEN: Building static library")
+#	set(LIBZENGARDEN_STATIC_DEPS CUDA::cufft_static CUDA::nppif_static CUDA::nppisu_static CUDA::npps_static CUDA::nppidei_static CUDA::cudart_static pthread dl ${IPP_LIBRARY})
+#	add_library(libzengarden_static STATIC ${LIBZENGARDEN_SOURCES})
+#	target_link_libraries(libzengarden_static PUBLIC ${LIBZENGARDEN_STATIC_DEPS})
+#
+#	install(TARGETS libzengarden_static
+#		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+#endif()
+
+install(TARGETS libzengarden
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libzengarden)
 
 # ------------------------------------------------------------------------------#
 # TESTS AND BENCHES
@@ -77,26 +99,26 @@ function(zg_unittest path name)
 endfunction()
 
 if(BUILD_TESTS)
-  find_package(GTest REQUIRED)
-  message("LIBZENGARDEN: Building unit tests")
-
-  zg_unittest(hps mfilt)
+	find_package(GTest REQUIRED)
+	message("LIBZENGARDEN: Building unit tests")
+	
+	zg_unittest(hps mfilt)
 else()
-  message("LIBZENGARDEN: Skipping unit tests")
+	message("LIBZENGARDEN: Skipping unit tests")
 endif()
 
 function(zg_bench path name)
-  add_executable(${name}.bench ${path}/${name}.bench.cu)
-  target_link_libraries(${name}.bench ${LIBZENGARDEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
+	add_executable(${name}.bench ${path}/${name}.bench.cu)
+	target_link_libraries(${name}.bench ${LIBZENGARDEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
 endfunction()
 
 if(BUILD_BENCHES)
-  find_package(benchmark REQUIRED)
-  message("LIBZENGARDEN: Building benches")
+	find_package(benchmark REQUIRED)
+	message("LIBZENGARDEN: Building benches")
 
-  zg_bench(hps mfilt)
+	zg_bench(hps mfilt)
 else()
-  message("LIBZENGARDEN: Skipping benches")
+	message("LIBZENGARDEN: Skipping benches")
 endif()
 
 # ------------------------------------------------------------------------------#
@@ -106,13 +128,13 @@ endif()
 option(ENABLE_UBSAN
        "enable undefined behaviour sanitizer" OFF)
 if(ENABLE_UBSAN)
-  message("UBSAN: ENABLED")
-  set(UBSAN_OPTS "-fsanitize=undefined -static-libubsan")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${UBSAN_OPTS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${UBSAN_OPTS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${UBSAN_OPTS}")
+	message("UBSAN: ENABLED")
+	set(UBSAN_OPTS "-fsanitize=undefined -static-libubsan")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${UBSAN_OPTS}")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${UBSAN_OPTS}")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${UBSAN_OPTS}")
 else()
-  message("UBSAN: DISABLED")
+	message("UBSAN: DISABLED")
 endif()
 
 # ------------------------------------------------------------------------------#
@@ -122,13 +144,13 @@ endif()
 option(ENABLE_ASAN
        "enable address sanitizer (in place of valgrind)" OFF)
 if(ENABLE_ASAN)
-  message("ASAN: ENABLED")
-  set(ASAN_OPTS " -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -static-libasan")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_OPTS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ASAN_OPTS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_OPTS}")
+	message("ASAN: ENABLED")
+	set(ASAN_OPTS " -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -static-libasan")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_OPTS}")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ASAN_OPTS}")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_OPTS}")
 else()
-  message("ASAN: DISABLED")
+	message("ASAN: DISABLED")
 endif()
 
 # ------------------------------------------------------------------------------#
@@ -138,23 +160,23 @@ endif()
 # check if Doxygen is installed
 find_package(Doxygen)
 if(BUILD_DOCS AND DOXYGEN_FOUND)
-  message("Doxygen found and enabled")
-  # set input and output files
-  set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doxygen/Doxyfile.in)
-  set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+	message("Doxygen found and enabled")
+	# set input and output files
+	set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doxygen/Doxyfile.in)
+	set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
 
-  # request to configure the file
-  configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-  message("Doxygen build started")
+	# request to configure the file
+	configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+	message("Doxygen build started")
 
-  # note the option ALL which allows to build the docs together with the
-  # application
-  add_custom_target(
-    doc-doxygen
-    COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Generating API documentation with Doxygen"
-    VERBATIM)
+	# note the option ALL which allows to build the docs together with the
+	# application
+	add_custom_target(
+		doc-doxygen
+		COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		COMMENT "Generating API documentation with Doxygen"
+		VERBATIM)
 endif()
 
 # ------------------------------------------------------------------------------#
@@ -163,12 +185,12 @@ endif()
 
 find_program(CPP_CLEAN "cppclean")
 if(CPP_CLEAN)
-  message("cppclean found and enabled")
-  add_custom_target(
-    cpp-clean
-    COMMAND
-      cppclean
-	--include-path "${PROJECT_SOURCE_DIR}"
-	--include-path "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}"
-	--include-path "${IPP_INCLUDE_DIR}" "${PROJECT_SOURCE_DIR}")
+	message("cppclean found and enabled")
+	add_custom_target(
+	cpp-clean
+	COMMAND
+		cppclean
+		--include-path "${PROJECT_SOURCE_DIR}"
+		--include-path "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}"
+		--include-path "${IPP_INCLUDE_DIR}" "${PROJECT_SOURCE_DIR}")
 endif()

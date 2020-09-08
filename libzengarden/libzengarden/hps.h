@@ -3,7 +3,6 @@
 
 #include <complex>
 #include <cstddef>
-#include <thrust/device_vector.h>
 #include <vector>
 
 #include <libzengarden/io.h>

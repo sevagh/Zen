@@ -4,8 +4,8 @@
 #include <iostream>
 #include <math.h>
 
-#include "rhythm_toolkit/hpss.h"
-#include "rhythm_toolkit/io.h"
+#include <libzengarden/hps.h>
+#include <libzengarden/io.h>
 
 #include <gflags/gflags.h>
 #include <libnyquist/Decoders.h>
@@ -64,9 +64,9 @@ int main(int argc, char** argv)
 	std::vector<float> percussive_out;
 
 	if (!FLAGS_cpu) {
-		auto hpss = rhythm_toolkit::hpss::HPRIOfflineGPU(
-		    file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h,
-		    FLAGS_beta_p);
+		auto hpss
+		    = zg::hps::HPRIOfflineGPU(file_data->sampleRate, FLAGS_hop_h,
+		                              FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		percussive_out = hpss.process(audio);
@@ -79,9 +79,9 @@ int main(int argc, char** argv)
 		          << " ms" << std::endl;
 	}
 	else {
-		auto hpss = rhythm_toolkit::hpss::HPRIOfflineCPU(
-		    file_data->sampleRate, FLAGS_hop_h, FLAGS_hop_p, FLAGS_beta_h,
-		    FLAGS_beta_p);
+		auto hpss
+		    = zg::hps::HPRIOfflineCPU(file_data->sampleRate, FLAGS_hop_h,
+		                              FLAGS_hop_p, FLAGS_beta_h, FLAGS_beta_p);
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		percussive_out = hpss.process(audio);
