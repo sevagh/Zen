@@ -12,18 +12,18 @@
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
 
-#include <libzengarden/hps.h>
-#include <libzengarden/zg.h>
 #include <hps/hps.h>
 #include <hps/mfilt.h>
+#include <libzengarden/hps.h>
+#include <libzengarden/zg.h>
 
 // real hpss code is below
 // the public namespace is to hide cuda details away from the public interface
 zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p,
-                                                     float beta_h,
-                                                     float beta_p)
+                                        std::size_t hop_h,
+                                        std::size_t hop_p,
+                                        float beta_h,
+                                        float beta_p)
     : io_h(zg::io::IOGPU(hop_h))
     , io_p(zg::io::IOGPU(hop_p))
     , hop_h(hop_h)
@@ -31,32 +31,28 @@ zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
 {
 	if (hop_h % hop_p != 0) {
 		throw zg::ZgException("hop_h and hop_p should be evenly "
-		                                   "divisible");
+		                      "divisible");
 	}
 
 	p_impl_h = new zg::hps::HPRGPU(
 	    fs, hop_h, beta_h,
-	    zg::hps::HPSS_HARMONIC
-	        | zg::hps::HPSS_PERCUSSIVE
+	    zg::hps::HPSS_HARMONIC | zg::hps::HPSS_PERCUSSIVE
 	        | zg::hps::HPSS_RESIDUAL,
-	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal,
-	    true);
+	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 	p_impl_p = new zg::hps::HPRGPU(
 	    fs, hop_p, beta_p, zg::hps::HPSS_PERCUSSIVE,
-	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal,
-	    true);
+	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 }
 
 zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p)
+                                        std::size_t hop_h,
+                                        std::size_t hop_p)
     : HPRIOfflineGPU(fs, hop_h, hop_p, 2.0, 2.0){};
 
 zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs)
     : HPRIOfflineGPU(fs, 4096, 256, 2.0, 2.0){};
 
-std::vector<float>
-zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
+std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 {
 	// loop over whole song here
 	int audio_size = audio.size();
@@ -152,25 +148,21 @@ zg::hps::HPRIOfflineGPU::~HPRIOfflineGPU()
 }
 
 zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
-                                                 std::size_t hop,
-                                                 float beta,
-                                                 zg::io::IOGPU& io)
+                                    std::size_t hop,
+                                    float beta,
+                                    zg::io::IOGPU& io)
     : io(io)
 {
 	p_impl = new zg::hps::HPRGPU(
 	    fs, hop, beta, zg::hps::HPSS_PERCUSSIVE,
-	    zg::hps::mfilt::MedianFilterDirection::TimeCausal,
-	    true);
+	    zg::hps::mfilt::MedianFilterDirection::TimeCausal, true);
 }
 
-zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
-                                                 std::size_t hop,
-                                                 zg::io::IOGPU& io)
+zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io)
     : PRealtimeGPU(fs, hop, 2.5, io){};
 
 // best-performing defaults
-zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
-                                                 zg::io::IOGPU& io)
+zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, zg::io::IOGPU& io)
     : PRealtimeGPU(fs, 256, 2.5, io){};
 
 void zg::hps::PRealtimeGPU::process_next_hop()
@@ -201,21 +193,20 @@ void zg::hps::PRealtimeGPU::warmup()
 zg::hps::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }
 
 zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p,
-                                                     float beta_h,
-                                                     float beta_p)
+                                        std::size_t hop_h,
+                                        std::size_t hop_p,
+                                        float beta_h,
+                                        float beta_p)
     : hop_h(hop_h)
     , hop_p(hop_p)
 {
 	if (hop_h % hop_p != 0) {
 		throw zg::ZgException("hop_h and hop_p should be evenly "
-		                                   "divisible");
+		                      "divisible");
 	}
 	p_impl_h = new zg::hps::HPRCPU(
 	    fs, hop_h, beta_h,
-	    zg::hps::HPSS_HARMONIC
-	        | zg::hps::HPSS_PERCUSSIVE
+	    zg::hps::HPSS_HARMONIC | zg::hps::HPSS_PERCUSSIVE
 	        | zg::hps::HPSS_RESIDUAL,
 	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal);
 	p_impl_p = new zg::hps::HPRCPU(
@@ -224,15 +215,14 @@ zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
 }
 
 zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                                     std::size_t hop_h,
-                                                     std::size_t hop_p)
+                                        std::size_t hop_h,
+                                        std::size_t hop_p)
     : HPRIOfflineCPU(fs, hop_h, hop_p, 2.0, 2.0){};
 
 zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs)
     : HPRIOfflineCPU(fs, 4096, 256, 2.0, 2.0){};
 
-std::vector<float>
-zg::hps::HPRIOfflineCPU::process(std::vector<float> audio)
+std::vector<float> zg::hps::HPRIOfflineCPU::process(std::vector<float> audio)
 {
 	// loop over whole song here
 	int audio_size = audio.size();
@@ -362,8 +352,7 @@ static void _process_next_hop(A in_hop,
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), window.window.begin(),
-	                  fft.fft_vec.begin(),
-	                  zg::hps::window_functor());
+	                  fft.fft_vec.begin(), zg::hps::window_functor());
 
 	// zero out the second half of the fft
 	thrust::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
@@ -401,58 +390,52 @@ static void _process_next_hop(A in_hop,
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
 		                  percussive_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(),
-		                  zg::hps::apply_mask_functor());
+		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
 		fft.backward();
 
 		// now curr_fft has the current iteration's fresh samples
 		// we overlap-add it the real part to the previous
-		thrust::transform(
-		    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-		    percussive_out.begin(), percussive_out.begin(),
-		    zg::hps::overlap_add_functor(COLA_factor));
+		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+		                  percussive_out.begin(), percussive_out.begin(),
+		                  zg::hps::overlap_add_functor(COLA_factor));
 	}
 
 	if (output_harmonic) {
 		// compute harmonic mask from harmonic + percussive magnitude spectra
-		thrust::transform(
-		    harmonic_matrix.end() - lag * nfft,
-		    harmonic_matrix.end() - (lag - 1) * nfft,
-		    percussive_matrix.end() - lag * nfft,
-		    harmonic_mask.end() - lag * nfft,
-		    zg::hps::mask_functor(beta - Eps));
+		thrust::transform(harmonic_matrix.end() - lag * nfft,
+		                  harmonic_matrix.end() - (lag - 1) * nfft,
+		                  percussive_matrix.end() - lag * nfft,
+		                  harmonic_mask.end() - lag * nfft,
+		                  zg::hps::mask_functor(beta - Eps));
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
-		                  harmonic_mask.end() - lag * nfft, fft.fft_vec.begin(),
-		                  zg::hps::apply_mask_functor());
+		                  harmonic_mask.end() - lag * nfft,
+		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
 
 		fft.backward();
 
-		thrust::transform(
-		    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-		    harmonic_out.begin(), harmonic_out.begin(),
-		    zg::hps::overlap_add_functor(COLA_factor));
+		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+		                  harmonic_out.begin(), harmonic_out.begin(),
+		                  zg::hps::overlap_add_functor(COLA_factor));
 	}
 
 	if (output_residual) {
 		// compute residual mask from harmonic and percussive masks
-		thrust::transform(
-		    harmonic_mask.begin(), harmonic_mask.end(),
-		    percussive_mask.begin(), residual_mask.begin(),
-		    zg::hps::residual_mask_functor());
+		thrust::transform(harmonic_mask.begin(), harmonic_mask.end(),
+		                  percussive_mask.begin(), residual_mask.begin(),
+		                  zg::hps::residual_mask_functor());
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
-		                  residual_mask.end() - lag * nfft, fft.fft_vec.begin(),
-		                  zg::hps::apply_mask_functor());
+		                  residual_mask.end() - lag * nfft,
+		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
 
 		fft.backward();
 
-		thrust::transform(
-		    fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
-		    residual_out.begin(), residual_out.begin(),
-		    zg::hps::overlap_add_functor(COLA_factor));
+		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+		                  residual_out.begin(), residual_out.begin(),
+		                  zg::hps::overlap_add_functor(COLA_factor));
 	}
 }
 
@@ -461,8 +444,7 @@ void zg::hps::HPRCPU::process_next_hop(float* in_hop)
 	_process_next_hop<float*, std::vector<float>&,
 	                  std::vector<thrust::complex<float>>&,
 	                  zg::hps::mfilt::MedianFilterCPU&,
-	                  zg::fftw::FFTWrapperCPU&,
-	                  zg::win::WindowCPU&>(
+	                  zg::fftw::FFTWrapperCPU&, zg::win::WindowCPU&>(
 	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
 	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
 	    residual_mask, sliding_stft, time, frequency, fft, window,
@@ -470,14 +452,12 @@ void zg::hps::HPRCPU::process_next_hop(float* in_hop)
 	    lag, beta, Eps, COLA_factor);
 }
 
-void zg::hps::HPRGPU::process_next_hop(
-    thrust::device_ptr<float> in_hop)
+void zg::hps::HPRGPU::process_next_hop(thrust::device_ptr<float> in_hop)
 {
 	_process_next_hop<thrust::device_ptr<float>, thrust::device_vector<float>&,
 	                  thrust::device_vector<thrust::complex<float>>&,
 	                  zg::hps::mfilt::MedianFilterGPU&,
-	                  zg::fftw::FFTWrapperGPU&,
-	                  zg::win::WindowGPU&>(
+	                  zg::fftw::FFTWrapperGPU&, zg::win::WindowGPU&>(
 	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
 	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
 	    residual_mask, sliding_stft, time, frequency, fft, window,

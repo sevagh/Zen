@@ -1,12 +1,12 @@
 #ifndef ZG_HPS_H
 #define ZG_HPS_H
 
-#include <fftw.h>
-#include <hps/mfilt.h>
-#include <win.h>
 #include <complex>
 #include <cstddef>
+#include <fftw.h>
+#include <hps/mfilt.h>
 #include <vector>
+#include <win.h>
 
 #include <thrust/complex.h>
 #include <thrust/device_vector.h>
@@ -344,7 +344,7 @@ namespace hps {
 
 		void process_next_hop(float* in_hop);
 	};
-}; // namespace hpr
+}; // namespace hps
 }; // namespace zg
 
 #endif /* ZG_HPS_H */

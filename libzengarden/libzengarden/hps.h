@@ -76,10 +76,7 @@ namespace hps {
 
 	class PRealtimeGPU {
 	public:
-		PRealtimeGPU(float fs,
-		             std::size_t hop,
-		             float beta,
-		             zg::io::IOGPU& io);
+		PRealtimeGPU(float fs, std::size_t hop, float beta, zg::io::IOGPU& io);
 		PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io);
 		PRealtimeGPU(float fs, zg::io::IOGPU& io);
 

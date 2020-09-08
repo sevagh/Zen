@@ -138,6 +138,7 @@ endif()
 # check if Doxygen is installed
 find_package(Doxygen)
 if(BUILD_DOCS AND DOXYGEN_FOUND)
+  message("Doxygen found and enabled")
   # set input and output files
   set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/doxygen/Doxyfile.in)
   set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
@@ -154,4 +155,20 @@ if(BUILD_DOCS AND DOXYGEN_FOUND)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating API documentation with Doxygen"
     VERBATIM)
+endif()
+
+# ------------------------------------------------------------------------------#
+# CPPCLEAN
+# ------------------------------------------------------------------------------#
+
+find_program(CPP_CLEAN "cppclean")
+if(CPP_CLEAN)
+  message("cppclean found and enabled")
+  add_custom_target(
+    cpp-clean
+    COMMAND
+      cppclean
+	--include-path "${PROJECT_SOURCE_DIR}"
+	--include-path "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}"
+	--include-path "${IPP_INCLUDE_DIR}" "${PROJECT_SOURCE_DIR}")
 endif()

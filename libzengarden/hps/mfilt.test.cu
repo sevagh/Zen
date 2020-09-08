@@ -1,5 +1,5 @@
-#include <hps/mfilt.h>
 #include <gtest/gtest.h>
+#include <hps/mfilt.h>
 #include <iostream>
 
 #include <npp.h>

@@ -11,3 +11,5 @@ mkdir -p build &&\
 	cmake ../libzengarden -G Ninja -DCMAKE_CXX_COMPILER=/home/sevagh/GCC-8.4.0/bin/g++ -DCMAKE_CUDA_HOST_COMPILER=/home/sevagh/GCC-8.4.0/bin/g++ -DIPP_ROOT=/home/sevagh/intel/ipp ${UBSAN} ${ASAN} &&\
 	ninja -j 16 &&\
 	CTEST_OUTPUT_ON_FAILURE=1 ninja test
+
+ninja cpp-clean || true

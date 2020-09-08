@@ -1,6 +1,6 @@
+#include <benchmark/benchmark.h>
 #include <hps/mfilt.h>
 #include <libzengarden/io.h>
-#include <benchmark/benchmark.h>
 #include <thrust/device_vector.h>
 
 // l_harm and l_perc are typically no more than 11
