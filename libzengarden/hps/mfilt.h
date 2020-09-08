@@ -1,5 +1,5 @@
-#ifndef MEDIAN_FILTER_PRIVATE_H
-#define MEDIAN_FILTER_PRIVATE_H
+#ifndef ZG_MFILT_H
+#define ZG_MFILT_H
 
 #include <complex>
 #include <cstddef>
@@ -10,19 +10,19 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "npp.h"
-#include "nppdefs.h"
-#include "nppi.h"
+#include <npp.h>
+#include <nppdefs.h>
+#include <nppi.h>
 
-#include "ipp.h"
-#include "ippdefs.h"
-#include "ippi.h"
+#include <ipp.h>
+#include <ippdefs.h>
+#include <ippi.h>
 
-#include "rhythm_toolkit/rhythm_toolkit.h"
+#include <libzengarden/zg.h>
 
-namespace rhythm_toolkit_private {
-namespace median_filter {
-
+namespace zg {
+namespace hps {
+namespace mfilt {
 	enum MedianFilterDirection {
 		TimeCausal,
 		TimeAnticausal,
@@ -80,7 +80,7 @@ namespace median_filter {
 			     && filter_len > time)
 			    || (dir == MedianFilterDirection::Frequency
 			        && filter_len > frequency)) {
-				throw rhythm_toolkit::RtkException("median filter bigger than "
+				throw zg::ZgException("median filter bigger than "
 				                                   "matrix dimension");
 			}
 
@@ -285,7 +285,7 @@ namespace median_filter {
 			     && filter_len > time)
 			    || (dir == MedianFilterDirection::Frequency
 			        && filter_len > frequency)) {
-				throw rhythm_toolkit::RtkException("median filter bigger than "
+				throw zg::ZgException("median filter bigger than "
 				                                   "matrix dimension");
 			}
 
@@ -327,7 +327,8 @@ namespace median_filter {
 			                               mask, ippBorderRepl, 0, buffer);
 		}
 	};
-}; // namespace median_filter
-}; // namespace rhythm_toolkit_private
+}; // namespace zg
+}; // namespace hps
+}; // namespace mfilt
 
-#endif /* MEDIAN_FILTER_PRIVATE_H */
+#endif /* ZG_MFILT_H */

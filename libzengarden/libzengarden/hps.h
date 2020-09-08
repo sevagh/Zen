@@ -1,54 +1,19 @@
-#ifndef HPSS_H
-#define HPSS_H
+#ifndef ZG_HPS_PUB_H
+#define ZG_HPS_PUB_H
 
 #include <complex>
 #include <cstddef>
 #include <thrust/device_vector.h>
 #include <vector>
 
-#include "io.h"
-#include "rhythm_toolkit.h"
+#include <libzengarden/io.h>
 
-/*
- * Adaptation of Real-Time HPSS
- *     https://github.com/sevagh/Real-Time-HPSS
- *
- * The conclusions of Real-Time HPSS were that the percussive separation works
- * better than the harmonic. If we drop the harmonic separation completely, we
- * save some computation (although the harmonic mask is necessary for a
- * percussive separation)
- */
-
-// forward declare the private implementation of HPSS
-namespace rhythm_toolkit_private {
-namespace hpss {
+namespace zg {
+namespace hps {
+	// forward declare the private implementations of HPSS
 	class HPRGPU;
 	class HPRCPU;
-}; // namespace hpss
-}; // namespace rhythm_toolkit_private
 
-/*
- * Adaptation of Real-Time HPSS
- *     https://github.com/sevagh/Real-Time-HPSS
- *
- * The conclusions of Real-Time HPSS were that the percussive separation works
- * better than the harmonic. If we drop the harmonic separation completely, we
- * save some computation (although the harmonic mask is necessary for a
- * percussive separation)
- *
- * 2 classes:
- *
- * "HPRIOffline" - Harmonic-Percussive-Residual Iterative Offline
- * uses past, present, and future frames for optimal separation of harmonic
- * uses a large block size for harmonic separation followed by a small block
- * size for percussive
- *
- * "PRealtime" - Percussive Realtime
- * this one only uses present and past frames to respect causality for
- * real-time it omits the computation of the harmonic and residual
- */
-namespace rhythm_toolkit {
-namespace hpss {
 	class HPRIOfflineGPU {
 	public:
 		HPRIOfflineGPU(float fs,
@@ -72,12 +37,12 @@ namespace hpss {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		rhythm_toolkit_private::hpss::HPRGPU* p_impl_h;
-		rhythm_toolkit_private::hpss::HPRGPU* p_impl_p;
+		zg::hps::HPRGPU* p_impl_h;
+		zg::hps::HPRGPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
-		rhythm_toolkit::io::IOGPU io_h;
-		rhythm_toolkit::io::IOGPU io_p;
+		zg::io::IOGPU io_h;
+		zg::io::IOGPU io_p;
 	};
 
 	class HPRIOfflineCPU {
@@ -103,8 +68,8 @@ namespace hpss {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		rhythm_toolkit_private::hpss::HPRCPU* p_impl_h;
-		rhythm_toolkit_private::hpss::HPRCPU* p_impl_p;
+		zg::hps::HPRCPU* p_impl_h;
+		zg::hps::HPRCPU* p_impl_p;
 
 		std::size_t hop_h, hop_p;
 	};
@@ -114,9 +79,9 @@ namespace hpss {
 		PRealtimeGPU(float fs,
 		             std::size_t hop,
 		             float beta,
-		             rhythm_toolkit::io::IOGPU& io);
-		PRealtimeGPU(float fs, std::size_t hop, rhythm_toolkit::io::IOGPU& io);
-		PRealtimeGPU(float fs, rhythm_toolkit::io::IOGPU& io);
+		             zg::io::IOGPU& io);
+		PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io);
+		PRealtimeGPU(float fs, zg::io::IOGPU& io);
 
 		~PRealtimeGPU();
 
@@ -130,10 +95,10 @@ namespace hpss {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		rhythm_toolkit_private::hpss::HPRGPU* p_impl;
-		rhythm_toolkit::io::IOGPU& io;
+		zg::hps::HPRGPU* p_impl;
+		zg::io::IOGPU& io;
 	};
-}; // namespace hpss
-}; // namespace rhythm_toolkit
+}; // namespace hps
+}; // namespace zg
 
-#endif /* HPSS_H */
+#endif /* ZG_HPS_PUB_H */

@@ -1,6 +1,5 @@
-#include "medianfilter.h"
-#include "rhythm_toolkit/hpss.h"
-#include "util.h"
+#include <hps/mfilt.h>
+#include <libzengarden/io.h>
 #include <benchmark/benchmark.h>
 #include <thrust/device_vector.h>
 
@@ -8,8 +7,8 @@
 static constexpr int TYPICAL_FILTER_LEN = 11;
 static constexpr int MAX_DIM = 16384;
 
-using namespace rhythm_toolkit_private::median_filter;
-using namespace rhythm_toolkit::io;
+using namespace zg::hps::mfilt;
+using namespace zg::io;
 
 // make a global IOGPU object because reinitializing it over and over in every
 // benchmark was causing some strange cuda errors

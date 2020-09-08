@@ -1,5 +1,5 @@
-#ifndef RHYTHM_TOOLKIT_IO_H
-#define RHYTHM_TOOLKIT_IO_H
+#ifndef ZG_IO_PUB_H
+#define ZG_IO_PUB_H
 
 #include <algorithm>
 #include <cstddef>
@@ -10,9 +10,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "npp.h"
-
-#include "rhythm_toolkit.h"
+#include <npp.h>
 
 static std::once_flag cuda_init_flag;
 
@@ -22,7 +20,7 @@ static void cuda_init()
 	    cuda_init_flag, []() { cudaSetDeviceFlags(cudaDeviceMapHost); });
 }
 
-namespace rhythm_toolkit {
+namespace zg {
 namespace io {
 	class IOGPU {
 	public:
@@ -93,6 +91,6 @@ namespace io {
 		float* device_out_raw_ptr;
 	};
 }; // namespace io
-}; // namespace rhythm_toolkit
+}; // namespace zg
 
-#endif /* RHYTHM_TOOLKIT_IO_H */
+#endif /* ZG_IO_PUB_H */

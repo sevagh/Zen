@@ -1,9 +1,9 @@
-#ifndef HPR_PRIVATE_H
-#define HPR_PRIVATE_H
+#ifndef ZG_HPS_H
+#define ZG_HPS_H
 
-#include "fft_wrapper.h"
-#include "medianfilter.h"
-#include "window.h"
+#include <fftw.h>
+#include <hps/mfilt.h>
+#include <win.h>
 #include <complex>
 #include <cstddef>
 #include <vector>
@@ -12,8 +12,89 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-namespace rhythm_toolkit_private {
-namespace hpss {
+namespace zg {
+namespace hps {
+	static constexpr float Eps = std::numeric_limits<float>::epsilon();
+
+	// various thrust GPU functors, reused across HPRIOfflineGPU and PRealtimeGPU
+	struct window_functor {
+		window_functor() {}
+
+		__host__ __device__ thrust::complex<float>
+		operator()(const float& x, const float& y) const
+		{
+			return thrust::complex<float>{x * y, 0.0};
+		}
+	};
+
+	struct residual_mask_functor {
+		residual_mask_functor() {}
+
+		__host__ __device__ float operator()(const float& x,
+		                                     const float& y) const
+		{
+			return 1 - (x + y);
+		}
+	};
+
+	struct apply_mask_functor {
+		apply_mask_functor() {}
+
+		__host__ __device__ thrust::complex<float>
+		operator()(const thrust::complex<float>& x, const float& y) const
+		{
+			return x * y;
+		}
+	};
+
+	struct overlap_add_functor {
+		const float cola_factor;
+		overlap_add_functor(float _cola_factor)
+		    : cola_factor(_cola_factor)
+		{
+		}
+
+		__host__ __device__ float operator()(const thrust::complex<float>& x,
+		                                     const float& y) const
+		{
+			return y + x.real() * cola_factor;
+		}
+	};
+
+	struct complex_abs_functor {
+		template <typename ValueType>
+		__host__ __device__ ValueType
+		operator()(const thrust::complex<ValueType>& z)
+		{
+			return thrust::abs(z);
+		}
+	};
+
+	struct mask_functor {
+		const float beta;
+
+		mask_functor(float _beta)
+		    : beta(_beta)
+		{
+		}
+
+		__host__ __device__ float operator()(const float& x,
+		                                     const float& y) const
+		{
+			return float((x / (y + Eps)) >= beta);
+		}
+	};
+
+	struct sum_vectors_functor {
+		sum_vectors_functor() {}
+
+		__host__ __device__ float operator()(const float& x,
+		                                     const float& y) const
+		{
+			return x + y;
+		}
+	};
+
 	const unsigned int HPSS_HARMONIC = 1;
 	const unsigned int HPSS_PERCUSSIVE = 1 << 1;
 	const unsigned int HPSS_RESIDUAL = 1 << 2;
@@ -33,7 +114,7 @@ namespace hpss {
 		std::size_t stft_width;
 
 		thrust::device_vector<float> input;
-		window::WindowGPU win;
+		win::WindowGPU window;
 
 		thrust::device_vector<thrust::complex<float>> sliding_stft;
 
@@ -51,10 +132,10 @@ namespace hpss {
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
-		median_filter::MedianFilterGPU time;
-		median_filter::MedianFilterGPU frequency;
+		mfilt::MedianFilterGPU time;
+		mfilt::MedianFilterGPU frequency;
 
-		fft_wrapper::FFTWrapperGPU fft;
+		fftw::FFTWrapperGPU fft;
 
 		bool output_percussive;
 		bool output_harmonic;
@@ -64,7 +145,7 @@ namespace hpss {
 		       std::size_t hop,
 		       float beta,
 		       int output_flags,
-		       median_filter::MedianFilterDirection causality,
+		       mfilt::MedianFilterDirection causality,
 		       bool copy_bord)
 		    : fs(fs)
 		    , hop(hop)
@@ -76,7 +157,7 @@ namespace hpss {
 		    , l_perc(roundf(500 / (fs / ( float )nfft)))
 		    , stft_width(2 * l_harm)
 		    , input(thrust::device_vector<float>(nwin, 0.0F))
-		    , win(window::WindowGPU(window::WindowType::SqrtVonHann, nwin))
+		    , window(win::WindowGPU(win::WindowType::SqrtVonHann, nwin))
 		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
 		          stft_width * nfft,
 		          thrust::complex<float>{0.0F, 0.0F}))
@@ -99,22 +180,22 @@ namespace hpss {
 		    , frequency(stft_width,
 		                nfft,
 		                l_perc,
-		                median_filter::MedianFilterDirection::Frequency,
+		                mfilt::MedianFilterDirection::Frequency,
 		                copy_bord)
-		    , fft(fft_wrapper::FFTWrapperGPU(nfft))
+		    , fft(fftw::FFTWrapperGPU(nfft))
 		    , output_harmonic(false)
 		    , output_percussive(false)
 		    , output_residual(false)
 		{
 			// causal = realtime
-			if (causality == median_filter::MedianFilterDirection::TimeCausal) {
+			if (causality == mfilt::MedianFilterDirection::TimeCausal) {
 				// no lagging frames, output = latest frame
 				lag = 1;
 			}
 
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
-				COLA_factor += win.window[i] * win.window[i];
+				COLA_factor += window.window[i] * window.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
 
@@ -170,7 +251,7 @@ namespace hpss {
 		std::size_t stft_width;
 
 		std::vector<float> input;
-		window::WindowCPU win;
+		win::WindowCPU window;
 
 		std::vector<thrust::complex<float>> sliding_stft;
 
@@ -188,10 +269,10 @@ namespace hpss {
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
-		median_filter::MedianFilterCPU time;
-		median_filter::MedianFilterCPU frequency;
+		mfilt::MedianFilterCPU time;
+		mfilt::MedianFilterCPU frequency;
 
-		fft_wrapper::FFTWrapperCPU fft;
+		fftw::FFTWrapperCPU fft;
 
 		bool output_percussive;
 		bool output_harmonic;
@@ -201,7 +282,7 @@ namespace hpss {
 		       std::size_t hop,
 		       float beta,
 		       int output_flags,
-		       median_filter::MedianFilterDirection causality)
+		       mfilt::MedianFilterDirection causality)
 		    : fs(fs)
 		    , hop(hop)
 		    , nwin(2 * hop)
@@ -212,7 +293,7 @@ namespace hpss {
 		    , l_perc(roundf(500 / (fs / ( float )nfft)))
 		    , stft_width(2 * l_harm)
 		    , input(nwin, 0.0F)
-		    , win(window::WindowType::SqrtVonHann, nwin)
+		    , window(win::WindowType::SqrtVonHann, nwin)
 		    , sliding_stft(stft_width * nfft,
 		                   thrust::complex<float>{0.0F, 0.0F})
 		    , s_mag(stft_width * nfft, 0.0F)
@@ -228,25 +309,25 @@ namespace hpss {
 		    , time(stft_width,
 		           nfft,
 		           l_harm,
-		           median_filter::MedianFilterDirection::TimeAnticausal)
+		           mfilt::MedianFilterDirection::TimeAnticausal)
 		    , frequency(stft_width,
 		                nfft,
 		                l_perc,
-		                median_filter::MedianFilterDirection::Frequency)
+		                mfilt::MedianFilterDirection::Frequency)
 		    , fft(nfft)
 		    , output_harmonic(false)
 		    , output_percussive(false)
 		    , output_residual(false)
 		{
 			// causal = realtime
-			if (causality == median_filter::MedianFilterDirection::TimeCausal) {
+			if (causality == mfilt::MedianFilterDirection::TimeCausal) {
 				// no lagging frames, output = latest frame
 				lag = 1;
 			}
 
 			// COLA = nfft/sum(win.*win)
 			for (std::size_t i = 0; i < nwin; ++i) {
-				COLA_factor += win.window[i] * win.window[i];
+				COLA_factor += window.window[i] * window.window[i];
 			}
 			COLA_factor = nfft / COLA_factor;
 
@@ -263,7 +344,7 @@ namespace hpss {
 
 		void process_next_hop(float* in_hop);
 	};
-}; // namespace hpss
-}; // namespace rhythm_toolkit_private
+}; // namespace hpr
+}; // namespace zg
 
-#endif /* HPR_PRIVATE_H */
+#endif /* ZG_HPS_H */

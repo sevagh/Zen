@@ -1,5 +1,5 @@
-#ifndef WINDOW_PRIVATE_H
-#define WINDOW_PRIVATE_H
+#ifndef ZG_WIN_H
+#define ZG_WIN_H
 
 #include <array>
 #include <cstddef>
@@ -7,10 +7,8 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-#include "rhythm_toolkit/rhythm_toolkit.h"
-
-namespace rhythm_toolkit_private {
-namespace window {
+namespace zg {
+namespace win {
 
 	static constexpr float PI = 3.14159265359F;
 
@@ -43,7 +41,7 @@ namespace window {
 	};
 	using WindowGPU = Window<thrust::device_vector<float>>;
 	using WindowCPU = Window<std::vector<float>>;
-}; // namespace window
-}; // namespace rhythm_toolkit_private
+}; // namespace win
+}; // namespace zg
 
-#endif // WINDOW_PRIVATE_H
+#endif // ZG_WIN_H

@@ -1,5 +1,5 @@
-#ifndef FFT_WRAPPER_PRIVATE_H
-#define FFT_WRAPPER_PRIVATE_H
+#ifndef ZG_FFT_H
+#define ZG_FFT_H
 
 #include <complex>
 #include <cstddef>
@@ -10,16 +10,12 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-#include "npp.h"
-#include "nppdefs.h"
-#include "nppi.h"
+#include <ipp.h>
+#include <ippdefs.h>
+#include <ippi.h>
 
-#include "ipp.h"
-#include "ippdefs.h"
-#include "ippi.h"
-
-namespace rhythm_toolkit_private {
-namespace fft_wrapper {
+namespace zg {
+namespace fftw {
 	class FFTWrapperGPU {
 	public:
 		std::size_t nfft;
@@ -133,7 +129,7 @@ namespace fft_wrapper {
 		int size_buffer;
 	};
 
-}; // namespace fft_wrapper
-}; // namespace rhythm_toolkit_private
+}; // namespace fftw
+}; // namespace zg
 
-#endif /* FFT_WRAPPER_PRIVATE_H */
+#endif /* ZG_FFT_H */

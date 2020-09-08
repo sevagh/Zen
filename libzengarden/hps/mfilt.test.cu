@@ -1,15 +1,14 @@
-#include "medianfilter.h"
-#include "rhythm_toolkit/rhythm_toolkit.h"
+#include <hps/mfilt.h>
 #include <gtest/gtest.h>
 #include <iostream>
 
-#include "npp.h"
-#include "nppdefs.h"
-#include "nppi.h"
+#include <npp.h>
+#include <nppdefs.h>
+#include <nppi.h>
 #include <thrust/device_vector.h>
 
-using namespace rhythm_toolkit_private::median_filter;
-using namespace rhythm_toolkit;
+using namespace zg::hps::mfilt;
+using namespace zg;
 
 class MedianFilterGPUTest : public ::testing::Test {
 
@@ -236,12 +235,12 @@ TEST_F(MedianFilterLargeRectangleUnitTestGPU, Frequency)
 TEST(MedianFilterUnitTestGPU, DegenerateInputFilterTooBig)
 {
 	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency),
-	             rhythm_toolkit::RtkException);
+	             ZgException);
 	EXPECT_THROW(MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeCausal),
-	             rhythm_toolkit::RtkException);
+	             ZgException);
 	EXPECT_THROW(
 	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal),
-	    rhythm_toolkit::RtkException);
+	    ZgException);
 }
 
 TEST_F(MedianFilterSmallSquareUnitTestGPU, AnticausalTime)
@@ -526,12 +525,12 @@ TEST_F(MedianFilterLargeRectangleUnitTestCPU, Frequency)
 TEST(MedianFilterUnitTestCPU, DegenerateInputFilterTooBig)
 {
 	EXPECT_THROW(MedianFilterCPU(9, 9, 171, MedianFilterDirection::Frequency),
-	             rhythm_toolkit::RtkException);
+	             ZgException);
 	EXPECT_THROW(MedianFilterCPU(9, 9, 171, MedianFilterDirection::TimeCausal),
-	             rhythm_toolkit::RtkException);
+	             ZgException);
 	EXPECT_THROW(
 	    MedianFilterCPU(9, 9, 171, MedianFilterDirection::TimeAnticausal),
-	    rhythm_toolkit::RtkException);
+	    ZgException);
 }
 
 TEST_F(MedianFilterSmallSquareUnitTestCPU, AnticausalTime)
@@ -820,13 +819,13 @@ TEST(MedianFilterUnitTestGPUCOPYBORD, DegenerateInputFilterTooBig)
 {
 	EXPECT_THROW(
 	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::Frequency, true),
-	    rhythm_toolkit::RtkException);
+	    ZgException);
 	EXPECT_THROW(
 	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeCausal, true),
-	    rhythm_toolkit::RtkException);
+	    ZgException);
 	EXPECT_THROW(
 	    MedianFilterGPU(9, 9, 171, MedianFilterDirection::TimeAnticausal, true),
-	    rhythm_toolkit::RtkException);
+	    ZgException);
 }
 
 TEST_F(MedianFilterSmallSquareUnitTestGPUCOPYBORD, AnticausalTime)
