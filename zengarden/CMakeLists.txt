@@ -43,7 +43,7 @@ include_directories(
 # ZENGARDEN CLI
 # ------------------------------------------------------------------------------#
 
-set(ZENGARDEN_SOURCES main.cu)
+set(ZENGARDEN_SOURCES main.cu realtime.cu)
 set(ZENGARDEN_DEPS ${Zengarden_LIBRARY} ${SOUNDIO_LIBRARY} libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
 message("ZENGARDEN: Building cli tool")

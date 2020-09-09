@@ -6,6 +6,7 @@
 #include <clipp.h>
 #include <offline.h>
 #include <fakert.h>
+#include <realtime.h>
 
 int main(int argc, char* argv[])
 {
@@ -21,6 +22,7 @@ int main(int argc, char* argv[])
 
     zg::offline::OfflineParams offline_params;
     zg::fakert::FakeRtParams fakert_params;
+    zg::realtime::RealtimeParams realtime_params;
 
     auto offline  = ( command("offline").set(selected,mode::offline),
 		      required("-i", "--input") & value("infile", offline_params.infile)  % "input wav file",
@@ -32,10 +34,16 @@ int main(int argc, char* argv[])
 		      required("-i", "--input") & value("infile", fakert_params.infile)  % "input wav file",
 		      (option("--hps").set(fakert_params.do_hps,false) & opt_value("hop", fakert_params.hop) & opt_value("beta", fakert_params.beta)) % "1-pass P-realtime, defaults: 256,2.5",
 		      option("-o", "--output") & value("outfile", fakert_params.outfile) % "(optional) output wav file"
-		      ) % "fakert (use slimmer rt algorithms with wav files)";
+		      ) % "fakert (use slim rt algorithms with wav files)";
+
+    auto realtime  = ( command("realtime").set(selected,mode::realtime),
+		      option("-i", "--indevice") & value("indevice", realtime_params.indevice)  % "input device",
+		      (option("--hps").set(realtime_params.do_hps,false) & opt_value("hop", realtime_params.hop) & opt_value("beta", realtime_params.beta)) % "1-pass P-realtime, defaults: 256,2.5",
+		      option("-o", "--outdevice") & value("outdevice", realtime_params.outdevice) % "output device"
+		      ) % "realtime (use slim rt algorithms in a realtime audio in-out loop)";
 
     auto zgcli = (
-        offline | fakert
+        offline | fakert | realtime
         | command("help", "-h", "--help").set(selected,mode::help)     % "Show this screen."
         | command("version", "-v", "--version")([]{ std::cout << "version 1.0\n"; }) % "Show version."
     );
@@ -47,6 +55,7 @@ int main(int argc, char* argv[])
 
     zg::offline::OfflineCommand zo(offline_params);
     zg::fakert::FakeRtCommand zf(fakert_params);
+    zg::realtime::RealtimeCommand zr(realtime_params);
 
     if(parse(argc, argv, zgcli)) {
         switch(selected) {
@@ -65,8 +74,7 @@ int main(int argc, char* argv[])
             case mode::fakert:
 		return zf.execute();
             case mode::realtime:
-		std::cout << "realtime!" << std::endl;
-                break;
+		return zr.execute();
         }
     }
     else {
