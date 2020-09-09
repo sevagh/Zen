@@ -1,5 +1,5 @@
-#ifndef ZG_WIN_H
-#define ZG_WIN_H
+#ifndef ZG_WIN_INTERNAL_H
+#define ZG_WIN_INTERNAL_H
 
 #include <array>
 #include <cstddef>
@@ -8,12 +8,14 @@
 #include <vector>
 
 namespace zg {
+namespace internal {
 namespace win {
 
 	static constexpr float PI = 3.14159265359F;
 
 	enum WindowType {
 		SqrtVonHann,
+		VonHann,
 	};
 
 	template <typename T>
@@ -25,8 +27,7 @@ namespace win {
 		    : window(window_size, 0.0)
 		{
 			switch (window_type) {
-			default: // only implement a von Hann window for now
-
+			case WindowType::SqrtVonHann: {
 				// typically this would be "window_size-1"
 				// but we want the behavior of a matlab 'periodic' hann
 				// vs. the default 'symm' hann
@@ -36,12 +37,21 @@ namespace win {
 					window[n] = sqrtf(
 					    0.5F * (1.0F - cosf(2.0F * PI * ( float )n / N)));
 				}
+			      } break;
+			case WindowType::VonHann: {
+				auto N = ( float )(window_size);
+
+				for (std::size_t n = 0; n < window_size; ++n) {
+					window[n] = 0.5F * (1.0F - cosf(2.0F * PI * ( float )n / N));
+				}
+				} break;
 			}
 		}
 	};
 	using WindowGPU = Window<thrust::device_vector<float>>;
 	using WindowCPU = Window<std::vector<float>>;
 }; // namespace win
+}; // namespace internal
 }; // namespace zg
 
-#endif // ZG_WIN_H
+#endif // ZG_WIN_INTERNAL_H

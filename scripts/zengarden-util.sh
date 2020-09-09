@@ -44,6 +44,7 @@ elif [ "${BUILDCMD}" == "test" ]; then
 
 	ninja cpp-clean || true
 elif [ "${BUILDCMD}" == "fmt" ]; then
-	echo "running clang-format on all source files"
-	find libzengarden/ zengarden/ ZenGardenia/ -regex '.*\.\(cu\|h\)' -exec clang-format -style=file -i {} \;
+	#echo "running clang-format on all source files"
+	echo "NOT running clang-format on all source files"
+	#find libzengarden/ zengarden/ ZenGardenia/ -regex '.*\.\(cu\|h\)' -exec clang-format -style=file -i {} \;
 fi

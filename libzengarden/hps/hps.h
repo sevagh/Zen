@@ -1,5 +1,5 @@
-#ifndef ZG_HPS_H
-#define ZG_HPS_H
+#ifndef ZG_HPS_INTERNAL_H
+#define ZG_HPS_INTERNAL_H
 
 #include <complex>
 #include <cstddef>
@@ -12,7 +12,10 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
+#include <core.h>
+
 namespace zg {
+namespace internal {
 namespace hps {
 	static constexpr float Eps = std::numeric_limits<float>::epsilon();
 
@@ -99,7 +102,15 @@ namespace hps {
 	const unsigned int HPSS_PERCUSSIVE = 1 << 1;
 	const unsigned int HPSS_RESIDUAL = 1 << 2;
 
-	class HPRGPU {
+	template<zg::internal::core::Backend B> class HPR {
+
+	typedef typename zg::internal::core::TypeTraits<B>::InputPointer InputPointer;
+	typedef typename zg::internal::core::TypeTraits<B>::RealVector RealVector;
+	typedef typename zg::internal::core::TypeTraits<B>::ComplexVector ComplexVector;
+	typedef typename zg::internal::core::TypeTraits<B>::MedianFilter MedianFilter;
+	typedef typename zg::internal::core::TypeTraits<B>::FFTWrapper FFTWrapper;
+	typedef typename zg::internal::core::TypeTraits<B>::Window Window;
+
 	public:
 		float fs;
 		std::size_t hop;
@@ -113,35 +124,35 @@ namespace hps {
 		         // frames backwards
 		std::size_t stft_width;
 
-		thrust::device_vector<float> input;
-		win::WindowGPU window;
+		RealVector input;
+		Window window;
 
-		thrust::device_vector<thrust::complex<float>> sliding_stft;
+		ComplexVector sliding_stft;
 
-		thrust::device_vector<float> s_mag;
-		thrust::device_vector<float> harmonic_matrix;
-		thrust::device_vector<float> percussive_matrix;
+		RealVector s_mag;
+		RealVector harmonic_matrix;
+		RealVector percussive_matrix;
 
-		thrust::device_vector<float> percussive_mask;
-		thrust::device_vector<float> harmonic_mask;
-		thrust::device_vector<float> residual_mask;
-		thrust::device_vector<float> percussive_out;
-		thrust::device_vector<float> harmonic_out;
-		thrust::device_vector<float> residual_out;
+		RealVector percussive_mask;
+		RealVector harmonic_mask;
+		RealVector residual_mask;
+		RealVector percussive_out;
+		RealVector harmonic_out;
+		RealVector residual_out;
 
 		float COLA_factor; // see
 		                   // https://www.mathworks.com/help/signal/ref/iscola.html
 
-		mfilt::MedianFilterGPU time;
-		mfilt::MedianFilterGPU frequency;
+		MedianFilter time;
+		MedianFilter frequency;
 
-		fftw::FFTWrapperGPU fft;
+		FFTWrapper fft;
 
 		bool output_percussive;
 		bool output_harmonic;
 		bool output_residual;
 
-		HPRGPU(float fs,
+		HPR(float fs,
 		       std::size_t hop,
 		       float beta,
 		       int output_flags,
@@ -156,25 +167,20 @@ namespace hps {
 		    , lag(l_harm)
 		    , l_perc(roundf(500 / (fs / ( float )nfft)))
 		    , stft_width(2 * l_harm)
-		    , input(thrust::device_vector<float>(nwin, 0.0F))
-		    , window(win::WindowGPU(win::WindowType::SqrtVonHann, nwin))
-		    , sliding_stft(thrust::device_vector<thrust::complex<float>>(
+		    , input(nwin, 0.0F)
+		    , window(win::WindowType::SqrtVonHann, nwin)
+		    , sliding_stft(
 		          stft_width * nfft,
-		          thrust::complex<float>{0.0F, 0.0F}))
-		    , s_mag(thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_matrix(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_matrix(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_mask(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , harmonic_mask(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , residual_mask(
-		          thrust::device_vector<float>(stft_width * nfft, 0.0F))
-		    , percussive_out(thrust::device_vector<float>(nwin, 0.0F))
-		    , residual_out(thrust::device_vector<float>(nwin, 0.0F))
-		    , harmonic_out(thrust::device_vector<float>(nwin, 0.0F))
+		          thrust::complex<float>{0.0F, 0.0F})
+		    , s_mag(stft_width * nfft, 0.0F)
+		    , percussive_matrix(stft_width * nfft, 0.0F)
+		    , harmonic_matrix(stft_width * nfft, 0.0F)
+		    , percussive_mask(stft_width * nfft, 0.0F)
+		    , harmonic_mask(stft_width * nfft, 0.0F)
+		    , residual_mask(stft_width * nfft, 0.0F)
+		    , percussive_out(nwin, 0.0F)
+		    , residual_out(nwin, 0.0F)
+		    , harmonic_out(nwin, 0.0F)
 		    , COLA_factor(0.0f)
 		    , time(stft_width, nfft, l_harm, causality, copy_bord)
 		    , frequency(stft_width,
@@ -182,7 +188,7 @@ namespace hps {
 		                l_perc,
 		                mfilt::MedianFilterDirection::Frequency,
 		                copy_bord)
-		    , fft(fftw::FFTWrapperGPU(nfft))
+		    , fft(nfft)
 		    , output_harmonic(false)
 		    , output_percussive(false)
 		    , output_residual(false)
@@ -236,115 +242,10 @@ namespace hps {
 		}
 	};
 
-	class HPRCPU {
-	public:
-		float fs;
-		std::size_t hop;
-		std::size_t nwin;
-		std::size_t nfft;
-		float beta;
-		int l_harm;
-		int l_perc;
-		int lag; // lag specifies how far behind the output frame is compared
-		         // to the tip in the anticausal case we're looking for l_harm
-		         // frames backwards
-		std::size_t stft_width;
-
-		std::vector<float> input;
-		win::WindowCPU window;
-
-		std::vector<thrust::complex<float>> sliding_stft;
-
-		std::vector<float> s_mag;
-		std::vector<float> harmonic_matrix;
-		std::vector<float> percussive_matrix;
-
-		std::vector<float> percussive_mask;
-		std::vector<float> harmonic_mask;
-		std::vector<float> residual_mask;
-		std::vector<float> percussive_out;
-		std::vector<float> harmonic_out;
-		std::vector<float> residual_out;
-
-		float COLA_factor; // see
-		                   // https://www.mathworks.com/help/signal/ref/iscola.html
-
-		mfilt::MedianFilterCPU time;
-		mfilt::MedianFilterCPU frequency;
-
-		fftw::FFTWrapperCPU fft;
-
-		bool output_percussive;
-		bool output_harmonic;
-		bool output_residual;
-
-		HPRCPU(float fs,
-		       std::size_t hop,
-		       float beta,
-		       int output_flags,
-		       mfilt::MedianFilterDirection causality)
-		    : fs(fs)
-		    , hop(hop)
-		    , nwin(2 * hop)
-		    , nfft(4 * hop)
-		    , beta(beta)
-		    , l_harm(roundf(0.2 / (( float )(nfft - hop) / fs)))
-		    , lag(l_harm)
-		    , l_perc(roundf(500 / (fs / ( float )nfft)))
-		    , stft_width(2 * l_harm)
-		    , input(nwin, 0.0F)
-		    , window(win::WindowType::SqrtVonHann, nwin)
-		    , sliding_stft(stft_width * nfft,
-		                   thrust::complex<float>{0.0F, 0.0F})
-		    , s_mag(stft_width * nfft, 0.0F)
-		    , percussive_matrix(stft_width * nfft, 0.0F)
-		    , harmonic_matrix(stft_width * nfft, 0.0F)
-		    , percussive_mask(stft_width * nfft, 0.0F)
-		    , harmonic_mask(stft_width * nfft, 0.0F)
-		    , residual_mask(stft_width * nfft, 0.0F)
-		    , percussive_out(nwin, 0.0F)
-		    , residual_out(nwin, 0.0F)
-		    , harmonic_out(nwin, 0.0F)
-		    , COLA_factor(0.0f)
-		    , time(stft_width,
-		           nfft,
-		           l_harm,
-		           mfilt::MedianFilterDirection::TimeAnticausal)
-		    , frequency(stft_width,
-		                nfft,
-		                l_perc,
-		                mfilt::MedianFilterDirection::Frequency)
-		    , fft(nfft)
-		    , output_harmonic(false)
-		    , output_percussive(false)
-		    , output_residual(false)
-		{
-			// causal = realtime
-			if (causality == mfilt::MedianFilterDirection::TimeCausal) {
-				// no lagging frames, output = latest frame
-				lag = 1;
-			}
-
-			// COLA = nfft/sum(win.*win)
-			for (std::size_t i = 0; i < nwin; ++i) {
-				COLA_factor += window.window[i] * window.window[i];
-			}
-			COLA_factor = nfft / COLA_factor;
-
-			if (output_flags & HPSS_HARMONIC) {
-				output_harmonic = true;
-			}
-			if (output_flags & HPSS_PERCUSSIVE) {
-				output_percussive = true;
-			}
-			if (output_flags & HPSS_RESIDUAL) {
-				output_residual = true;
-			}
-		};
-
-		void process_next_hop(float* in_hop);
-	};
+	using HPRCPU = HPR<zg::internal::core::Backend::CPU>;
+	using HPRGPU = HPR<zg::internal::core::Backend::GPU>;
 }; // namespace hps
+}; // namespace internal
 }; // namespace zg
 
-#endif /* ZG_HPS_H */
+#endif /* ZG_HPS_INTERNAL_H */

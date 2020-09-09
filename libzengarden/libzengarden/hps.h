@@ -6,13 +6,10 @@
 #include <vector>
 
 #include <libzengarden/io.h>
+#include <hps/hps.h>
 
 namespace zg {
 namespace hps {
-	// forward declare the private implementations of HPSS
-	class HPRGPU;
-	class HPRCPU;
-
 	class HPRIOfflineGPU {
 	public:
 		HPRIOfflineGPU(float fs,
@@ -22,8 +19,6 @@ namespace hps {
 		               float beta_p);
 		HPRIOfflineGPU(float fs, std::size_t hop_h, std::size_t hop_p);
 		HPRIOfflineGPU(float fs);
-
-		~HPRIOfflineGPU();
 
 		// pass the entire song in the in vec
 		// the vector is copied to be modified in-place
@@ -36,8 +31,8 @@ namespace hps {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		zg::hps::HPRGPU* p_impl_h;
-		zg::hps::HPRGPU* p_impl_p;
+		zg::internal::hps::HPRGPU p_impl_h;
+		zg::internal::hps::HPRGPU p_impl_p;
 
 		std::size_t hop_h, hop_p;
 		zg::io::IOGPU io_h;
@@ -54,8 +49,6 @@ namespace hps {
 		HPRIOfflineCPU(float fs, std::size_t hop_h, std::size_t hop_p);
 		HPRIOfflineCPU(float fs);
 
-		~HPRIOfflineCPU();
-
 		// pass the entire song in the in vec
 		// the vector is copied to be modified in-place
 		//
@@ -67,8 +60,8 @@ namespace hps {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		zg::hps::HPRCPU* p_impl_h;
-		zg::hps::HPRCPU* p_impl_p;
+		zg::internal::hps::HPRCPU p_impl_h;
+		zg::internal::hps::HPRCPU p_impl_p;
 
 		std::size_t hop_h, hop_p;
 	};
@@ -91,7 +84,7 @@ namespace hps {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		zg::hps::HPRGPU* p_impl;
+		zg::internal::hps::HPRGPU p_impl;
 		zg::io::IOGPU& io;
 	};
 }; // namespace hps

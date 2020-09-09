@@ -1,5 +1,5 @@
-#ifndef ZG_MFILT_H
-#define ZG_MFILT_H
+#ifndef ZG_MFILT_INTERNAL_H
+#define ZG_MFILT_INTERNAL_H
 
 #include <complex>
 #include <cstddef>
@@ -21,6 +21,7 @@
 #include <libzengarden/zg.h>
 
 namespace zg {
+namespace internal {
 namespace hps {
 	namespace mfilt {
 		enum MedianFilterDirection {
@@ -336,6 +337,7 @@ namespace hps {
 		};
 	}; // namespace mfilt
 };     // namespace hps
+};     // namespace internal
 };     // namespace zg
 
-#endif /* ZG_MFILT_H */
+#endif /* ZG_MFILT_INTERNAL_H */

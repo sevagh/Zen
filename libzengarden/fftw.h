@@ -1,5 +1,5 @@
-#ifndef ZG_FFT_H
-#define ZG_FFT_H
+#ifndef ZG_FFT_INTERNAL_H
+#define ZG_FFT_INTERNAL_H
 
 #include <complex>
 #include <cstddef>
@@ -15,6 +15,7 @@
 #include <ippi.h>
 
 namespace zg {
+namespace internal {
 namespace fftw {
 	class FFTWrapperGPU {
 	public:
@@ -130,6 +131,7 @@ namespace fftw {
 	};
 
 }; // namespace fftw
+}; // namespace internal
 }; // namespace zg
 
-#endif /* ZG_FFT_H */
+#endif /* ZG_FFT_INTERNAL_H */

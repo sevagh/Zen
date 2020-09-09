@@ -45,7 +45,10 @@ include_directories(
 # LIBZENGARDEN
 # ------------------------------------------------------------------------------#
 
-set(LIBZENGARDEN_SOURCES ${PROJECT_SOURCE_DIR}/hps/hps.cu)
+set(LIBZENGARDEN_SOURCES
+	${PROJECT_SOURCE_DIR}/hps/hps.cu
+	#${PROJECT_SOURCE_DIR}/onset/onset.cu
+	)
 
 file(
 	GLOB_RECURSE
