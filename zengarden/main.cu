@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 		case mode::none:
 			break;
 		case mode::help: {
-			std::cout << "zengarden\n\nUsage:\n"
+			std::cout << "usage:\n\n"
 			          << usage_lines(zgcli, "zengarden", fmt)
 			          << "\n\nOptions:\n"
 			          << documentation(zgcli, fmt) << '\n';
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	else {
-		std::cerr << "Wrong command line arguments.\nUsage:\n"
+		std::cerr << "usage:\n\n"
 		          << usage_lines(zgcli, "zengarden", fmt) << '\n';
 	}
 }

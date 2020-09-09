@@ -24,8 +24,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../cmake")
 
 include(FindPkgConfig)
 
-#set(Zengarden_STATIC TRUE)
-find_package(Zengarden REQUIRED)
+#find_package(Zengarden REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(SoundIo REQUIRED)
 find_package(IPP REQUIRED)
@@ -33,7 +32,7 @@ find_package(CUDAToolkit REQUIRED)
 
 include_directories(
 	"${PROJECT_SOURCE_DIR}"
-	${ZENGARDEN_INCLUDE_DIR}
+	"${PROJECT_SOURCE_DIR}/../libzengarden/libzengarden"
 	${SOUNDIO_INCLUDE_DIR}
 	${NYQUIST_INCLUDE_DIR}
 	${VENDOR_DIR}/clipp/include
@@ -44,7 +43,7 @@ include_directories(
 # ------------------------------------------------------------------------------#
 
 set(ZENGARDEN_SOURCES main.cu realtime.cu)
-set(ZENGARDEN_DEPS ${Zengarden_LIBRARY} ${SOUNDIO_LIBRARY} libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
+set(ZENGARDEN_DEPS "${PROJECT_SOURCE_DIR}/../build/build-lib/liblibzengarden.so" ${SOUNDIO_LIBRARY} libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
 message("ZENGARDEN: Building cli tool")
 add_executable(zengarden ${ZENGARDEN_SOURCES})
