@@ -15,7 +15,6 @@
 
 namespace zg {
 namespace offline {
-
 	struct OfflineParams {
 		std::string infile = "";
 		std::string outfile = "";
@@ -32,7 +31,34 @@ namespace offline {
 		OfflineCommand(OfflineParams p)
 		    : p(p){};
 
-		int validate_params() { return 0; }
+		int validate_params()
+		{
+			std::cout << "Running zengarden-offline with the following params:"
+			          << "\n\tinfile: " << p.infile
+			          << "\n\toutfile: " << p.outfile;
+
+			if (p.do_hps) {
+				std::cout << "\n\tdo hps: yes"
+				          << "\n\t\tharmonic hop: " << p.hop_h
+				          << "\n\t\tharmonic beta: " << p.beta_h
+				          << "\n\t\tpercussive hop: " << p.hop_p
+				          << "\n\t\tpercussive beta: " << p.beta_p;
+			}
+			else {
+				std::cout << "\n\tdo hps: no";
+			}
+
+			if (p.cpu) {
+				std::cout << "\n\tcompute: cpu (ipp)";
+			}
+			else {
+				std::cout << "\n\tcompute: gpu (cuda/npp)";
+			}
+
+			std::cout << std::endl;
+
+			return 0;
+		}
 
 		int execute()
 		{
@@ -72,12 +98,12 @@ namespace offline {
 				    file_data->samples.begin(), file_data->samples.end());
 			}
 
-			std::vector<float> percussive_out = audio;
+			std::vector<float> percussive_out;
 
 			if (p.do_hps) {
 				std::cout << "Processing input signal of size " << audio.size()
 				          << " with HPR-I separation using harmonic params: "
-				          << p.hop_h << ", " << p.beta_h
+				          << p.hop_h << "," << p.beta_h
 				          << ", percussive params: " << p.hop_p << ","
 				          << p.beta_p << std::endl;
 
@@ -114,6 +140,10 @@ namespace offline {
 					          << dur << " ms" << std::endl;
 				}
 			}
+			else {
+				percussive_out = audio;
+			}
+
 			if (p.outfile != "") {
 				auto percussive_limits = std::minmax_element(
 				    std::begin(percussive_out), std::end(percussive_out));
@@ -141,9 +171,9 @@ namespace offline {
 				    file_data->sourceFormat,
 				};
 
-				nqr::encode_wav_to_disk(
-				    encoder_params, &perc_out, "./perc_out.wav");
+				nqr::encode_wav_to_disk(encoder_params, &perc_out, p.outfile);
 			}
+
 			return 0;
 		}
 

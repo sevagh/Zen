@@ -20,7 +20,6 @@ IndentCaseLabels: false
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: Inner
 PenaltyBreakBeforeFirstCallParameter: 0
-PenaltyBreakComment: 60
 PenaltyBreakString: 0
 PenaltyBreakFirstLessLess: 12
 PenaltyExcessCharacter: 20

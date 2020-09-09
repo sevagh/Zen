@@ -54,44 +54,38 @@ zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs)
 
 std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 {
-	// loop over whole song here
-	int audio_size = audio.size();
-
 	// return same-sized vectors as a result
-	int original_size = audio_size;
+	int original_size = audio.size();
 
 	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio_size / ( float )hop_h));
-	int pad = n_chunks_ceil_iter1 * hop_h - audio_size;
-
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
+	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
 	int lag1 = p_impl_h->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
-	pad += lag1 * hop_h;
+	pad1 += lag1 * hop_h;
 
 	// first lag frames are simply for prefilling the future frames of the stft
 	n_chunks_ceil_iter1 += lag1;
 
-	audio.resize(audio.size() + pad, 0.0F);
-
-	std::vector<float> percussive_out(audio.size());
+	audio.resize(audio.size() + pad1, 0.0F);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
-		// first apply HPR with hop size 4096 for good harmonic separation
-		// copy the song, 4096 samples at a time, into the 4096-sized
+		// first apply HPR with large hop size for good harmonic separation
+		// copy the song, hop_h samples at a time, into the large-sized
 		// mapped/pinned IOGPU device
 		thrust::copy(audio.begin() + i * hop_h,
 		             audio.begin() + (i + 1) * hop_h, io_h.host_in);
 
-		// process every 4096-sized hop
+		// process every large-sized hop
 		p_impl_h->process_next_hop(io_h.device_in);
 
-		// use xp1 + xr1 as input for the second iteration of HPR with hop size
-		// 256 for good percussive separation copy them into separate vectors
+		// use xp1 + xr1 as input for the second iteration of HPR with small
+		// hop size for good percussive separation
 		thrust::transform(p_impl_h->percussive_out.begin(),
 		                  p_impl_h->percussive_out.begin() + hop_h,
 		                  p_impl_h->residual_out.begin(), io_h.device_out,
@@ -101,25 +95,35 @@ std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 		          intermediate.begin() + i * hop_h);
 	}
 
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )original_size / ( float )hop_p));
+	// offset intermediate by lag1*hop_h to skip the padded lag frames of
+	// iter1
+	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
+	          intermediate.begin());
 
+	intermediate.resize(original_size);
+	audio.resize(original_size);
+
+	int n_chunks_ceil_iter2
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
+	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
 	int lag2 = p_impl_p->lag;
 
-	// padded with extra lag frames since offline/anticausal HPSS uses future
+	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
+	pad2 += lag2 * hop_p;
+
+	// first lag frames are simply for prefilling the future frames of the stft
 	n_chunks_ceil_iter2 += lag2;
 
-	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
-		// next apply HPR with hop size 256 for good harmonic separation
-		// copy the song, 256 samples at a time, into the 256-sized
-		// mapped/pinned IOGPU device
+	audio.resize(audio.size() + pad2, 0.0F);
+	std::vector<float> percussive_out(audio.size());
 
-		// offset intermediate by lag1*hop_h to skip the padded lag frames of
-		// iter1
-		std::copy(intermediate.begin() + lag1 * hop_h + i * hop_p,
-		          intermediate.begin() + lag1 * hop_h + (i + 1) * hop_p,
-		          io_p.host_in);
+	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
+		// next apply HPR with small hop size for good harmonic separation
+		// copy the song, hop_p samples at a time, into the small-sized
+		// mapped/pinned IOGPU device
+		std::copy(intermediate.begin() + i * hop_p,
+		          intermediate.begin() + (i + 1) * hop_p, io_p.host_in);
 
 		p_impl_p->process_next_hop(io_p.device_in);
 
@@ -224,38 +228,32 @@ zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs)
 
 std::vector<float> zg::hps::HPRIOfflineCPU::process(std::vector<float> audio)
 {
-	// loop over whole song here
-	int audio_size = audio.size();
-
 	// return same-sized vectors as a result
-	int original_size = audio_size;
+	int original_size = audio.size();
 
 	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio_size / ( float )hop_h));
-	int pad = n_chunks_ceil_iter1 * hop_h - audio_size;
-
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
+	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
 	int lag1 = p_impl_h->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
-	pad += lag1 * hop_h;
+	pad1 += lag1 * hop_h;
 
 	// first lag frames are simply for prefilling the future frames of the stft
 	n_chunks_ceil_iter1 += lag1;
 
-	audio.resize(audio.size() + pad, 0.0F);
-
-	std::vector<float> percussive_out(audio.size());
+	audio.resize(audio.size() + pad1, 0.0F);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
-		// first apply HPR with hop size 4096 for good harmonic separation
+		// first apply HPR with large hop size for good harmonic separation
 		p_impl_h->process_next_hop(audio.data() + i * hop_h);
 
-		// use xp1 + xr1 as input for the second iteration of HPR with hop size
-		// 256 for good percussive separation copy them into separate vectors
+		// use xp1 + xr1 as input for the second iteration of HPR with small
+		// hop size for good percussive separation
 		std::transform(p_impl_h->percussive_out.begin(),
 		               p_impl_h->percussive_out.begin() + hop_h,
 		               p_impl_h->residual_out.begin(),
@@ -263,19 +261,32 @@ std::vector<float> zg::hps::HPRIOfflineCPU::process(std::vector<float> audio)
 		               zg::hps::sum_vectors_functor());
 	}
 
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )original_size / ( float )hop_p));
+	// offset intermediate by lag1*hop_h to skip the padded lag frames of
+	// iter1
+	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
+	          intermediate.begin());
 
+	intermediate.resize(original_size);
+	audio.resize(original_size);
+
+	int n_chunks_ceil_iter2
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
+	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
 	int lag2 = p_impl_p->lag;
 
-	// padded with extra lag frames since offline/anticausal HPSS uses future
+	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
+	pad2 += lag2 * hop_p;
+
+	// first lag frames are simply for prefilling the future frames of the stft
 	n_chunks_ceil_iter2 += lag2;
 
+	audio.resize(audio.size() + pad2, 0.0F);
+	std::vector<float> percussive_out(audio.size());
+
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
-		// next apply HPR with hop size 256 for good harmonic separation
-		p_impl_p->process_next_hop(intermediate.data() + lag1 * hop_h
-		                           + i * hop_p);
+		// next apply HPR with small hop size for good harmonic separation
+		p_impl_p->process_next_hop(intermediate.data() + i * hop_p);
 
 		std::copy(p_impl_p->percussive_out.begin(),
 		          p_impl_p->percussive_out.begin() + hop_p,
