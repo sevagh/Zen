@@ -38,8 +38,10 @@ static void read_callback(struct SoundIoInStream* instream,
 	for (;;) {
 		int frame_count = frames_left;
 
-		if ((err = soundio_instream_begin_read(instream, &areas, &frame_count))) {
-			std::cerr << "begin read error: " << soundio_strerror(err) << std::endl;
+		if ((err
+		     = soundio_instream_begin_read(instream, &areas, &frame_count))) {
+			std::cerr << "begin read error: " << soundio_strerror(err)
+			          << std::endl;
 			std::exit(1);
 		}
 
@@ -50,7 +52,8 @@ static void read_callback(struct SoundIoInStream* instream,
 			// Due to an overflow there is a hole. Fill the ring buffer with
 			// silence for the size of the hole.
 			memset(write_ptr, 0, frame_count * instream->bytes_per_frame);
-			std::cerr << "Dropped %d frames due to internal overflow\n" << frame_count << std::endl;
+			std::cerr << "Dropped %d frames due to internal overflow\n"
+			          << frame_count << std::endl;
 		}
 		else {
 			for (int frame = 0; frame < frame_count; frame += 1) {
@@ -61,7 +64,8 @@ static void read_callback(struct SoundIoInStream* instream,
 		}
 
 		if ((err = soundio_instream_end_read(instream))) {
-			std::cerr << "end read error: " << soundio_strerror(err) << std::endl;
+			std::cerr << "end read error: " << soundio_strerror(err)
+			          << std::endl;
 			std::exit(1);
 		}
 
@@ -99,7 +103,8 @@ static void write_callback(struct SoundIoOutStream* outstream,
 				return;
 			if ((err = soundio_outstream_begin_write(
 			         outstream, &areas, &frame_count))) {
-				std::cerr << "begin write error: " << soundio_strerror(err) << std::endl;
+				std::cerr << "begin write error: " << soundio_strerror(err)
+				          << std::endl;
 				std::exit(1);
 			}
 			if (frame_count <= 0)
@@ -109,7 +114,8 @@ static void write_callback(struct SoundIoOutStream* outstream,
 				areas[0].ptr += areas[0].step;
 			}
 			if ((err = soundio_outstream_end_write(outstream))) {
-				std::cerr << "end write error: " << soundio_strerror(err) << std::endl;
+				std::cerr << "end write error: " << soundio_strerror(err)
+				          << std::endl;
 				std::exit(1);
 			}
 			frames_left -= frame_count;
@@ -122,9 +128,10 @@ static void write_callback(struct SoundIoOutStream* outstream,
 	while (frames_left > 0) {
 		int frame_count = frames_left;
 
-		if ((err
-		     = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
-			std::cerr << "begin write error: " << soundio_strerror(err) << std::endl;
+		if ((err = soundio_outstream_begin_write(
+		         outstream, &areas, &frame_count))) {
+			std::cerr << "begin write error: " << soundio_strerror(err)
+			          << std::endl;
 			std::exit(1);
 		}
 
@@ -138,7 +145,8 @@ static void write_callback(struct SoundIoOutStream* outstream,
 		}
 
 		if ((err = soundio_outstream_end_write(outstream))) {
-			std::cerr << "end write error: " << soundio_strerror(err) << std::endl;
+			std::cerr << "end write error: " << soundio_strerror(err)
+			          << std::endl;
 			std::exit(1);
 		}
 
@@ -155,8 +163,8 @@ static void underflow_callback(struct SoundIoOutStream* outstream)
 	fprintf(stderr, "underflow %d\n", ++count);
 }
 
-
-int zg::realtime::RealtimeCommand::init() {
+int zg::realtime::RealtimeCommand::init()
+{
 	soundio = soundio_create();
 	if (!soundio) {
 		std::cerr << "out of memory" << std::endl;
@@ -217,27 +225,28 @@ int zg::realtime::RealtimeCommand::init() {
 			soundio_device_unref(device);
 		}
 		if (!found) {
-			std::cerr << "invalid output device id: " << p.outdevice << std::endl;
+			std::cerr << "invalid output device id: " << p.outdevice
+			          << std::endl;
 			return 1;
 		}
 	}
 
-	out_device
-	    = soundio_get_output_device(soundio, out_device_index);
+	out_device = soundio_get_output_device(soundio, out_device_index);
 	if (!out_device) {
 		std::cerr << "could not get output device: out of memory" << std::endl;
 		return 1;
 	}
 
-	in_device
-	    = soundio_get_input_device(soundio, in_device_index);
+	in_device = soundio_get_input_device(soundio, in_device_index);
 	if (!in_device) {
 		std::cerr << "could not get input device: out of memory" << std::endl;
 		return 1;
 	}
 
-	std::cerr << "Input device: " << in_device->name << std::endl;;
-	std::cerr << "Output device: " << out_device->name << std::endl;;
+	std::cerr << "Input device: " << in_device->name << std::endl;
+	;
+	std::cerr << "Output device: " << out_device->name << std::endl;
+	;
 
 	instream = soundio_instream_create(in_device);
 	if (!instream) {
@@ -253,12 +262,14 @@ int zg::realtime::RealtimeCommand::init() {
 	instream->read_callback = read_callback;
 
 	if ((err = soundio_instream_open(instream))) {
-		std::cerr << "unable to open input stream: " << soundio_strerror(err) << std::endl;
+		std::cerr << "unable to open input stream: " << soundio_strerror(err)
+		          << std::endl;
 		return 1;
 	}
 
 	if (instream->layout_error) {
-		std::cerr << "unable to open input stream layout: " << soundio_strerror(instream->layout_error) << std::endl;
+		std::cerr << "unable to open input stream layout: "
+		          << soundio_strerror(instream->layout_error) << std::endl;
 		return 1;
 	}
 
@@ -276,17 +287,19 @@ int zg::realtime::RealtimeCommand::init() {
 	outstream->underflow_callback = underflow_callback;
 
 	if ((err = soundio_outstream_open(outstream))) {
-		std::cerr << "unable to open output stream: " << soundio_strerror(err) << std::endl;
+		std::cerr << "unable to open output stream: " << soundio_strerror(err)
+		          << std::endl;
 		return 1;
 	}
 
 	if (outstream->layout_error) {
-		std::cerr << "unable to open output stream layout: " << soundio_strerror(outstream->layout_error) << std::endl;
+		std::cerr << "unable to open output stream layout: "
+		          << soundio_strerror(outstream->layout_error) << std::endl;
 		return 1;
 	}
 
 	int capacity = 2 * p.microphone_latency * instream->sample_rate
-	       * instream->bytes_per_frame;
+	               * instream->bytes_per_frame;
 
 	bloop = new BufferedLoop(soundio, capacity, p);
 
@@ -296,7 +309,8 @@ int zg::realtime::RealtimeCommand::init() {
 	return 0;
 }
 
-int zg::realtime::RealtimeCommand::execute() {
+int zg::realtime::RealtimeCommand::execute()
+{
 	int err;
 
 	// execute buffered loop in the background
@@ -304,21 +318,22 @@ int zg::realtime::RealtimeCommand::execute() {
 
 	char* buf = soundio_ring_buffer_write_ptr(bloop->ring_buffer_out);
 	int fill_count = p.microphone_latency * outstream->sample_rate
-			 * outstream->bytes_per_frame;
+	                 * outstream->bytes_per_frame;
 	memset(buf, 0, fill_count);
 	soundio_ring_buffer_advance_write_ptr(bloop->ring_buffer_out, fill_count);
 
 	if ((err = soundio_instream_start(instream))) {
-		std::cerr << "unable to start input device: " << soundio_strerror(err) << std::endl;
+		std::cerr << "unable to start input device: " << soundio_strerror(err)
+		          << std::endl;
 		return 1;
 	}
 
 	if ((err = soundio_outstream_start(outstream))) {
-		std::cerr << "unable to start output device: " << soundio_strerror(err) << std::endl;
+		std::cerr << "unable to start output device: " << soundio_strerror(err)
+		          << std::endl;
 		return 1;
 	}
 
 	for (;;)
 		soundio_wait_events(soundio);
-
 }
