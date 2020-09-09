@@ -4,6 +4,7 @@ set(VERSION 0.0.1)
 
 set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 set(CMAKE_CXX_STANDARD 14)
+set(VENDOR_DIR ${PROJECT_SOURCE_DIR}/../vendor)
 
 add_definitions("-Wall")
 add_definitions("-Wextra")
@@ -25,7 +26,6 @@ include(FindPkgConfig)
 
 #set(Zengarden_STATIC TRUE)
 find_package(Zengarden REQUIRED)
-find_package(gflags REQUIRED)
 find_package(Nyquist REQUIRED)
 find_package(SoundIo REQUIRED)
 find_package(IPP REQUIRED)
@@ -36,14 +36,15 @@ include_directories(
 	${ZENGARDEN_INCLUDE_DIR}
 	${SOUNDIO_INCLUDE_DIR}
 	${NYQUIST_INCLUDE_DIR}
+	${VENDOR_DIR}/clipp/include
 )
 
 # ------------------------------------------------------------------------------#
 # ZENGARDEN CLI
 # ------------------------------------------------------------------------------#
 
-set(ZENGARDEN_SOURCES wav_hpss_offline.cu)
-set(ZENGARDEN_DEPS ${Zengarden_LIBRARY} ${SOUNDIO_LIBRARY} gflags libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
+set(ZENGARDEN_SOURCES main.cu)
+set(ZENGARDEN_DEPS ${Zengarden_LIBRARY} ${SOUNDIO_LIBRARY} libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
 message("ZENGARDEN: Building cli tool")
 add_executable(zengarden ${ZENGARDEN_SOURCES})

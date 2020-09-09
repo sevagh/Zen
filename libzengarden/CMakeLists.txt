@@ -22,7 +22,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
 option(BUILD_DOCS "Build docs" OFF)
 option(BUILD_BENCHES "Build benchmarks" OFF)
 option(BUILD_TESTS "Build tests" ON)
-#option(BUILD_STATIC "Build static library" OFF)
 option(ENABLE_CLANG_TIDY "compile with clang-tidy" OFF)
 
 # ------------------------------------------------------------------------------#
@@ -59,16 +58,6 @@ message("LIBZENGARDEN: Building dynamic library")
 add_library(libzengarden SHARED ${LIBZENGARDEN_SOURCES})
 set_target_properties(libzengarden PROPERTIES PUBLIC_HEADER "${LIBZENGARDEN_PUBLIC_HEADERS}")
 target_link_libraries(libzengarden ${LIBZENGARDEN_DEPS})
-
-#if (BUILD_STATIC)
-#	message("LIBZENGARDEN: Building static library")
-#	set(LIBZENGARDEN_STATIC_DEPS CUDA::cufft_static CUDA::nppif_static CUDA::nppisu_static CUDA::npps_static CUDA::nppidei_static CUDA::cudart_static pthread dl ${IPP_LIBRARY})
-#	add_library(libzengarden_static STATIC ${LIBZENGARDEN_SOURCES})
-#	target_link_libraries(libzengarden_static PUBLIC ${LIBZENGARDEN_STATIC_DEPS})
-#
-#	install(TARGETS libzengarden_static
-#		LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-#endif()
 
 install(TARGETS libzengarden
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
