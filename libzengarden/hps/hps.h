@@ -102,7 +102,7 @@ namespace hps {
 	const unsigned int HPSS_PERCUSSIVE = 1 << 1;
 	const unsigned int HPSS_RESIDUAL = 1 << 2;
 
-	template<zg::internal::core::Backend B> class HPR {
+	template<zg::Backend B> class HPR {
 
 	typedef typename zg::internal::core::TypeTraits<B>::InputPointer InputPointer;
 	typedef typename zg::internal::core::TypeTraits<B>::RealVector RealVector;
@@ -216,7 +216,7 @@ namespace hps {
 			}
 		};
 
-		void process_next_hop(thrust::device_ptr<float> in_hop);
+		void process_next_hop(InputPointer in_hop);
 
 		void reset_buffers()
 		{
@@ -241,9 +241,6 @@ namespace hps {
 			thrust::fill(residual_mask.begin(), residual_mask.end(), 0.0F);
 		}
 	};
-
-	using HPRCPU = HPR<zg::internal::core::Backend::CPU>;
-	using HPRGPU = HPR<zg::internal::core::Backend::GPU>;
 }; // namespace hps
 }; // namespace internal
 }; // namespace zg

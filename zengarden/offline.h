@@ -9,6 +9,7 @@
 
 #include <libzengarden/hps.h>
 #include <libzengarden/io.h>
+#include <libzengarden/zg.h>
 
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
@@ -108,34 +109,32 @@ namespace offline {
 				          << p.beta_p << std::endl;
 
 				if (p.cpu) {
-					auto hpss = zg::hps::HPRIOfflineCPU(file_data->sampleRate,
-					                                    p.hop_h, p.hop_p,
-					                                    p.beta_h, p.beta_p);
+					auto hpss = zg::hps::HPRIOffline<zg::Backend::CPU>(file_data->sampleRate,
+									    p.hop_h, p.hop_p,
+									    p.beta_h, p.beta_p);
 
 					auto t1 = std::chrono::high_resolution_clock::now();
 					percussive_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
 					auto dur
 					    = std::chrono::duration_cast<std::chrono::milliseconds>(
-					          t2 - t1)
-					          .count();
+						  t2 - t1)
+						  .count();
 
 					std::cout << "CPU/IPP: 2-pass HPR-I-Offline took " << dur
-					          << " ms" << std::endl;
-				}
-				else {
-					auto hpss = zg::hps::HPRIOfflineGPU(file_data->sampleRate,
-					                                    p.hop_h, p.hop_p,
-					                                    p.beta_h, p.beta_p);
+						  << " ms" << std::endl;
+				} else {
+					auto hpss = zg::hps::HPRIOffline<zg::Backend::GPU>(file_data->sampleRate,
+									    p.hop_h, p.hop_p,
+									    p.beta_h, p.beta_p);
 
 					auto t1 = std::chrono::high_resolution_clock::now();
 					percussive_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
 					auto dur
 					    = std::chrono::duration_cast<std::chrono::milliseconds>(
-					          t2 - t1)
-					          .count();
-
+						  t2 - t1)
+						  .count();
 					std::cout << "GPU/CUDA/thrust: 2-pass HPR-I-Offline took "
 					          << dur << " ms" << std::endl;
 				}

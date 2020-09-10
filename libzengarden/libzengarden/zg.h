@@ -10,6 +10,11 @@ public:
 	ZgException(std::string msg)
 	    : std::runtime_error(msg){};
 };
+
+enum Backend {
+	GPU,
+	CPU
+};
 }; // namespace zg
 
 #endif /* ZG_PUB_H */

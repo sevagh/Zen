@@ -17,9 +17,7 @@
 #include <libzengarden/hps.h>
 #include <libzengarden/zg.h>
 
-// real hpss code is below
-// the public namespace is to hide cuda details away from the public interface
-zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
+template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
                                         std::size_t hop_h,
                                         std::size_t hop_p,
                                         float beta_h,
@@ -33,7 +31,7 @@ zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
 	    zg::internal::hps::HPSS_HARMONIC | zg::internal::hps::HPSS_PERCUSSIVE
 	        | zg::internal::hps::HPSS_RESIDUAL,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true)
-	     , p_impl_p(fs, hop_p, beta_p, zg::hps::HPSS_PERCUSSIVE,
+     , p_impl_p(fs, hop_p, beta_p, zg::internal::hps::HPSS_PERCUSSIVE,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true)
 {
 	if (hop_h % hop_p != 0) {
@@ -42,15 +40,15 @@ zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
 	}
 }
 
-zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs,
+template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
                                         std::size_t hop_h,
                                         std::size_t hop_p)
-    : HPRIOfflineGPU(fs, hop_h, hop_p, 2.0, 2.0){};
+    : HPRIOffline(fs, hop_h, hop_p, 2.0, 2.0){};
 
-zg::hps::HPRIOfflineGPU::HPRIOfflineGPU(float fs)
-    : HPRIOfflineGPU(fs, 4096, 256, 2.0, 2.0){};
+template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs)
+    : HPRIOffline(fs, 4096, 256, 2.0, 2.0){};
 
-std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
+template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
 	int original_size = audio.size();
@@ -58,7 +56,7 @@ std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 	int n_chunks_ceil_iter1
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
 	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h->lag;
+	int lag1 = p_impl_h.lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -80,14 +78,14 @@ std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 		             audio.begin() + (i + 1) * hop_h, io_h.host_in);
 
 		// process every large-sized hop
-		p_impl_h->process_next_hop(io_h.device_in);
+		p_impl_h.process_next_hop(io_h.device_in);
 
 		// use xp1 + xr1 as input for the second iteration of HPR with small
 		// hop size for good percussive separation
-		thrust::transform(p_impl_h->percussive_out.begin(),
-		                  p_impl_h->percussive_out.begin() + hop_h,
-		                  p_impl_h->residual_out.begin(), io_h.device_out,
-		                  zg::hps::sum_vectors_functor());
+		thrust::transform(p_impl_h.percussive_out.begin(),
+		                  p_impl_h.percussive_out.begin() + hop_h,
+		                  p_impl_h.residual_out.begin(), io_h.device_out,
+		                  zg::internal::hps::sum_vectors_functor());
 
 		std::copy(io_h.host_out, io_h.host_out + hop_h,
 		          intermediate.begin() + i * hop_h);
@@ -104,7 +102,7 @@ std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 	int n_chunks_ceil_iter2
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
 	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p->lag;
+	int lag2 = p_impl_p.lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -123,12 +121,90 @@ std::vector<float> zg::hps::HPRIOfflineGPU::process(std::vector<float> audio)
 		std::copy(intermediate.begin() + i * hop_p,
 		          intermediate.begin() + (i + 1) * hop_p, io_p.host_in);
 
-		p_impl_p->process_next_hop(io_p.device_in);
+		p_impl_p.process_next_hop(io_p.device_in);
 
-		thrust::copy(p_impl_p->percussive_out.begin(),
-		             p_impl_p->percussive_out.begin() + hop_p, io_p.device_out);
+		thrust::copy(p_impl_p.percussive_out.begin(),
+		             p_impl_p.percussive_out.begin() + hop_p, io_p.device_out);
 
 		std::copy(io_p.host_out, io_p.host_out + hop_p,
+		          percussive_out.begin() + i * hop_p);
+	}
+
+	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
+	// iter2
+	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
+	          percussive_out.begin());
+
+	// truncate all padding
+	percussive_out.resize(original_size);
+
+	return percussive_out;
+}
+
+template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
+{
+	// return same-sized vectors as a result
+	int original_size = audio.size();
+
+	int n_chunks_ceil_iter1
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
+	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
+	int lag1 = p_impl_h.lag;
+
+	// pad with extra lag frames since offline/anticausal HPSS uses future
+	// audio to produce past samples
+	pad1 += lag1 * hop_h;
+
+	// first lag frames are simply for prefilling the future frames of the stft
+	n_chunks_ceil_iter1 += lag1;
+
+	audio.resize(audio.size() + pad1, 0.0F);
+
+	// 2nd iteration uses xp1 + xr1 as the total content
+	std::vector<float> intermediate(audio.size());
+
+	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
+		// first apply HPR with large hop size for good harmonic separation
+		p_impl_h.process_next_hop(audio.data() + i * hop_h);
+
+		// use xp1 + xr1 as input for the second iteration of HPR with small
+		// hop size for good percussive separation
+		std::transform(p_impl_h.percussive_out.begin(),
+		               p_impl_h.percussive_out.begin() + hop_h,
+		               p_impl_h.residual_out.begin(),
+		               intermediate.begin() + i * hop_h,
+		               zg::internal::hps::sum_vectors_functor());
+	}
+
+	// offset intermediate by lag1*hop_h to skip the padded lag frames of
+	// iter1
+	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
+	          intermediate.begin());
+
+	intermediate.resize(original_size);
+	audio.resize(original_size);
+
+	int n_chunks_ceil_iter2
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
+	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
+	int lag2 = p_impl_p.lag;
+
+	// pad with extra lag frames since offline/anticausal HPSS uses future
+	// audio to produce past samples
+	pad2 += lag2 * hop_p;
+
+	// first lag frames are simply for prefilling the future frames of the stft
+	n_chunks_ceil_iter2 += lag2;
+
+	audio.resize(audio.size() + pad2, 0.0F);
+	std::vector<float> percussive_out(audio.size());
+
+	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
+		// next apply HPR with small hop size for good harmonic separation
+		p_impl_p.process_next_hop(intermediate.data() + i * hop_p);
+
+		std::copy(p_impl_p.percussive_out.begin(),
+		          p_impl_p.percussive_out.begin() + hop_p,
 		          percussive_out.begin() + i * hop_p);
 	}
 
@@ -148,8 +224,8 @@ zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
                                     float beta,
                                     zg::io::IOGPU& io)
     : io(io)
-, p_impl(fs, hop, beta, zg::hps::HPSS_PERCUSSIVE,
-	    zg::hps::mfilt::MedianFilterDirection::TimeCausal, true) {}
+, p_impl(fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true) {}
 
 zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io)
     : PRealtimeGPU(fs, hop, 2.5, io){};
@@ -160,145 +236,30 @@ zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, zg::io::IOGPU& io)
 
 void zg::hps::PRealtimeGPU::process_next_hop()
 {
-	p_impl->process_next_hop(io.device_in);
-	thrust::copy(p_impl->percussive_out.begin(),
-	             p_impl->percussive_out.begin() + p_impl->hop, io.device_out);
+	p_impl.process_next_hop(io.device_in);
+	thrust::copy(p_impl.percussive_out.begin(),
+	             p_impl.percussive_out.begin() + p_impl.hop, io.device_out);
 }
 
 void zg::hps::PRealtimeGPU::warmup()
 {
 	int test_iters = 1000; // this is good enough in my experience
-	std::vector<float> testdata(test_iters * p_impl->hop);
-	std::vector<float> outdata(test_iters * p_impl->hop);
+	std::vector<float> testdata(test_iters * p_impl.hop);
+	std::vector<float> outdata(test_iters * p_impl.hop);
 	std::iota(testdata.begin(), testdata.end(), 0.0F);
 
 	for (std::size_t i = 0; i < test_iters; ++i) {
-		thrust::copy(testdata.begin() + i * p_impl->hop,
-		             testdata.begin() + (i + 1) * p_impl->hop, io.host_in);
-		p_impl->process_next_hop(io.device_in);
-		thrust::copy(io.host_out, io.host_out + p_impl->hop,
-		             outdata.begin() + i * p_impl->hop);
+		thrust::copy(testdata.begin() + i * p_impl.hop,
+		             testdata.begin() + (i + 1) * p_impl.hop, io.host_in);
+		p_impl.process_next_hop(io.device_in);
+		thrust::copy(io.host_out, io.host_out + p_impl.hop,
+		             outdata.begin() + i * p_impl.hop);
 	}
 
-	p_impl->reset_buffers();
+	p_impl.reset_buffers();
 }
 
-zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                        std::size_t hop_h,
-                                        std::size_t hop_p,
-                                        float beta_h,
-                                        float beta_p)
-    : hop_h(hop_h)
-    , hop_p(hop_p)
-{
-	if (hop_h % hop_p != 0) {
-		throw zg::ZgException("hop_h and hop_p should be evenly "
-		                      "divisible");
-	}
-	p_impl_h = new zg::hps::HPRCPU(
-	    fs, hop_h, beta_h,
-	    zg::hps::HPSS_HARMONIC | zg::hps::HPSS_PERCUSSIVE
-	        | zg::hps::HPSS_RESIDUAL,
-	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal);
-	p_impl_p = new zg::hps::HPRCPU(
-	    fs, hop_p, beta_p, zg::hps::HPSS_PERCUSSIVE,
-	    zg::hps::mfilt::MedianFilterDirection::TimeAnticausal);
-}
-
-zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs,
-                                        std::size_t hop_h,
-                                        std::size_t hop_p)
-    : HPRIOfflineCPU(fs, hop_h, hop_p, 2.0, 2.0){};
-
-zg::hps::HPRIOfflineCPU::HPRIOfflineCPU(float fs)
-    : HPRIOfflineCPU(fs, 4096, 256, 2.0, 2.0){};
-
-std::vector<float> zg::hps::HPRIOfflineCPU::process(std::vector<float> audio)
-{
-	// return same-sized vectors as a result
-	int original_size = audio.size();
-
-	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
-	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad1 += lag1 * hop_h;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter1 += lag1;
-
-	audio.resize(audio.size() + pad1, 0.0F);
-
-	// 2nd iteration uses xp1 + xr1 as the total content
-	std::vector<float> intermediate(audio.size());
-
-	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
-		// first apply HPR with large hop size for good harmonic separation
-		p_impl_h->process_next_hop(audio.data() + i * hop_h);
-
-		// use xp1 + xr1 as input for the second iteration of HPR with small
-		// hop size for good percussive separation
-		std::transform(p_impl_h->percussive_out.begin(),
-		               p_impl_h->percussive_out.begin() + hop_h,
-		               p_impl_h->residual_out.begin(),
-		               intermediate.begin() + i * hop_h,
-		               zg::hps::sum_vectors_functor());
-	}
-
-	// offset intermediate by lag1*hop_h to skip the padded lag frames of
-	// iter1
-	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
-	          intermediate.begin());
-
-	intermediate.resize(original_size);
-	audio.resize(original_size);
-
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
-	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad2 += lag2 * hop_p;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter2 += lag2;
-
-	audio.resize(audio.size() + pad2, 0.0F);
-	std::vector<float> percussive_out(audio.size());
-
-	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
-		// next apply HPR with small hop size for good harmonic separation
-		p_impl_p->process_next_hop(intermediate.data() + i * hop_p);
-
-		std::copy(p_impl_p->percussive_out.begin(),
-		          p_impl_p->percussive_out.begin() + hop_p,
-		          percussive_out.begin() + i * hop_p);
-	}
-
-	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
-	// iter2
-	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
-	          percussive_out.begin());
-
-	// truncate all padding
-	percussive_out.resize(original_size);
-
-	return percussive_out;
-}
-
-zg::hps::HPRIOfflineCPU::~HPRIOfflineCPU()
-{
-	delete p_impl_h;
-	delete p_impl_p;
-}
-
-template<zg::internal::core::TypeTraits T> void zg::hps::HPR<>::process_next_hop
-process_next_hop(T::InputPointer in_hop)
+template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
@@ -325,7 +286,7 @@ process_next_hop(T::InputPointer in_hop)
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), window.window.begin(),
-	                  fft.fft_vec.begin(), zg::hps::window_functor());
+	                  fft.fft_vec.begin(), zg::internal::hps::window_functor());
 
 	// zero out the second half of the fft
 	thrust::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
@@ -343,7 +304,7 @@ process_next_hop(T::InputPointer in_hop)
 
 	// calculate the magnitude of the stft
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
-	                  zg::hps::complex_abs_functor());
+	                  zg::internal::hps::complex_abs_functor());
 
 	// apply median filter in horizontal and vertical directions with NPP
 	// to create percussive and harmonic spectra
@@ -356,21 +317,21 @@ process_next_hop(T::InputPointer in_hop)
 		                  percussive_matrix.end() - (lag - 1) * nfft,
 		                  harmonic_matrix.end() - lag * nfft,
 		                  percussive_mask.end() - lag * nfft,
-		                  zg::hps::mask_functor(beta));
+		                  zg::internal::hps::mask_functor(beta));
 
 		// apply lag column of percussive mask to recover percussive audio from
 		// original fft
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
 		                  percussive_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
+		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
 		fft.backward();
 
 		// now curr_fft has the current iteration's fresh samples
 		// we overlap-add it the real part to the previous
 		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 		                  percussive_out.begin(), percussive_out.begin(),
-		                  zg::hps::overlap_add_functor(COLA_factor));
+		                  zg::internal::hps::overlap_add_functor(COLA_factor));
 	}
 
 	if (output_harmonic) {
@@ -379,61 +340,38 @@ process_next_hop(T::InputPointer in_hop)
 		                  harmonic_matrix.end() - (lag - 1) * nfft,
 		                  percussive_matrix.end() - lag * nfft,
 		                  harmonic_mask.end() - lag * nfft,
-		                  zg::hps::mask_functor(beta - Eps));
+		                  zg::internal::hps::mask_functor(beta - Eps));
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
 		                  harmonic_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
+		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
 
 		fft.backward();
 
 		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 		                  harmonic_out.begin(), harmonic_out.begin(),
-		                  zg::hps::overlap_add_functor(COLA_factor));
+		                  zg::internal::hps::overlap_add_functor(COLA_factor));
 	}
 
 	if (output_residual) {
 		// compute residual mask from harmonic and percussive masks
 		thrust::transform(harmonic_mask.begin(), harmonic_mask.end(),
 		                  percussive_mask.begin(), residual_mask.begin(),
-		                  zg::hps::residual_mask_functor());
+		                  zg::internal::hps::residual_mask_functor());
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
 		                  residual_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::hps::apply_mask_functor());
+		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
 
 		fft.backward();
 
 		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
 		                  residual_out.begin(), residual_out.begin(),
-		                  zg::hps::overlap_add_functor(COLA_factor));
+		                  zg::internal::hps::overlap_add_functor(COLA_factor));
 	}
 }
 
-void zg::hps::HPRCPU::process_next_hop(float* in_hop)
-{
-	_process_next_hop<float*, std::vector<float>&,
-	                  std::vector<thrust::complex<float>>&,
-	                  zg::internal::hps::mfilt::MedianFilterCPU&,
-	                  zg::internal::fftw::FFTWrapperCPU&, zg::win::WindowCPU&>(
-	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
-	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
-	    residual_mask, sliding_stft, time, frequency, fft, window,
-	    output_percussive, output_harmonic, output_residual, hop, nfft, nwin,
-	    lag, beta, Eps, COLA_factor);
-}
-
-void zg::internal::hps::HPRGPU::process_next_hop(thrust::device_ptr<float> in_hop)
-{
-	_process_next_hop<thrust::device_ptr<float>, thrust::device_vector<float>&,
-	                  thrust::device_vector<thrust::complex<float>>&,
-	                  zg::hps::mfilt::MedianFilterGPU&,
-	                  zg::fftw::FFTWrapperGPU&, zg::win::WindowGPU&>(
-	    in_hop, input, percussive_out, harmonic_out, residual_out, s_mag,
-	    harmonic_matrix, percussive_matrix, harmonic_mask, percussive_mask,
-	    residual_mask, sliding_stft, time, frequency, fft, window,
-	    output_percussive, output_harmonic, output_residual, hop, nfft, nwin,
-	    lag, beta, Eps, COLA_factor);
-}
+template class zg::hps::HPRIOffline<zg::Backend::CPU>;
+template class zg::hps::HPRIOffline<zg::Backend::GPU>;

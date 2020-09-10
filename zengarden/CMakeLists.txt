@@ -32,7 +32,8 @@ find_package(CUDAToolkit REQUIRED)
 
 include_directories(
 	"${PROJECT_SOURCE_DIR}"
-	"${PROJECT_SOURCE_DIR}/../libzengarden/libzengarden"
+	"${PROJECT_SOURCE_DIR}/../libzengarden"
+	${IPP_INCLUDE_DIR}
 	${SOUNDIO_INCLUDE_DIR}
 	${NYQUIST_INCLUDE_DIR}
 	${VENDOR_DIR}/clipp/include

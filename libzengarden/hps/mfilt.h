@@ -281,7 +281,9 @@ namespace hps {
 			MedianFilterCPU(int time,
 			                int frequency,
 			                int filter_len,
-			                MedianFilterDirection dir)
+			                MedianFilterDirection dir,
+			                bool copy_bord
+			                = false) // not used for CPU
 			    : time(time)
 			    , frequency(frequency)
 			    , filter_len(filter_len)

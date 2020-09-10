@@ -8,20 +8,17 @@
 #include <fftw.h>
 #include <win.h>
 #include <hps/mfilt.h>
+#include <libzengarden/zg.h>
 
 namespace zg {
 namespace internal {
 namespace core {
 
-enum Backend {
-	GPU,
-	CPU
-};
-
-template<Backend T>
+template<zg::Backend T>
 struct TypeTraits {}; 
 
-struct TypeTraits<Backend::GPU> {
+template<>
+struct TypeTraits<zg::Backend::GPU> {
 	typedef thrust::device_ptr<float> InputPointer;
 	typedef thrust::device_vector<float> RealVector;
 	typedef thrust::device_vector<thrust::complex<float>> ComplexVector;
@@ -30,7 +27,8 @@ struct TypeTraits<Backend::GPU> {
 	typedef zg::internal::win::WindowGPU Window;
 };
 
-struct TypeTraits<Backend::CPU> {
+template<>
+struct TypeTraits<zg::Backend::CPU> {
 	typedef float* InputPointer;
 	typedef std::vector<float> RealVector;
 	typedef std::vector<thrust::complex<float>> ComplexVector;
