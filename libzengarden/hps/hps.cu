@@ -56,24 +56,30 @@ template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
 template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs)
     : HPRIOffline(fs, 4096, 256, 2.0, 2.0){};
 
+static int hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::size_t lag)
+{
+	int n_chunks_ceil_iter
+	    = ( int )(ceilf(( float )audio.size() / ( float )hop));
+	int pad = n_chunks_ceil_iter * hop - audio.size();
+
+	// pad with extra lag frames since offline/anticausal HPSS uses future
+	// audio to produce past samples
+	pad += lag * hop;
+
+	// first lag frames are simply for prefilling the future frames of the stft
+	n_chunks_ceil_iter += lag;
+
+	audio.resize(audio.size() + pad, 0.0F);
+
+	return n_chunks_ceil_iter;
+}
+
 template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
 	int original_size = audio.size();
 
-	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
-	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad1 += lag1 * hop_h;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter1 += lag1;
-
-	audio.resize(audio.size() + pad1, 0.0F);
+	int n_chunks_ceil_iter1 = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
@@ -101,25 +107,13 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 
 	// offset intermediate by lag1*hop_h to skip the padded lag frames of
 	// iter1
-	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
+	std::copy(intermediate.begin() + p_impl_h->lag * hop_h, intermediate.end(),
 	          intermediate.begin());
 
 	intermediate.resize(original_size);
 	audio.resize(original_size);
 
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
-	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad2 += lag2 * hop_p;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter2 += lag2;
-
-	audio.resize(audio.size() + pad2, 0.0F);
+	int n_chunks_ceil_iter2 = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
 	std::vector<float> percussive_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
@@ -140,7 +134,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 
 	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
 	// iter2
-	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
+	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p, percussive_out.end(),
 	          percussive_out.begin());
 
 	// truncate all padding
@@ -154,19 +148,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 	// return same-sized vectors as a result
 	int original_size = audio.size();
 
-	int n_chunks_ceil_iter1
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
-	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad1 += lag1 * hop_h;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter1 += lag1;
-
-	audio.resize(audio.size() + pad1, 0.0F);
+	int n_chunks_ceil_iter1 = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
@@ -186,25 +168,13 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 
 	// offset intermediate by lag1*hop_h to skip the padded lag frames of
 	// iter1
-	std::copy(intermediate.begin() + lag1 * hop_h, intermediate.end(),
+	std::copy(intermediate.begin() + p_impl_h->lag * hop_h, intermediate.end(),
 	          intermediate.begin());
 
 	intermediate.resize(original_size);
 	audio.resize(original_size);
 
-	int n_chunks_ceil_iter2
-	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
-	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p->lag;
-
-	// pad with extra lag frames since offline/anticausal HPSS uses future
-	// audio to produce past samples
-	pad2 += lag2 * hop_p;
-
-	// first lag frames are simply for prefilling the future frames of the stft
-	n_chunks_ceil_iter2 += lag2;
-
-	audio.resize(audio.size() + pad2, 0.0F);
+	int n_chunks_ceil_iter2 = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
 	std::vector<float> percussive_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
@@ -218,7 +188,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 
 	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
 	// iter2
-	std::copy(percussive_out.begin() + lag2 * hop_p, percussive_out.end(),
+	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p, percussive_out.end(),
 	          percussive_out.begin());
 
 	// truncate all padding
