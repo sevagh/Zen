@@ -1,23 +1,9 @@
-cmake_minimum_required(VERSION 3.14)
-project(libzengarden LANGUAGES CXX CUDA)
-set(VERSION 0.0.1)
+message(STATUS "DEBUG IPP_ROOT=${IPP_ROOT}")
+message(STATUS "DEBUG CUDAToolkit_INCLUDE_DIR=${CUDAToolkit_INCLUDE_DIR}")
 
-include(GNUInstallDirs)
-
-enable_testing()
-
-set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-set(CMAKE_CXX_STANDARD 14)
-
-add_definitions("-Wall")
-add_definitions("-Wextra")
-add_definitions("-Wundef")
-add_definitions("-Wunreachable-code")
-
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "--default-stream-per-thread")
-set(CMAKE_CUDA_FLAGS"-std=c++14 -ggdb")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
+# ------------------------------------------------------------------------------#
+# CONFIGURABLE BUILD OPTIONS
+# ------------------------------------------------------------------------------#
 
 option(BUILD_DOCS "Build docs" OFF)
 option(BUILD_BENCHES "Build benchmarks" OFF)
@@ -28,15 +14,11 @@ option(ENABLE_CLANG_TIDY "compile with clang-tidy" OFF)
 # DEPENDENCIES
 # ------------------------------------------------------------------------------#
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../cmake")
-
-include(FindPkgConfig)
-
 find_package(IPP REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 include_directories(
-	"${PROJECT_SOURCE_DIR}"
+	"${CMAKE_CURRENT_SOURCE_DIR}"
 	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 	${IPP_INCLUDE_DIR}
 )
@@ -46,14 +28,14 @@ include_directories(
 # ------------------------------------------------------------------------------#
 
 set(LIBZENGARDEN_SOURCES
-	${PROJECT_SOURCE_DIR}/hps/hps.cu
-	#${PROJECT_SOURCE_DIR}/onset/onset.cu
+	${CMAKE_CURRENT_SOURCE_DIR}/hps/hps.cu
+	#${CMAKE_CURRENT_SOURCE_DIR}/onset/onset.cu
 	)
 
 file(
 	GLOB_RECURSE
 	LIBZENGARDEN_PUBLIC_HEADERS
-	${PROJECT_SOURCE_DIR}/libzengarden/*.h)
+	${CMAKE_CURRENT_SOURCE_DIR}/libzengarden/*.h)
 
 set(LIBZENGARDEN_DEPS CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
@@ -61,6 +43,7 @@ message("LIBZENGARDEN: Building dynamic library")
 add_library(libzengarden SHARED ${LIBZENGARDEN_SOURCES})
 set_target_properties(libzengarden PROPERTIES PUBLIC_HEADER "${LIBZENGARDEN_PUBLIC_HEADERS}")
 target_link_libraries(libzengarden ${LIBZENGARDEN_DEPS})
+target_include_directories(libzengarden PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS libzengarden
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -118,8 +101,6 @@ endif()
 # UBSAN
 # ------------------------------------------------------------------------------#
 
-option(ENABLE_UBSAN
-       "enable undefined behaviour sanitizer" OFF)
 if(ENABLE_UBSAN)
 	message("UBSAN: ENABLED")
 	set(UBSAN_OPTS "-fsanitize=undefined -static-libubsan")
@@ -134,8 +115,6 @@ endif()
 # ASAN
 # ------------------------------------------------------------------------------#
 
-option(ENABLE_ASAN
-       "enable address sanitizer (in place of valgrind)" OFF)
 if(ENABLE_ASAN)
 	message("ASAN: ENABLED")
 	set(ASAN_OPTS " -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -static-libasan")
@@ -183,7 +162,7 @@ if(CPP_CLEAN)
 	cpp-clean
 	COMMAND
 		cppclean
-		--include-path "${PROJECT_SOURCE_DIR}"
+		--include-path "${CMAKE_CURRENT_SOURCE_DIR}"
 		--include-path "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}"
-		--include-path "${IPP_INCLUDE_DIR}" "${PROJECT_SOURCE_DIR}")
+		--include-path "${IPP_INCLUDE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()

@@ -1,0 +1,56 @@
+cmake_minimum_required (VERSION 3.14)
+
+# ------------------------------------------------------------------------------#
+# SEVAG-SPECIFIC CONFIG, until i find a better place to put this...
+# ------------------------------------------------------------------------------#
+
+set(CMAKE_CXX_COMPILER /home/sevagh/GCC-8.4.0/bin/g++)
+set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+set(IPP_ROOT /home/sevagh/intel/ipp CACHE INTERNAL "ipp location hint")
+set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor CACHE INTERNAL "vendored libaries")
+
+# ------------------------------------------------------------------------------#
+# TOP-LEVEL PROJECT
+# ------------------------------------------------------------------------------#
+
+project(ZENGARDEN LANGUAGES CXX CUDA)
+set(VERSION 0.0.1)
+
+include(GNUInstallDirs)
+
+enable_testing()
+
+# ------------------------------------------------------------------------------#
+# CONFIGURABLE BUILD OPTIONS
+# ------------------------------------------------------------------------------#
+
+option(ENABLE_UBSAN "enable undefined behaviour sanitizer" OFF)
+option(ENABLE_ASAN "enable address sanitizer (in place of valgrind)" OFF)
+set(ENV{ASAN_OPTIONS} "protect_shadow_gap=0:replace_intrin=0:detect_leaks=0")
+
+# ------------------------------------------------------------------------------#
+# COMMON PREAMBLE
+# ------------------------------------------------------------------------------#
+
+set(CUDAToolkit_INCLUDE_DIR ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} CACHE INTERNAL "needed for findcudatoolkit")
+set(CMAKE_CXX_STANDARD 14)
+
+add_definitions("-Wall")
+add_definitions("-Wextra")
+add_definitions("-Wundef")
+add_definitions("-Wunreachable-code")
+
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "--default-stream-per-thread")
+set(CMAKE_CUDA_FLAGS"-std=c++14 -ggdb")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -pthread")
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(FindPkgConfig)
+
+# ------------------------------------------------------------------------------#
+# SUBPROJECTS
+# ------------------------------------------------------------------------------#
+
+add_subdirectory(libzengarden)
+add_subdirectory(zengarden)
