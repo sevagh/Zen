@@ -26,18 +26,26 @@ template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
     , io_p(zg::io::IOGPU(hop_p))
     , hop_h(hop_h)
     , hop_p(hop_p)
-    , p_impl_h(
-	    fs, hop_h, beta_h,
-	    zg::internal::hps::HPSS_HARMONIC | zg::internal::hps::HPSS_PERCUSSIVE
-	        | zg::internal::hps::HPSS_RESIDUAL,
-	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true)
-     , p_impl_p(fs, hop_p, beta_p, zg::internal::hps::HPSS_PERCUSSIVE,
-	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true)
 {
 	if (hop_h % hop_p != 0) {
 		throw zg::ZgException("hop_h and hop_p should be evenly "
 		                      "divisible");
 	}
+
+    p_impl_h = new zg::internal::hps::HPR<B>(
+	    fs, hop_h, beta_h,
+	    zg::internal::hps::HPSS_HARMONIC | zg::internal::hps::HPSS_PERCUSSIVE
+	        | zg::internal::hps::HPSS_RESIDUAL,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
+
+    p_impl_p = new zg::internal::hps::HPR<B>(
+	    fs, hop_p, beta_p, zg::internal::hps::HPSS_PERCUSSIVE,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
+}
+
+template<zg::Backend B> zg::hps::HPRIOffline<B>::~HPRIOffline() {
+	delete p_impl_h;
+	delete p_impl_p;
 }
 
 template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
@@ -56,7 +64,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 	int n_chunks_ceil_iter1
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
 	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h.lag;
+	int lag1 = p_impl_h->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -78,13 +86,13 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 		             audio.begin() + (i + 1) * hop_h, io_h.host_in);
 
 		// process every large-sized hop
-		p_impl_h.process_next_hop(io_h.device_in);
+		p_impl_h->process_next_hop(io_h.device_in);
 
 		// use xp1 + xr1 as input for the second iteration of HPR with small
 		// hop size for good percussive separation
-		thrust::transform(p_impl_h.percussive_out.begin(),
-		                  p_impl_h.percussive_out.begin() + hop_h,
-		                  p_impl_h.residual_out.begin(), io_h.device_out,
+		thrust::transform(p_impl_h->percussive_out.begin(),
+		                  p_impl_h->percussive_out.begin() + hop_h,
+		                  p_impl_h->residual_out.begin(), io_h.device_out,
 		                  zg::internal::hps::sum_vectors_functor());
 
 		std::copy(io_h.host_out, io_h.host_out + hop_h,
@@ -102,7 +110,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 	int n_chunks_ceil_iter2
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
 	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p.lag;
+	int lag2 = p_impl_p->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -121,10 +129,10 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 		std::copy(intermediate.begin() + i * hop_p,
 		          intermediate.begin() + (i + 1) * hop_p, io_p.host_in);
 
-		p_impl_p.process_next_hop(io_p.device_in);
+		p_impl_p->process_next_hop(io_p.device_in);
 
-		thrust::copy(p_impl_p.percussive_out.begin(),
-		             p_impl_p.percussive_out.begin() + hop_p, io_p.device_out);
+		thrust::copy(p_impl_p->percussive_out.begin(),
+		             p_impl_p->percussive_out.begin() + hop_p, io_p.device_out);
 
 		std::copy(io_p.host_out, io_p.host_out + hop_p,
 		          percussive_out.begin() + i * hop_p);
@@ -149,7 +157,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 	int n_chunks_ceil_iter1
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_h));
 	int pad1 = n_chunks_ceil_iter1 * hop_h - audio.size();
-	int lag1 = p_impl_h.lag;
+	int lag1 = p_impl_h->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -165,13 +173,13 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 
 	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
 		// first apply HPR with large hop size for good harmonic separation
-		p_impl_h.process_next_hop(audio.data() + i * hop_h);
+		p_impl_h->process_next_hop(audio.data() + i * hop_h);
 
 		// use xp1 + xr1 as input for the second iteration of HPR with small
 		// hop size for good percussive separation
-		std::transform(p_impl_h.percussive_out.begin(),
-		               p_impl_h.percussive_out.begin() + hop_h,
-		               p_impl_h.residual_out.begin(),
+		std::transform(p_impl_h->percussive_out.begin(),
+		               p_impl_h->percussive_out.begin() + hop_h,
+		               p_impl_h->residual_out.begin(),
 		               intermediate.begin() + i * hop_h,
 		               zg::internal::hps::sum_vectors_functor());
 	}
@@ -187,7 +195,7 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 	int n_chunks_ceil_iter2
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop_p));
 	int pad2 = n_chunks_ceil_iter2 * hop_p - audio.size();
-	int lag2 = p_impl_p.lag;
+	int lag2 = p_impl_p->lag;
 
 	// pad with extra lag frames since offline/anticausal HPSS uses future
 	// audio to produce past samples
@@ -201,10 +209,10 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
 		// next apply HPR with small hop size for good harmonic separation
-		p_impl_p.process_next_hop(intermediate.data() + i * hop_p);
+		p_impl_p->process_next_hop(intermediate.data() + i * hop_p);
 
-		std::copy(p_impl_p.percussive_out.begin(),
-		          p_impl_p.percussive_out.begin() + hop_p,
+		std::copy(p_impl_p->percussive_out.begin(),
+		          p_impl_p->percussive_out.begin() + hop_p,
 		          percussive_out.begin() + i * hop_p);
 	}
 
@@ -224,8 +232,14 @@ zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
                                     float beta,
                                     zg::io::IOGPU& io)
     : io(io)
-, p_impl(fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
-	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true) {}
+{
+	p_impl = new zg::internal::hps::HPR<zg::Backend::GPU>(fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true);
+}
+
+zg::hps::PRealtimeGPU::~PRealtimeGPU() {
+	delete p_impl;
+}
 
 zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io)
     : PRealtimeGPU(fs, hop, 2.5, io){};
@@ -236,27 +250,27 @@ zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, zg::io::IOGPU& io)
 
 void zg::hps::PRealtimeGPU::process_next_hop()
 {
-	p_impl.process_next_hop(io.device_in);
-	thrust::copy(p_impl.percussive_out.begin(),
-	             p_impl.percussive_out.begin() + p_impl.hop, io.device_out);
+	p_impl->process_next_hop(io.device_in);
+	thrust::copy(p_impl->percussive_out.begin(),
+	             p_impl->percussive_out.begin() + p_impl->hop, io.device_out);
 }
 
 void zg::hps::PRealtimeGPU::warmup()
 {
 	int test_iters = 1000; // this is good enough in my experience
-	std::vector<float> testdata(test_iters * p_impl.hop);
-	std::vector<float> outdata(test_iters * p_impl.hop);
+	std::vector<float> testdata(test_iters * p_impl->hop);
+	std::vector<float> outdata(test_iters * p_impl->hop);
 	std::iota(testdata.begin(), testdata.end(), 0.0F);
 
 	for (std::size_t i = 0; i < test_iters; ++i) {
-		thrust::copy(testdata.begin() + i * p_impl.hop,
-		             testdata.begin() + (i + 1) * p_impl.hop, io.host_in);
-		p_impl.process_next_hop(io.device_in);
-		thrust::copy(io.host_out, io.host_out + p_impl.hop,
-		             outdata.begin() + i * p_impl.hop);
+		thrust::copy(testdata.begin() + i * p_impl->hop,
+		             testdata.begin() + (i + 1) * p_impl->hop, io.host_in);
+		p_impl->process_next_hop(io.device_in);
+		thrust::copy(io.host_out, io.host_out + p_impl->hop,
+		             outdata.begin() + i * p_impl->hop);
 	}
 
-	p_impl.reset_buffers();
+	p_impl->reset_buffers();
 }
 
 template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)

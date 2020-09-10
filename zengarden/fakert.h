@@ -102,6 +102,7 @@ namespace fakert {
 			float delta_t = 1000 * ( float )p.hop / file_data->sampleRate;
 
 			auto io = zg::io::IOGPU(p.hop);
+
 			auto hpss = zg::hps::PRealtimeGPU(
 			    file_data->sampleRate, p.hop, p.beta, io);
 

@@ -6,7 +6,16 @@
 #include <vector>
 
 #include <libzengarden/io.h>
-#include <hps/hps.h>
+#include <libzengarden/zg.h>
+
+// forward declare private implementations
+namespace zg {
+namespace internal {
+namespace hps {
+template<zg::Backend B> class HPR;
+}; // namespace hps
+}; // namespace internal
+}; // namespace zg
 
 namespace zg {
 namespace hps {
@@ -19,6 +28,7 @@ namespace hps {
 		               float beta_p);
 		HPRIOffline(float fs, std::size_t hop_h, std::size_t hop_p);
 		HPRIOffline(float fs);
+		~HPRIOffline();
 
 		// pass the entire song in the in vec
 		// the vector is copied to be modified in-place
@@ -35,8 +45,8 @@ namespace hps {
 		void prepad_h(std::vector<float> &audio);
 		void prepad_p(std::vector<float> &audio);
 
-		zg::internal::hps::HPR<B> p_impl_h;
-		zg::internal::hps::HPR<B> p_impl_p;
+		zg::internal::hps::HPR<B>* p_impl_h;
+		zg::internal::hps::HPR<B>* p_impl_p;
 
 		std::size_t hop_h, hop_p;
 		zg::io::IOGPU io_h;
@@ -48,6 +58,7 @@ namespace hps {
 		PRealtimeGPU(float fs, std::size_t hop, float beta, zg::io::IOGPU& io);
 		PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io);
 		PRealtimeGPU(float fs, zg::io::IOGPU& io);
+		~PRealtimeGPU();
 
 		// copies from the io in vec, writes to the io out vec
 		// pass in a real-time stream of the input, one hop at a time
@@ -59,7 +70,7 @@ namespace hps {
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		zg::internal::hps::HPR<zg::Backend::GPU> p_impl;
+		zg::internal::hps::HPR<zg::Backend::GPU>* p_impl;
 		zg::io::IOGPU& io;
 	};
 }; // namespace hps

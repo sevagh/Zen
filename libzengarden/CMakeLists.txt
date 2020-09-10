@@ -95,6 +95,7 @@ if(BUILD_TESTS)
 	message("LIBZENGARDEN: Building unit tests")
 	
 	zg_unittest(hps mfilt)
+	zg_unittest(. fftw)
 else()
 	message("LIBZENGARDEN: Skipping unit tests")
 endif()

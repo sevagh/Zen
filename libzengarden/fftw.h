@@ -25,7 +25,7 @@ namespace fftw {
 
 		FFTWrapperGPU(std::size_t nfft)
 		    : nfft(nfft)
-		    , fft_vec(thrust::device_vector<thrust::complex<float>>(nfft))
+		    , fft_vec(nfft)
 		    , fft_ptr(
 		          ( cuFloatComplex* )thrust::raw_pointer_cast(fft_vec.data()))
 		{
@@ -59,7 +59,7 @@ namespace fftw {
 		FFTWrapperCPU(std::size_t nfft)
 		    : nfft(nfft)
 		    , fft_order(( int )log2(nfft))
-		    , fft_vec(std::vector<thrust::complex<float>>(nfft))
+		    , fft_vec(nfft)
 		    , fft_ptr(( Ipp32fc* )fft_vec.data())
 		    , p_mem_spec(nullptr)
 		    , p_mem_init(nullptr)
