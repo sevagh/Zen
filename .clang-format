@@ -41,3 +41,4 @@ SpaceInEmptyParentheses: false
 SpacesInCStyleCastParentheses: true
 SpaceBeforeAssignmentOperators: true
 ContinuationIndentWidth: 4
+ReflowComments: false

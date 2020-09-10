@@ -17,11 +17,12 @@
 #include <libzengarden/hps.h>
 #include <libzengarden/zg.h>
 
-template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
-                                        std::size_t hop_h,
-                                        std::size_t hop_p,
-                                        float beta_h,
-                                        float beta_p)
+template <zg::Backend B>
+zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
+                                     std::size_t hop_h,
+                                     std::size_t hop_p,
+                                     float beta_h,
+                                     float beta_p)
     : io_h(zg::io::IOGPU(hop_h))
     , io_p(zg::io::IOGPU(hop_p))
     , hop_h(hop_h)
@@ -32,31 +33,36 @@ template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
 		                      "divisible");
 	}
 
-    p_impl_h = new zg::internal::hps::HPR<B>(
+	p_impl_h = new zg::internal::hps::HPR<B>(
 	    fs, hop_h, beta_h,
 	    zg::internal::hps::HPSS_HARMONIC | zg::internal::hps::HPSS_PERCUSSIVE
 	        | zg::internal::hps::HPSS_RESIDUAL,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 
-    p_impl_p = new zg::internal::hps::HPR<B>(
+	p_impl_p = new zg::internal::hps::HPR<B>(
 	    fs, hop_p, beta_p, zg::internal::hps::HPSS_PERCUSSIVE,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 }
 
-template<zg::Backend B> zg::hps::HPRIOffline<B>::~HPRIOffline() {
+template <zg::Backend B>
+zg::hps::HPRIOffline<B>::~HPRIOffline()
+{
 	delete p_impl_h;
 	delete p_impl_p;
 }
 
-template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
-                                        std::size_t hop_h,
-                                        std::size_t hop_p)
+template <zg::Backend B>
+zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
+                                     std::size_t hop_h,
+                                     std::size_t hop_p)
     : HPRIOffline(fs, hop_h, hop_p, 2.0, 2.0){};
 
-template<zg::Backend B> zg::hps::HPRIOffline<B>::HPRIOffline(float fs)
+template <zg::Backend B>
+zg::hps::HPRIOffline<B>::HPRIOffline(float fs)
     : HPRIOffline(fs, 4096, 256, 2.0, 2.0){};
 
-static int hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::size_t lag)
+static int
+hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::size_t lag)
 {
 	int n_chunks_ceil_iter
 	    = ( int )(ceilf(( float )audio.size() / ( float )hop));
@@ -74,12 +80,15 @@ static int hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::si
 	return n_chunks_ceil_iter;
 }
 
-template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
+template <>
+std::vector<float>
+zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
 	int original_size = audio.size();
 
-	int n_chunks_ceil_iter1 = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
+	int n_chunks_ceil_iter1
+	    = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
@@ -113,7 +122,8 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 	intermediate.resize(original_size);
 	audio.resize(original_size);
 
-	int n_chunks_ceil_iter2 = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
+	int n_chunks_ceil_iter2
+	    = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
 	std::vector<float> percussive_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
@@ -134,8 +144,8 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 
 	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
 	// iter2
-	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p, percussive_out.end(),
-	          percussive_out.begin());
+	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p,
+	          percussive_out.end(), percussive_out.begin());
 
 	// truncate all padding
 	percussive_out.resize(original_size);
@@ -143,12 +153,15 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::GPU>::process(st
 	return percussive_out;
 }
 
-template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
+template <>
+std::vector<float>
+zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
 	int original_size = audio.size();
 
-	int n_chunks_ceil_iter1 = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
+	int n_chunks_ceil_iter1
+	    = hpss_chunk_padder(audio, p_impl_h->hop, p_impl_h->lag);
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
@@ -174,7 +187,8 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 	intermediate.resize(original_size);
 	audio.resize(original_size);
 
-	int n_chunks_ceil_iter2 = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
+	int n_chunks_ceil_iter2
+	    = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
 	std::vector<float> percussive_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
@@ -188,8 +202,8 @@ template<> std::vector<float> zg::hps::HPRIOffline<zg::Backend::CPU>::process(st
 
 	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
 	// iter2
-	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p, percussive_out.end(),
-	          percussive_out.begin());
+	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p,
+	          percussive_out.end(), percussive_out.begin());
 
 	// truncate all padding
 	percussive_out.resize(original_size);
@@ -203,13 +217,12 @@ zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
                                     zg::io::IOGPU& io)
     : io(io)
 {
-	p_impl = new zg::internal::hps::HPR<zg::Backend::GPU>(fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
+	p_impl = new zg::internal::hps::HPR<zg::Backend::GPU>(
+	    fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true);
 }
 
-zg::hps::PRealtimeGPU::~PRealtimeGPU() {
-	delete p_impl;
-}
+zg::hps::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }
 
 zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io)
     : PRealtimeGPU(fs, hop, 2.5, io){};
@@ -243,7 +256,8 @@ void zg::hps::PRealtimeGPU::warmup()
 	p_impl->reset_buffers();
 }
 
-template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
+template <zg::Backend B>
+void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 {
 	// following the previous iteration
 	// we rotate the percussive and harmonic arrays to get them ready
@@ -308,7 +322,8 @@ template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPo
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
 		                  percussive_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
+		                  fft.fft_vec.begin(),
+		                  zg::internal::hps::apply_mask_functor());
 		fft.backward();
 
 		// now curr_fft has the current iteration's fresh samples
@@ -328,8 +343,8 @@ template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPo
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
-		                  harmonic_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
+		                  harmonic_mask.end() - lag * nfft, fft.fft_vec.begin(),
+		                  zg::internal::hps::apply_mask_functor());
 
 		fft.backward();
 
@@ -346,8 +361,8 @@ template<zg::Backend B> void zg::internal::hps::HPR<B>::process_next_hop(InputPo
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
-		                  residual_mask.end() - lag * nfft,
-		                  fft.fft_vec.begin(), zg::internal::hps::apply_mask_functor());
+		                  residual_mask.end() - lag * nfft, fft.fft_vec.begin(),
+		                  zg::internal::hps::apply_mask_functor());
 
 		fft.backward();
 

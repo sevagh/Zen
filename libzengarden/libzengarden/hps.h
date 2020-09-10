@@ -11,21 +11,23 @@
 // forward declare private implementations
 namespace zg {
 namespace internal {
-namespace hps {
-template<zg::Backend B> class HPR;
-}; // namespace hps
-}; // namespace internal
-}; // namespace zg
+	namespace hps {
+		template <zg::Backend B>
+		class HPR;
+	}; // namespace hps
+};     // namespace internal
+};     // namespace zg
 
 namespace zg {
 namespace hps {
-	template<zg::Backend B> class HPRIOffline {
+	template <zg::Backend B>
+	class HPRIOffline {
 	public:
 		HPRIOffline(float fs,
-		               std::size_t hop_h,
-		               std::size_t hop_p,
-		               float beta_h,
-		               float beta_p);
+		            std::size_t hop_h,
+		            std::size_t hop_p,
+		            float beta_h,
+		            float beta_p);
 		HPRIOffline(float fs, std::size_t hop_h, std::size_t hop_p);
 		HPRIOffline(float fs);
 		~HPRIOffline();
@@ -42,8 +44,8 @@ namespace hps {
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
 
-		void prepad_h(std::vector<float> &audio);
-		void prepad_p(std::vector<float> &audio);
+		void prepad_h(std::vector<float>& audio);
+		void prepad_p(std::vector<float>& audio);
 
 		zg::internal::hps::HPR<B>* p_impl_h;
 		zg::internal::hps::HPR<B>* p_impl_p;

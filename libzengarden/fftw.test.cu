@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <fftw.h>
+#include <gtest/gtest.h>
 #include <iostream>
 
 #include <npp.h>
@@ -16,7 +16,7 @@ public:
 	FFTWrapperGPU fftg;
 
 	FFTWrapperGPUTest(int nfft)
-	    : fftg(nfft) {};
+	    : fftg(nfft){};
 
 	virtual void SetUp() {}
 
@@ -33,7 +33,8 @@ protected:
 
 TEST_F(FFTWrapperGPUTestSmall, C2CForward)
 {
-	thrust::fill(fftg.fft_vec.begin(), fftg.fft_vec.end(), thrust::complex<float>{13.37F, -34.5F});
+	thrust::fill(fftg.fft_vec.begin(), fftg.fft_vec.end(),
+	             thrust::complex<float>{13.37F, -34.5F});
 
 	std::cout << fftg.fft_vec[0] << "\n";
 
