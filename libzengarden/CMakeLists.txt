@@ -62,7 +62,7 @@ endif()
 
 function(zg_unittest path name)
   add_executable(${name}.test ${path}/${name}.test.cu)
-  target_link_libraries(${name}.test ${LIBZENGARDEN_DEPS} gtest gtest_main pthread -static-libstdc++)
+  target_link_libraries(${name}.test libzengarden ${LIBZENGARDEN_DEPS} gtest gtest_main pthread -static-libstdc++)
 
   add_test(${name}_test ${name}.test)
   set_tests_properties(${name}_test PROPERTIES LABELS "test")
@@ -78,6 +78,7 @@ if(BUILD_TESTS)
 	message("LIBZENGARDEN: Building unit tests")
 	
 	zg_unittest(hps mfilt)
+	zg_unittest(hps hps)
 	zg_unittest(. fftw)
 else()
 	message("LIBZENGARDEN: Skipping unit tests")
@@ -85,7 +86,7 @@ endif()
 
 function(zg_bench path name)
 	add_executable(${name}.bench ${path}/${name}.bench.cu)
-	target_link_libraries(${name}.bench ${LIBZENGARDEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
+	target_link_libraries(${name}.bench libzengarden ${LIBZENGARDEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
 endfunction()
 
 if(BUILD_BENCHES)

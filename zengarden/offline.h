@@ -21,6 +21,7 @@ namespace offline {
 		std::string outfile = "";
 		bool do_hps = false;
 		bool cpu = false;
+		bool nocopybord = false;
 		std::size_t hop_h = 4096;
 		std::size_t hop_p = 256;
 		float beta_h = 2.0;
@@ -127,7 +128,7 @@ namespace offline {
 				else {
 					auto hpss = zg::hps::HPRIOffline<zg::Backend::GPU>(
 					    file_data->sampleRate, p.hop_h, p.hop_p, p.beta_h,
-					    p.beta_p);
+					    p.beta_p, p.nocopybord);
 
 					auto t1 = std::chrono::high_resolution_clock::now();
 					percussive_out = hpss.process(audio);

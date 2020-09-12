@@ -23,7 +23,7 @@ namespace internal {
 			typedef thrust::device_ptr<float> InputPointer;
 			typedef thrust::device_vector<float> RealVector;
 			typedef thrust::device_vector<thrust::complex<float>> ComplexVector;
-			typedef zg::internal::fftw::FFTWrapperGPU FFTWrapper;
+			typedef zg::internal::fftw::FFTC2CWrapperGPU FFTC2CWrapper;
 			typedef zg::internal::hps::mfilt::MedianFilterGPU MedianFilter;
 			typedef zg::internal::win::WindowGPU Window;
 		};
@@ -33,7 +33,7 @@ namespace internal {
 			typedef float* InputPointer;
 			typedef std::vector<float> RealVector;
 			typedef std::vector<thrust::complex<float>> ComplexVector;
-			typedef zg::internal::fftw::FFTWrapperCPU FFTWrapper;
+			typedef zg::internal::fftw::FFTC2CWrapperCPU FFTC2CWrapper;
 			typedef zg::internal::hps::mfilt::MedianFilterCPU MedianFilter;
 			typedef zg::internal::win::WindowCPU Window;
 		};

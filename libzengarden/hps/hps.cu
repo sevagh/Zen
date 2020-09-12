@@ -15,7 +15,38 @@
 #include <hps/hps.h>
 #include <hps/mfilt.h>
 #include <libzengarden/hps.h>
+#include <libzengarden/io.h>
 #include <libzengarden/zg.h>
+
+template <zg::Backend B>
+zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
+                                     std::size_t hop_h,
+                                     std::size_t hop_p,
+                                     float beta_h,
+                                     float beta_p,
+                                     bool nocopybord)
+    : io_h(zg::io::IOGPU(hop_h))
+    , io_p(zg::io::IOGPU(hop_p))
+    , hop_h(hop_h)
+    , hop_p(hop_p)
+{
+	if (hop_h % hop_p != 0) {
+		throw zg::ZgException("hop_h and hop_p should be evenly "
+		                      "divisible");
+	}
+
+	p_impl_h = new zg::internal::hps::HPR<B>(
+	    fs, hop_h, beta_h,
+	    zg::internal::hps::HPSS_HARMONIC | zg::internal::hps::HPSS_PERCUSSIVE
+	        | zg::internal::hps::HPSS_RESIDUAL,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal,
+	    !nocopybord);
+
+	p_impl_p = new zg::internal::hps::HPR<B>(
+	    fs, hop_p, beta_p, zg::internal::hps::HPSS_PERCUSSIVE,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal,
+	    !nocopybord);
+}
 
 template <zg::Backend B>
 zg::hps::HPRIOffline<B>::HPRIOffline(float fs,
@@ -211,34 +242,62 @@ zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
 	return percussive_out;
 }
 
-zg::hps::PRealtimeGPU::PRealtimeGPU(float fs,
-                                    std::size_t hop,
-                                    float beta,
-                                    zg::io::IOGPU& io)
-    : io(io)
+template <zg::Backend B>
+zg::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop, float beta)
 {
-	p_impl = new zg::internal::hps::HPR<zg::Backend::GPU>(
+	p_impl = new zg::internal::hps::HPR<B>(
 	    fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
 	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true);
 }
 
-zg::hps::PRealtimeGPU::~PRealtimeGPU() { delete p_impl; }
-
-zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, std::size_t hop, zg::io::IOGPU& io)
-    : PRealtimeGPU(fs, hop, 2.5, io){};
-
-// best-performing defaults
-zg::hps::PRealtimeGPU::PRealtimeGPU(float fs, zg::io::IOGPU& io)
-    : PRealtimeGPU(fs, 256, 2.5, io){};
-
-void zg::hps::PRealtimeGPU::process_next_hop()
+template <zg::Backend B>
+zg::hps::PRealtime<B>::PRealtime(float fs,
+                                 std::size_t hop,
+                                 float beta,
+                                 bool nocopybord)
 {
-	p_impl->process_next_hop(io.device_in);
-	thrust::copy(p_impl->percussive_out.begin(),
-	             p_impl->percussive_out.begin() + p_impl->hop, io.device_out);
+	p_impl = new zg::internal::hps::HPR<B>(
+	    fs, hop, beta, zg::internal::hps::HPSS_PERCUSSIVE,
+	    zg::internal::hps::mfilt::MedianFilterDirection::TimeCausal,
+	    !nocopybord);
 }
 
-void zg::hps::PRealtimeGPU::warmup()
+template <zg::Backend B>
+zg::hps::PRealtime<B>::~PRealtime()
+{
+	delete p_impl;
+}
+
+template <zg::Backend B>
+zg::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop)
+    : PRealtime(fs, hop, 2.5){};
+
+// (TODO: reassess) best-performing defaults
+template <zg::Backend B>
+zg::hps::PRealtime<B>::PRealtime(float fs)
+    : PRealtime(fs, 256, 2.5){};
+
+template <>
+void zg::hps::PRealtime<zg::Backend::GPU>::process_next_hop_gpu(
+    thrust::device_ptr<float> in_hop,
+    thrust::device_ptr<float> out_hop)
+{
+	p_impl->process_next_hop(in_hop);
+	thrust::copy(p_impl->percussive_out.begin(),
+	             p_impl->percussive_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zg::hps::PRealtime<zg::Backend::CPU>::process_next_hop_cpu(float* in_hop,
+                                                                float* out_hop)
+{
+	p_impl->process_next_hop(in_hop);
+	std::copy(p_impl->percussive_out.begin(),
+	          p_impl->percussive_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zg::hps::PRealtime<zg::Backend::GPU>::warmup_gpu(zg::io::IOGPU& io)
 {
 	int test_iters = 1000; // this is good enough in my experience
 	std::vector<float> testdata(test_iters * p_impl->hop);
@@ -251,6 +310,24 @@ void zg::hps::PRealtimeGPU::warmup()
 		p_impl->process_next_hop(io.device_in);
 		thrust::copy(io.host_out, io.host_out + p_impl->hop,
 		             outdata.begin() + i * p_impl->hop);
+	}
+
+	p_impl->reset_buffers();
+}
+
+template <>
+void zg::hps::PRealtime<zg::Backend::CPU>::warmup_cpu()
+{
+	int test_iters = 1000; // this is good enough in my experience
+	std::vector<float> testdata(test_iters * p_impl->hop);
+	std::vector<float> outdata(test_iters * p_impl->hop);
+	std::iota(testdata.begin(), testdata.end(), 0.0F);
+
+	for (std::size_t i = 0; i < test_iters; ++i) {
+		p_impl->process_next_hop(testdata.data() + i * p_impl->hop);
+		std::copy(p_impl->percussive_out.begin(),
+		          p_impl->percussive_out.begin() + p_impl->hop,
+		          outdata.data() + i * p_impl->hop);
 	}
 
 	p_impl->reset_buffers();
@@ -372,5 +449,11 @@ void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 	}
 }
 
+//template class zg::internal::hps::HPR<zg::Backend::CPU>;
+//template class zg::internal::hps::HPR<zg::Backend::GPU>;
+
 template class zg::hps::HPRIOffline<zg::Backend::CPU>;
 template class zg::hps::HPRIOffline<zg::Backend::GPU>;
+
+template class zg::hps::PRealtime<zg::Backend::CPU>;
+template class zg::hps::PRealtime<zg::Backend::GPU>;

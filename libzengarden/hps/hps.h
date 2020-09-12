@@ -113,8 +113,8 @@ namespace internal {
 			    ComplexVector;
 			typedef typename zg::internal::core::TypeTraits<B>::MedianFilter
 			    MedianFilter;
-			typedef
-			    typename zg::internal::core::TypeTraits<B>::FFTWrapper FFTWrapper;
+			typedef typename zg::internal::core::TypeTraits<B>::FFTC2CWrapper
+			    FFTC2CWrapper;
 			typedef typename zg::internal::core::TypeTraits<B>::Window Window;
 
 		public:
@@ -152,7 +152,7 @@ namespace internal {
 			MedianFilter time;
 			MedianFilter frequency;
 
-			FFTWrapper fft;
+			FFTC2CWrapper fft;
 
 			bool output_percussive;
 			bool output_harmonic;

@@ -12,6 +12,9 @@ public:
 };
 
 enum Backend { GPU, CPU };
+
+constexpr float Eps = std::numeric_limits<float>::epsilon();
+
 }; // namespace zg
 
 #endif /* ZG_PUB_H */

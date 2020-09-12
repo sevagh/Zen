@@ -6,18 +6,16 @@
 #include <clipp.h>
 #include <fakert.h>
 #include <offline.h>
-#include <realtime.h>
 
 int main(int argc, char* argv[])
 {
 	using namespace clipp;
 
-	enum class mode { none, help, offline, realtime, fakert };
+	enum class mode { none, help, offline, fakert };
 	mode selected = mode::none;
 
 	zg::offline::OfflineParams offline_params{};
 	zg::fakert::FakeRtParams fakert_params{};
-	zg::realtime::RealtimeParams realtime_params{};
 
 	auto offline
 	    = (command("offline").set(selected, mode::offline),
@@ -33,7 +31,8 @@ int main(int argc, char* argv[])
 	       option("-o", "--output")
 	           & value("outfile", offline_params.outfile)
 	                 % "(optional) output wav file",
-	       option("--cpu").set(offline_params.cpu, true))
+	       option("--cpu").set(offline_params.cpu, true),
+	       option("--nocopybord").set(offline_params.nocopybord, true))
 	      % "offline (process entire songs at a time)";
 
 	auto fakert
@@ -46,23 +45,12 @@ int main(int argc, char* argv[])
 	           % "1-pass P-realtime, defaults: 256,2.5",
 	       option("-o", "--output")
 	           & value("outfile", fakert_params.outfile)
-	                 % "(optional) output wav file")
+	                 % "(optional) output wav file",
+	       option("--cpu").set(fakert_params.cpu, true),
+	       option("--nocopybord").set(fakert_params.nocopybord, true))
 	      % "fakert (use slim rt algorithms with wav files)";
 
-	auto realtime
-	    = (command("realtime").set(selected, mode::realtime),
-	       option("-i", "--indevice")
-	           & value("indevice", realtime_params.indevice) % "input device",
-	       (option("--hps").set(realtime_params.do_hps, true)
-	        & opt_value("hop", realtime_params.hop)
-	        & opt_value("beta", realtime_params.beta))
-	           % "1-pass P-realtime, defaults: 256,2.5",
-	       option("-o", "--outdevice")
-	           & value("outdevice", realtime_params.outdevice) % "output device")
-	      % "realtime (use slim rt algorithms in a realtime audio in-out "
-	        "loop)";
-
-	auto zgcli = (offline | fakert | realtime
+	auto zgcli = (offline | fakert
 	              | command("help", "-h", "--help").set(selected, mode::help)
 	                    % "Show this screen."
 	              | command("version", "-v", "--version")([] {
@@ -92,10 +80,6 @@ int main(int argc, char* argv[])
 		case mode::fakert: {
 			zg::fakert::FakeRtCommand zf(fakert_params);
 			return zf.execute();
-		}
-		case mode::realtime: {
-			zg::realtime::RealtimeCommand zr(realtime_params);
-			return zr.execute();
 		}
 		}
 	}

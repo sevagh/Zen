@@ -17,46 +17,45 @@
 namespace zg {
 namespace internal {
 	namespace fftw {
-		class FFTWrapperGPU {
+		class FFTC2CWrapperGPU {
 		public:
 			std::size_t nfft;
 
 			thrust::device_vector<thrust::complex<float>> fft_vec;
 
-			FFTWrapperGPU(std::size_t nfft)
+			FFTC2CWrapperGPU(std::size_t nfft)
 			    : nfft(nfft)
 			    , fft_vec(nfft)
 			    , fft_ptr(( cuFloatComplex* )thrust::raw_pointer_cast(
 			          fft_vec.data()))
 			{
-				cufftPlan1d(&plan_forward, nfft, CUFFT_C2C, 1);
-				cufftPlan1d(&plan_backward, nfft, CUFFT_C2C, 1);
+				cufftPlan1d(&plan, nfft, CUFFT_C2C, 1);
+				cufftPlan1d(&plan, nfft, CUFFT_C2C, 1);
 			}
 
 			void forward()
 			{
-				cufftExecC2C(plan_forward, fft_ptr, fft_ptr, CUFFT_FORWARD);
+				cufftExecC2C(plan, fft_ptr, fft_ptr, CUFFT_FORWARD);
 			}
 
 			void backward()
 			{
-				cufftExecC2C(plan_backward, fft_ptr, fft_ptr, CUFFT_INVERSE);
+				cufftExecC2C(plan, fft_ptr, fft_ptr, CUFFT_INVERSE);
 			}
 
 		private:
 			cuFloatComplex* fft_ptr;
 
-			cufftHandle plan_forward;
-			cufftHandle plan_backward;
+			cufftHandle plan;
 		};
 
-		class FFTWrapperCPU {
+		class FFTC2CWrapperCPU {
 		public:
 			std::size_t nfft;
 
 			std::vector<thrust::complex<float>> fft_vec;
 
-			FFTWrapperCPU(std::size_t nfft)
+			FFTC2CWrapperCPU(std::size_t nfft)
 			    : nfft(nfft)
 			    , fft_order(( int )log2(nfft))
 			    , fft_vec(nfft)
@@ -97,7 +96,7 @@ namespace internal {
 					ippFree(p_mem_init);
 			}
 
-			~FFTWrapperCPU()
+			~FFTC2CWrapperCPU()
 			{
 				if (size_buffer > 0)
 					ippFree(p_mem_buffer);
