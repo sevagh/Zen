@@ -55,10 +55,6 @@ namespace hps {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-
-		void prepad_h(std::vector<float>& audio);
-		void prepad_p(std::vector<float>& audio);
-
 		zg::internal::hps::HPR<B>* p_impl_h;
 		zg::internal::hps::HPR<B>* p_impl_p;
 

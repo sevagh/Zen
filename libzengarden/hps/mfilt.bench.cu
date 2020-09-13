@@ -7,7 +7,7 @@
 static constexpr int TYPICAL_FILTER_LEN = 11;
 static constexpr int MAX_DIM = 16384;
 
-using namespace zg::hps::mfilt;
+using namespace zg::internal::hps::mfilt;
 using namespace zg::io;
 
 // make a global IOGPU object because reinitializing it over and over in every

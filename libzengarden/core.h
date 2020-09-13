@@ -13,7 +13,6 @@
 namespace zg {
 namespace internal {
 	namespace core {
-
 		template <zg::Backend T>
 		struct TypeTraits {
 		};

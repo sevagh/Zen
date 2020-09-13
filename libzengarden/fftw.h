@@ -30,7 +30,6 @@ namespace internal {
 			          fft_vec.data()))
 			{
 				cufftPlan1d(&plan, nfft, CUFFT_C2C, 1);
-				cufftPlan1d(&plan, nfft, CUFFT_C2C, 1);
 			}
 
 			void forward()

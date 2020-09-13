@@ -29,6 +29,7 @@ include_directories(
 
 set(LIBZENGARDEN_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/hps/hps.cu
+	${CMAKE_CURRENT_SOURCE_DIR}/core.cu
 	#${CMAKE_CURRENT_SOURCE_DIR}/onset/onset.cu
 	)
 
@@ -56,19 +57,20 @@ install(TARGETS libzengarden
 find_program(CUMEMCHK_EXEC "cuda-memcheck")
 if(CUMEMCHK_EXEC)
   message("CUMEMCHK: ${CUMEMCHK_EXEC}")
+  set(CUMEMCHK_ARGS --leak-check full)
 else()
   message("CUMEMCHK: DISABLED - install cuda-memcheck to enable")
 endif()
 
-function(zg_unittest path name)
+function(zg_unittest path name do_cumemchk)
   add_executable(${name}.test ${path}/${name}.test.cu)
   target_link_libraries(${name}.test libzengarden ${LIBZENGARDEN_DEPS} gtest gtest_main pthread -static-libstdc++)
 
   add_test(${name}_test ${name}.test)
   set_tests_properties(${name}_test PROPERTIES LABELS "test")
 
-  if(CUMEMCHK_EXEC)
-    add_test(${name}_cumemchk ${CUMEMCHK_EXEC} ${name}.test)
+  if(CUMEMCHK_EXEC AND do_cumemchk)
+	  add_test(${name}_cumemchk ${CUMEMCHK_EXEC} ${CUMEMCHK_ARGS} ${name}.test)
     set_tests_properties(${name}_cumemchk PROPERTIES LABELS "cuda-memcheck")
   endif()
 endfunction()
@@ -76,10 +78,12 @@ endfunction()
 if(BUILD_TESTS)
 	find_package(GTest REQUIRED)
 	message("LIBZENGARDEN: Building unit tests")
-	
-	zg_unittest(hps mfilt)
-	zg_unittest(hps hps)
-	zg_unittest(. fftw)
+
+	zg_unittest(hps mfilt 1)
+	zg_unittest(hps hps 0) # very slow, disable cuda-memcheck
+	zg_unittest(. fftw 0) # very slow, disable cuda-memcheck
+	zg_unittest(hps hps_gpu_public 0) # e2e test for cuda memcheck
+	zg_unittest(hps hps_cpu_public 0) # cpu only, no need for cuda memcheck
 else()
 	message("LIBZENGARDEN: Skipping unit tests")
 endif()
@@ -94,6 +98,7 @@ if(BUILD_BENCHES)
 	message("LIBZENGARDEN: Building benches")
 
 	zg_bench(hps mfilt)
+	zg_bench(. fftw)
 else()
 	message("LIBZENGARDEN: Skipping benches")
 endif()

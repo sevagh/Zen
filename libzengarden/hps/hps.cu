@@ -449,9 +449,6 @@ void zg::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 	}
 }
 
-//template class zg::internal::hps::HPR<zg::Backend::CPU>;
-//template class zg::internal::hps::HPR<zg::Backend::GPU>;
-
 template class zg::hps::HPRIOffline<zg::Backend::CPU>;
 template class zg::hps::HPRIOffline<zg::Backend::GPU>;
 

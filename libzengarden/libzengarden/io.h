@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <mutex>
 #include <numeric>
 
 #include <thrust/copy.h>
@@ -11,14 +10,6 @@
 #include <thrust/host_vector.h>
 
 #include <npp.h>
-
-static std::once_flag cuda_init_flag;
-
-static void cuda_init()
-{
-	std::call_once(
-	    cuda_init_flag, []() { cudaSetDeviceFlags(cudaDeviceMapHost); });
-}
 
 namespace zg {
 namespace io {
@@ -33,8 +24,6 @@ namespace io {
 		IOGPU(std::size_t size)
 		    : size(size)
 		{
-			cuda_init();
-
 			cudaError_t cuda_error;
 			unsigned int cuda_malloc_flags
 			    = cudaHostAllocMapped | cudaHostAllocPortable;

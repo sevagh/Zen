@@ -26,7 +26,7 @@ enable_testing()
 
 option(ENABLE_UBSAN "enable undefined behaviour sanitizer" OFF)
 option(ENABLE_ASAN "enable address sanitizer (in place of valgrind)" OFF)
-set(ENV{ASAN_OPTIONS} "protect_shadow_gap=0:replace_intrin=0:detect_leaks=0")
+#set(ENV{ASAN_OPTIONS} "protect_shadow_gap=0:replace_intrin=0:detect_leaks=0")
 
 # ------------------------------------------------------------------------------#
 # COMMON PREAMBLE
