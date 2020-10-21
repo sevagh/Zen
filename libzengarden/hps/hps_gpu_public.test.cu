@@ -62,15 +62,15 @@ public:
 TEST_F(HPRIOfflineGPUTest, Basic)
 {
 	auto ret = hpri_offline.process(testdata);
-	EXPECT_EQ(ret.size(), testdata.size());
+	EXPECT_EQ(ret[1].size(), testdata.size());
 
 	for (std::size_t i = 0; i < big_hop * n_big_hops; ++i) {
-		EXPECT_NE(ret[i], testdata[i]);
+		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
 		thrust::copy(testdata.begin() + i * small_hop,
 		             testdata.begin() + (i + 1) * small_hop, io_obj.host_in);
-		p_rt.process_next_hop_gpu(io_obj.device_in, io_obj.device_out);
+		p_rt.process_next_hop(io_obj.device_in, io_obj.device_out);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(io_obj.host_out[j], io_obj.host_in[j]);
 		}
@@ -84,16 +84,16 @@ TEST_F(HPRIOfflineGPUTest, WithPadding)
 	testdata.resize(testdata.size() + 11);
 
 	auto ret = hpri_offline.process(testdata);
-	EXPECT_EQ(ret.size(), testdata.size());
-	EXPECT_NE(ret.size(), oldsize);
+	EXPECT_EQ(ret[1].size(), testdata.size());
+	EXPECT_NE(ret[1].size(), oldsize);
 
 	for (std::size_t i = 0; i < big_hop * n_big_hops; ++i) {
-		EXPECT_NE(ret[i], testdata[i]);
+		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
 		thrust::copy(testdata.begin() + i * small_hop,
 		             testdata.begin() + (i + 1) * small_hop, io_obj.host_in);
-		p_rt.process_next_hop_gpu(io_obj.device_in, io_obj.device_out);
+		p_rt.process_next_hop(io_obj.device_in, io_obj.device_out);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(io_obj.host_out[j], io_obj.host_in[j]);
 		}

@@ -63,14 +63,14 @@ public:
 TEST_F(HPRIOfflineCPUTest, Basic)
 {
 	auto ret = hpri_offline.process(testdata);
-	EXPECT_EQ(ret.size(), testdata.size());
+	EXPECT_EQ(ret[1].size(), testdata.size());
 
 	for (std::size_t i = 0; i < big_hop * n_big_hops; ++i) {
-		EXPECT_NE(ret[i], testdata[i]);
+		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
-		p_rt.process_next_hop_cpu(testdata.data() + i * small_hop,
-		                          prt_result.data() + i * small_hop);
+		p_rt.process_next_hop(testdata.data() + i * small_hop,
+		                      prt_result.data() + i * small_hop);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(
 			    testdata[i * small_hop + j], prt_result[i * small_hop + j]);
@@ -84,15 +84,15 @@ TEST_F(HPRIOfflineCPUTest, WithPadding)
 	testdata.resize(testdata.size() + 11);
 
 	auto ret = hpri_offline.process(testdata);
-	EXPECT_EQ(ret.size(), testdata.size());
-	EXPECT_NE(ret.size(), oldsize);
+	EXPECT_EQ(ret[1].size(), testdata.size());
+	EXPECT_NE(ret[1].size(), oldsize);
 
 	for (std::size_t i = 0; i < big_hop * n_big_hops; ++i) {
-		EXPECT_NE(ret[i], testdata[i]);
+		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
-		p_rt.process_next_hop_cpu(testdata.data() + i * small_hop,
-		                          prt_result.data() + i * small_hop);
+		p_rt.process_next_hop(testdata.data() + i * small_hop,
+		                      prt_result.data() + i * small_hop);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(
 			    testdata[i * small_hop + j], prt_result[i * small_hop + j]);

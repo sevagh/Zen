@@ -18,7 +18,7 @@ namespace zg {
 namespace offline {
 	struct OfflineParams {
 		std::string infile = "";
-		std::string outfile = "";
+		std::string outfile_prefix = "";
 		bool do_hps = false;
 		bool cpu = false;
 		bool nocopybord = false;
@@ -37,7 +37,7 @@ namespace offline {
 		{
 			std::cout << "Running zengarden-offline with the following params:"
 			          << "\n\tinfile: " << p.infile
-			          << "\n\toutfile: " << p.outfile;
+			          << "\n\toutfile_prefix: " << p.outfile_prefix;
 
 			if (p.do_hps) {
 				std::cout << "\n\tdo hps: yes"
@@ -100,7 +100,7 @@ namespace offline {
 				    file_data->samples.begin(), file_data->samples.end());
 			}
 
-			std::vector<float> percussive_out;
+			std::array<std::vector<float>, 3> all_out;
 
 			if (p.do_hps) {
 				std::cout << "Processing input signal of size " << audio.size()
@@ -115,7 +115,7 @@ namespace offline {
 					    p.beta_p);
 
 					auto t1 = std::chrono::high_resolution_clock::now();
-					percussive_out = hpss.process(audio);
+					all_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
 					auto dur
 					    = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -131,7 +131,7 @@ namespace offline {
 					    p.beta_p, p.nocopybord);
 
 					auto t1 = std::chrono::high_resolution_clock::now();
-					percussive_out = hpss.process(audio);
+					all_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
 					auto dur
 					    = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -142,37 +142,52 @@ namespace offline {
 				}
 			}
 			else {
-				percussive_out = audio;
+				all_out = {audio, audio, audio};
 			}
 
-			if (p.outfile != "") {
-				auto percussive_limits = std::minmax_element(
-				    std::begin(percussive_out), std::end(percussive_out));
+			if (p.outfile_prefix != "") {
+				for (int i = 0; i < 3; ++i) {
+					auto limits = std::minmax_element(
+					    std::begin(all_out[i]), std::end(all_out[i]));
 
-				float real_perc_max = std::max(-1 * (*percussive_limits.first),
-				                               *percussive_limits.second);
+					float real_max
+					    = std::max(-1 * (*limits.first), *limits.second);
 
-				// normalize between -1.0 and 1.0
-				for (std::size_t i = 0; i < audio.size(); ++i) {
-					percussive_out[i] /= real_perc_max;
+					// normalize between -1.0 and 1.0
+					for (std::size_t j = 0; j < audio.size(); ++j) {
+						all_out[i][j] /= real_max;
+					}
+
+					nqr::EncoderParams encoder_params{
+					    1,
+					    nqr::PCMFormat::PCM_16,
+					    nqr::DitherType::DITHER_NONE,
+					};
+
+					const nqr::AudioData audio_out{
+					    1,
+					    file_data->sampleRate,
+					    file_data->lengthSeconds,
+					    file_data->frameSize,
+					    all_out[i],
+					    file_data->sourceFormat,
+					};
+
+					std::string filename = "";
+					switch (i) {
+					case 0:
+						filename = p.outfile_prefix + "_harm.wav";
+						break;
+					case 1:
+						filename = p.outfile_prefix + "_perc.wav";
+						break;
+					case 2:
+						filename = p.outfile_prefix + "_residual.wav";
+						break;
+					}
+					nqr::encode_wav_to_disk(
+					    encoder_params, &audio_out, filename);
 				}
-
-				nqr::EncoderParams encoder_params{
-				    1,
-				    nqr::PCMFormat::PCM_16,
-				    nqr::DitherType::DITHER_NONE,
-				};
-
-				const nqr::AudioData perc_out{
-				    1,
-				    file_data->sampleRate,
-				    file_data->lengthSeconds,
-				    file_data->frameSize,
-				    percussive_out,
-				    file_data->sourceFormat,
-				};
-
-				nqr::encode_wav_to_disk(encoder_params, &perc_out, p.outfile);
 			}
 
 			return 0;

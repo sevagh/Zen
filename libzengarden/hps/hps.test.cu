@@ -347,12 +347,13 @@ TEST_F(HPRPercTest, ResettingDoesTheRightThing)
 	std::vector<float> im(hop);
 
 	thrust::copy(testdata_small.begin() + i * hop,
-		     testdata_small.begin() + (i + 1) * hop, io_obj.host_in);
+	             testdata_small.begin() + (i + 1) * hop, io_obj.host_in);
 
 	// test reset buffers behavior on just one variant
 	hpr_causal_g.process_next_hop(io_obj.device_in);
-	
-	thrust::copy(hpr_causal_g.percussive_out.begin(), hpr_causal_g.percussive_out.begin() + hop, io_obj.device_out);
+
+	thrust::copy(hpr_causal_g.percussive_out.begin(),
+	             hpr_causal_g.percussive_out.begin() + hop, io_obj.device_out);
 
 	std::copy(io_obj.host_out, io_obj.host_out + hop, im.begin());
 	hpr_causal_g.reset_buffers();
@@ -361,7 +362,6 @@ TEST_F(HPRPercTest, ResettingDoesTheRightThing)
 
 	// reset, run again, expect identical output
 	for (std::size_t j = 0; j < hop; ++j) {
-		EXPECT_EQ(
-		    hpr_causal_g.percussive_out[j], im[j]);
+		EXPECT_EQ(hpr_causal_g.percussive_out[j], im[j]);
 	}
 }

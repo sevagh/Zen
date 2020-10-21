@@ -132,7 +132,7 @@ namespace fakert {
 				    file_data->sampleRate, p.hop, p.beta);
 
 				// not passing an IO object to warmup in the CPU case
-				hpss.warmup_cpu();
+				hpss.warmup();
 
 				float iters = 0.0F;
 				int time_tot = 0;
@@ -145,9 +145,8 @@ namespace fakert {
 
 					if (p.do_hps) {
 						// process input samples
-						hpss.process_next_hop_cpu(
-						    audio.data() + chunk_it->first,
-						    percussive_out.data() + n);
+						hpss.process_next_hop(audio.data() + chunk_it->first,
+						                      percussive_out.data() + n);
 					}
 					else {
 						// just loop input back into output
@@ -178,7 +177,7 @@ namespace fakert {
 				// need an io object to do some warming up
 				auto io = zg::io::IOGPU(p.hop);
 
-				hpss.warmup_gpu(io);
+				hpss.warmup(io);
 
 				float iters = 0.0F;
 				int time_tot = 0;
@@ -195,7 +194,7 @@ namespace fakert {
 						          audio.begin() + chunk_it->second, io.host_in);
 
 						// process input samples
-						hpss.process_next_hop_gpu(io.device_in, io.device_out);
+						hpss.process_next_hop(io.device_in, io.device_out);
 
 						// copy output samples from io object
 						std::copy(io.host_out, io.host_out + p.hop,

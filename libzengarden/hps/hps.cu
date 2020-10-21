@@ -112,7 +112,7 @@ hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::size_t lag)
 }
 
 template <>
-std::vector<float>
+std::array<std::vector<float>, 3>
 zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
@@ -123,6 +123,7 @@ zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 
 	// 2nd iteration uses xp1 + xr1 as the total content
 	std::vector<float> intermediate(audio.size());
+	std::vector<float> harmonic_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter1; ++i) {
 		// first apply HPR with large hop size for good harmonic separation
@@ -143,19 +144,29 @@ zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 
 		std::copy(io_h.host_out, io_h.host_out + hop_h,
 		          intermediate.begin() + i * hop_h);
+
+		thrust::copy(p_impl_h->harmonic_out.begin(),
+		             p_impl_h->harmonic_out.begin() + hop_h, io_h.device_out);
+
+		std::copy(io_h.host_out, io_h.host_out + hop_h,
+		          harmonic_out.begin() + i * hop_h);
 	}
 
 	// offset intermediate by lag1*hop_h to skip the padded lag frames of
 	// iter1
 	std::copy(intermediate.begin() + p_impl_h->lag * hop_h, intermediate.end(),
 	          intermediate.begin());
+	std::copy(harmonic_out.begin() + p_impl_h->lag * hop_h, harmonic_out.end(),
+	          harmonic_out.begin());
 
 	intermediate.resize(original_size);
+	harmonic_out.resize(original_size);
 	audio.resize(original_size);
 
 	int n_chunks_ceil_iter2
 	    = hpss_chunk_padder(audio, p_impl_p->hop, p_impl_p->lag);
 	std::vector<float> percussive_out(audio.size());
+	std::vector<float> residual_out(audio.size());
 
 	for (int i = 0; i < n_chunks_ceil_iter2; ++i) {
 		// next apply HPR with small hop size for good harmonic separation
@@ -171,6 +182,12 @@ zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 
 		std::copy(io_p.host_out, io_p.host_out + hop_p,
 		          percussive_out.begin() + i * hop_p);
+
+		thrust::copy(p_impl_p->residual_out.begin(),
+		             p_impl_p->residual_out.begin() + hop_p, io_p.device_out);
+
+		std::copy(io_p.host_out, io_p.host_out + hop_p,
+		          residual_out.begin() + i * hop_p);
 	}
 
 	// rotate the useful part by lag2*hop_p to skip the padded lag frames of
@@ -178,14 +195,19 @@ zg::hps::HPRIOffline<zg::Backend::GPU>::process(std::vector<float> audio)
 	std::copy(percussive_out.begin() + p_impl_p->lag * hop_p,
 	          percussive_out.end(), percussive_out.begin());
 
+	std::copy(residual_out.begin() + p_impl_p->lag * hop_p, residual_out.end(),
+	          residual_out.begin());
+
 	// truncate all padding
 	percussive_out.resize(original_size);
+	residual_out.resize(original_size);
 
-	return percussive_out;
+	return std::array<std::vector<float>, 3>{
+	    harmonic_out, percussive_out, residual_out};
 }
 
 template <>
-std::vector<float>
+std::array<std::vector<float>, 3>
 zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
 {
 	// return same-sized vectors as a result
@@ -239,7 +261,8 @@ zg::hps::HPRIOffline<zg::Backend::CPU>::process(std::vector<float> audio)
 	// truncate all padding
 	percussive_out.resize(original_size);
 
-	return percussive_out;
+	return std::array<std::vector<float>, 3>{
+	    percussive_out, percussive_out, percussive_out};
 }
 
 template <zg::Backend B>
@@ -278,7 +301,7 @@ zg::hps::PRealtime<B>::PRealtime(float fs)
     : PRealtime(fs, 256, 2.5){};
 
 template <>
-void zg::hps::PRealtime<zg::Backend::GPU>::process_next_hop_gpu(
+void zg::hps::PRealtime<zg::Backend::GPU>::process_next_hop(
     thrust::device_ptr<float> in_hop,
     thrust::device_ptr<float> out_hop)
 {
@@ -288,8 +311,8 @@ void zg::hps::PRealtime<zg::Backend::GPU>::process_next_hop_gpu(
 }
 
 template <>
-void zg::hps::PRealtime<zg::Backend::CPU>::process_next_hop_cpu(float* in_hop,
-                                                                float* out_hop)
+void zg::hps::PRealtime<zg::Backend::CPU>::process_next_hop(float* in_hop,
+                                                            float* out_hop)
 {
 	p_impl->process_next_hop(in_hop);
 	std::copy(p_impl->percussive_out.begin(),
@@ -297,7 +320,7 @@ void zg::hps::PRealtime<zg::Backend::CPU>::process_next_hop_cpu(float* in_hop,
 }
 
 template <>
-void zg::hps::PRealtime<zg::Backend::GPU>::warmup_gpu(zg::io::IOGPU& io)
+void zg::hps::PRealtime<zg::Backend::GPU>::warmup(zg::io::IOGPU& io)
 {
 	int test_iters = 1000; // this is good enough in my experience
 	std::vector<float> testdata(test_iters * p_impl->hop);
@@ -316,7 +339,7 @@ void zg::hps::PRealtime<zg::Backend::GPU>::warmup_gpu(zg::io::IOGPU& io)
 }
 
 template <>
-void zg::hps::PRealtime<zg::Backend::CPU>::warmup_cpu()
+void zg::hps::PRealtime<zg::Backend::CPU>::warmup()
 {
 	int test_iters = 1000; // this is good enough in my experience
 	std::vector<float> testdata(test_iters * p_impl->hop);

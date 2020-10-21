@@ -28,9 +28,9 @@ int main(int argc, char* argv[])
 	        & opt_value("beta-p", offline_params.beta_p))
 	           % "2-pass HPR-iterative, defaults: harmonic=4096,2.0 "
 	             "percussive=256,2.0",
-	       option("-o", "--output")
-	           & value("outfile", offline_params.outfile)
-	                 % "(optional) output wav file",
+	       option("-o", "--out-prefix")
+	           & value("outfile_prefix", offline_params.outfile_prefix)
+	                 % "(optional) output wav file prefix",
 	       option("--cpu").set(offline_params.cpu, true),
 	       option("--nocopybord").set(offline_params.nocopybord, true))
 	      % "offline (process entire songs at a time)";

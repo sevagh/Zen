@@ -1,12 +1,12 @@
 cmake_minimum_required (VERSION 3.14)
 
 # ------------------------------------------------------------------------------#
-# SEVAG-SPECIFIC CONFIG, until i find a better place to put this...
+# MY PERSONAL CONFIG, until i find a better place to put this...
 # ------------------------------------------------------------------------------#
 
-set(CMAKE_CXX_COMPILER /home/sevagh/GCC-8.4.0/bin/g++)
+set(CMAKE_CXX_COMPILER $ENV{HOME}/GCC-8.4.0/bin/g++)
 set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
-set(IPP_ROOT /home/sevagh/intel/ipp CACHE INTERNAL "ipp location hint")
+set(IPP_ROOT $ENV{HOME}/intel/ipp CACHE INTERNAL "ipp location hint")
 set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor CACHE INTERNAL "vendored libaries")
 
 # ------------------------------------------------------------------------------#
