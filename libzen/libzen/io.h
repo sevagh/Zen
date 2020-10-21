@@ -11,7 +11,7 @@
 
 #include <npp.h>
 
-namespace zg {
+namespace zen {
 namespace io {
 	class IOGPU {
 	public:
@@ -80,6 +80,6 @@ namespace io {
 		float* device_out_raw_ptr;
 	};
 }; // namespace io
-}; // namespace zg
+}; // namespace zen
 
 #endif /* ZG_IO_PUB_H */

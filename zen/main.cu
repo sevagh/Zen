@@ -14,8 +14,8 @@ int main(int argc, char* argv[])
 	enum class mode { none, help, offline, fakert };
 	mode selected = mode::none;
 
-	zg::offline::OfflineParams offline_params{};
-	zg::fakert::FakeRtParams fakert_params{};
+	zen::offline::OfflineParams offline_params{};
+	zen::fakert::FakeRtParams fakert_params{};
 
 	auto offline
 	    = (command("offline").set(selected, mode::offline),
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 	       option("--nocopybord").set(fakert_params.nocopybord, true))
 	      % "fakert (use slim rt algorithms with wav files)";
 
-	auto zgcli = (offline | fakert
+	auto zencli = (offline | fakert
 	              | command("help", "-h", "--help").set(selected, mode::help)
 	                    % "Show this screen."
 	              | command("version", "-v", "--version")([] {
@@ -62,29 +62,29 @@ int main(int argc, char* argv[])
 	               .doc_column(20)
 	               .max_flags_per_param_in_usage(8);
 
-	if (parse(argc, argv, zgcli)) {
+	if (parse(argc, argv, zencli)) {
 		switch (selected) {
 		default:
 		case mode::none:
 			break;
 		case mode::help: {
 			std::cout << "usage:\n\n"
-			          << usage_lines(zgcli, "zengarden", fmt)
+			          << usage_lines(zencli, "zen", fmt)
 			          << "\n\nOptions:\n"
-			          << documentation(zgcli, fmt) << '\n';
+			          << documentation(zencli, fmt) << '\n';
 		} break;
 		case mode::offline: {
-			zg::offline::OfflineCommand zo(offline_params);
+			zen::offline::OfflineCommand zo(offline_params);
 			return zo.execute();
 		}
 		case mode::fakert: {
-			zg::fakert::FakeRtCommand zf(fakert_params);
+			zen::fakert::FakeRtCommand zf(fakert_params);
 			return zf.execute();
 		}
 		}
 	}
 	else {
 		std::cerr << "usage:\n\n"
-		          << usage_lines(zgcli, "zengarden", fmt) << '\n';
+		          << usage_lines(zencli, "zen", fmt) << '\n';
 	}
 }

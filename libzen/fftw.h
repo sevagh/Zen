@@ -14,7 +14,7 @@
 #include <ippdefs.h>
 #include <ippi.h>
 
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace fftw {
 		class FFTC2CWrapperGPU {
@@ -130,6 +130,6 @@ namespace internal {
 
 	}; // namespace fftw
 };     // namespace internal
-};     // namespace zg
+};     // namespace zen
 
 #endif /* ZG_FFT_INTERNAL_H */

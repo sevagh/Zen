@@ -7,8 +7,8 @@
 #include <nppi.h>
 #include <thrust/device_vector.h>
 
-using namespace zg::internal::hps::mfilt;
-using namespace zg;
+using namespace zen::internal::hps::mfilt;
+using namespace zen;
 
 class MedianFilterGPUTest : public ::testing::Test {
 

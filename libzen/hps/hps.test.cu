@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <hps/hps.h>
 #include <iostream>
-#include <libzengarden/io.h>
+#include <libzen/io.h>
 #include <random>
 
 #include <npp.h>
@@ -11,10 +11,10 @@
 
 #include <cmath>
 
-using namespace zg::internal::hps;
-using namespace zg::internal::hps::mfilt;
-//using namespace zg::io;
-using namespace zg;
+using namespace zen::internal::hps;
+using namespace zen::internal::hps::mfilt;
+//using namespace zen::io;
+using namespace zen;
 
 // things to test
 // copybord, different output types, etc.
@@ -49,7 +49,7 @@ static std::vector<float> generate_data_huge(size_t size)
 	return data;
 }
 
-zg::io::IOGPU io_obj(8192);
+zen::io::IOGPU io_obj(8192);
 
 class HPRTest : public ::testing::Test {
 
@@ -133,7 +133,7 @@ public:
 	virtual void TearDown() {}
 };
 
-// typical hop is 256, from the driedger and fitzgerald papers
+// typical hop is 256, from the driedger and fitzenerald papers
 // create an audio clip that's ~25.6k samples long, about 0.25s
 class HPRAllOutputTest : public HPRTest {
 protected:

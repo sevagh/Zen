@@ -10,7 +10,7 @@
 
 #include <cmath>
 
-using namespace zg::internal::fftw;
+using namespace zen::internal::fftw;
 
 // allow minor differences in cufft and ipp results
 static constexpr float AllowableFFTError = 0.0002;

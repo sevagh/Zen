@@ -7,7 +7,7 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace win {
 
@@ -53,6 +53,6 @@ namespace internal {
 		using WindowCPU = Window<std::vector<float>>;
 	}; // namespace win
 };     // namespace internal
-};     // namespace zg
+};     // namespace zen
 
 #endif // ZG_WIN_INTERNAL_H

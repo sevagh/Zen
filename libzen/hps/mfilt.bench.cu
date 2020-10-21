@@ -1,14 +1,14 @@
 #include <benchmark/benchmark.h>
 #include <hps/mfilt.h>
-#include <libzengarden/io.h>
+#include <libzen/io.h>
 #include <thrust/device_vector.h>
 
 // l_harm and l_perc are typically no more than 11
 static constexpr int TYPICAL_FILTER_LEN = 11;
 static constexpr int MAX_DIM = 16384;
 
-using namespace zg::internal::hps::mfilt;
-using namespace zg::io;
+using namespace zen::internal::hps::mfilt;
+using namespace zen::io;
 
 // make a global IOGPU object because reinitializing it over and over in every
 // benchmark was causing some strange cuda errors

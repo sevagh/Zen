@@ -1,32 +1,40 @@
-# zengarden
+# Zen
 
-Zengarden aims to become a realtime-capable GPU-accelerated rhythm analysis toolkit written in C++. It consists of:
-* libzengarden, a C++ library that depends on CUDA and IPP
-* zengarden, a reference command-line client, also written in C++
+Zen is a real-time CUDA-accelerated harmonic/percussive (or steady-state/transient) source separation library, consisting of:
+* libzen, a C++ library that depends on CUDA and IPP
+* zen, a reference command-line client, also written in C++
 
-libzengarden is designed from the ground up to support dual CPU/GPU implementations of algorithms by using policy-based template metaprogramming. For specialized subroutines (e.g. cuFFT, Npp/Ipp), there are abstraction wrappers.
+More specifically, it implements:
+* Harmonic-percussive source separation using median filtering ([Fitzgerald 2010](http://dafx10.iem.at/papers/DerryFitzGerald_DAFx10_P15.pdf), [Drieger et al 2014](https://archives.ismir.net/ismir2014/paper/000127.pdf))
+* Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
+
+Zen was written from the ground up to support dual CPU/GPU implementations of algorithms by using policy-based template metaprogramming. For specialized subroutines (e.g. cuFFT, Npp/Ipp), there are abstraction wrappers.
+
+### Block diagrams
 
 ### Origin
 
-Having originally worked on [Real-time Harmonic-Percussive Source Separation](https://github.com/sevagh/Real-Time-HPSS), my conclusion at the time was that although the technique was viable, the running time (5ms for 10ms-sized inputs) made it unsuitable for true real-time applications.
+This is a followup to my project [Real-time Harmonic-Percussive Source Separation](https://github.com/sevagh/Real-Time-HPSS). In the previous project, I showed that Fitzgerald's 2010 algorithm for median-filtering harmonic-percussive source separation (and Drieger et al's subequent 2014 modification) could be adapted to work in real-time. However, my simple MATLAB and Python implementations were too slow to be feasible (~5-10ms of processing per 10ms hop in a real-time stream).
 
-Believing that harmonic-percussive separation could be an important preprocessing step to improving the accuracy of existing beat and downbeat-tracking algorithms, I tried to write an optimized version using CUDA. By using the NppiFilterMedian family of functions for implementing median-filtering-based HPS, I got the computation time down to ~160us for a 10ms input buffer.
+Using CUDA and NPP to implement median-filtering-based HPS, I got the computation time down to ~160us for a 10ms input buffer in this library, making it viable as an early stage in a real-time processing chain.
 
-When processing is done on a GPU, the data should stay on the GPU - that's why expanding the HPS algorithm into a library to house a collection of beat tracking algorithms would help minimize the cost of adding HPS as a preprocessing step, since the cost of shipping single buffers of input at a time is amortized across all the processing we can do on it.
+The name is Zen because:
+* I wrote it on a Ry**zen**-based computer
+* I tested it on Meshuggah's album Ob**zen**
 
-### Roadmap
+### Usefulness
 
-The initial roadmap of zengarden is focused on pre-processing:
+Harmonic separation in real-time is worse than offline. This is due to the large hop size (4096 samples, 85ms @ 48kHz) required for good harmonic separation.
 
-1. Add a variant of HPS from https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf
-2. Write a test suite that evaluates existing state-of-the-art beat trackers (using MIREX challenge datasets, etc.), to demonstrate the usefulness of HPS as a preprocessing step in beat-tracking algorithms
-3. Look into dynamic range processing - specifically expanders, noisegates, or transient shapers - to potentially chain with HPS to create an even better separation of percussive audio
+However, a small hop size (256/512 samples, 5-10ms) is suitable for percussive separation. Therefore, one could (or should) use this library as a real-time pre-processing step before applying percussion analysis algorithms (e.g. beat tracking, tempo tracking).
 
-Once I can (hopefully) demonstrate that HPS significant boosts general beat tracking accuracy, further direction will be decided.
+#### Usage
+
+#### Results
 
 ### Development
 
-I currently build and compile zengarden on Linux (Fedora 32) using GCC 8, CUDA Toolkit 10.2, and nvcc on an amd64 Ryzen host (hence the name **zen**garden) with an NVIDIA RTX 2070 SUPER. All NVIDIA tools are installed using negativo17's nvidia repository.
+I currently build and compile zengarden on Linux (Fedora 32) using GCC 8, CUDA Toolkit 10.2, and nvcc on an amd64 Ryzen host with an NVIDIA RTX 2070 SUPER. All NVIDIA libraries were installed and managed using negativo17's Fedora nvidia repository.
 
 #### Tests 
 

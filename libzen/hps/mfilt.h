@@ -18,9 +18,9 @@
 #include <ippdefs.h>
 #include <ippi.h>
 
-#include <libzengarden/zg.h>
+#include <libzen/zen.h>
 
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace hps {
 		namespace mfilt {
@@ -82,7 +82,7 @@ namespace internal {
 					     && filter_len > time)
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
-						throw zg::ZgException("median filter bigger than "
+						throw zen::ZgException("median filter bigger than "
 						                      "matrix dimension");
 					}
 
@@ -298,7 +298,7 @@ namespace internal {
 					     && filter_len > time)
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
-						throw zg::ZgException("median filter bigger than "
+						throw zen::ZgException("median filter bigger than "
 						                      "matrix dimension");
 					}
 
@@ -343,6 +343,6 @@ namespace internal {
 		}; // namespace mfilt
 	};     // namespace hps
 };         // namespace internal
-};         // namespace zg
+};         // namespace zen
 
 #endif /* ZG_MFILT_INTERNAL_H */

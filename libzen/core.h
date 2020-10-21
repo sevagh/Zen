@@ -3,41 +3,41 @@
 
 #include <fftw.h>
 #include <hps/mfilt.h>
-#include <libzengarden/zg.h>
+#include <libzen/zen.h>
 #include <stdexcept>
 #include <thrust/complex.h>
 #include <thrust/device_vector.h>
 #include <vector>
 #include <win.h>
 
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace core {
-		template <zg::Backend T>
+		template <zen::Backend T>
 		struct TypeTraits {
 		};
 
 		template <>
-		struct TypeTraits<zg::Backend::GPU> {
+		struct TypeTraits<zen::Backend::GPU> {
 			typedef thrust::device_ptr<float> InputPointer;
 			typedef thrust::device_vector<float> RealVector;
 			typedef thrust::device_vector<thrust::complex<float>> ComplexVector;
-			typedef zg::internal::fftw::FFTC2CWrapperGPU FFTC2CWrapper;
-			typedef zg::internal::hps::mfilt::MedianFilterGPU MedianFilter;
-			typedef zg::internal::win::WindowGPU Window;
+			typedef zen::internal::fftw::FFTC2CWrapperGPU FFTC2CWrapper;
+			typedef zen::internal::hps::mfilt::MedianFilterGPU MedianFilter;
+			typedef zen::internal::win::WindowGPU Window;
 		};
 
 		template <>
-		struct TypeTraits<zg::Backend::CPU> {
+		struct TypeTraits<zen::Backend::CPU> {
 			typedef float* InputPointer;
 			typedef std::vector<float> RealVector;
 			typedef std::vector<thrust::complex<float>> ComplexVector;
-			typedef zg::internal::fftw::FFTC2CWrapperCPU FFTC2CWrapper;
-			typedef zg::internal::hps::mfilt::MedianFilterCPU MedianFilter;
-			typedef zg::internal::win::WindowCPU Window;
+			typedef zen::internal::fftw::FFTC2CWrapperCPU FFTC2CWrapper;
+			typedef zen::internal::hps::mfilt::MedianFilterCPU MedianFilter;
+			typedef zen::internal::win::WindowCPU Window;
 		};
 	}; // namespace core
 };     // namespace internal
-};     // namespace zg
+};     // namespace zen
 
 #endif /* ZG_CORE_H */

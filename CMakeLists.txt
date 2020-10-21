@@ -52,8 +52,8 @@ include(FindPkgConfig)
 # SUBPROJECTS
 # ------------------------------------------------------------------------------#
 
-add_subdirectory(libzengarden)
-add_subdirectory(zengarden)
+add_subdirectory(libzen)
+add_subdirectory(zen)
 
 # ------------------------------------------------------------------------------#
 # CLANG-FORMAT
@@ -62,10 +62,10 @@ add_subdirectory(zengarden)
 file(
   GLOB_RECURSE
   ALL_CXX_SOURCE_FILES
-  libzengarden/*.cu
-  libzengarden/*.h
-  zengarden/*.cu
-  zengarden/*.h)
+  libzen/*.cu
+  libzen/*.h
+  zen/*.cu
+  zen/*.h)
 
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")

@@ -7,22 +7,22 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-#include <libzengarden/io.h>
-#include <libzengarden/zg.h>
+#include <libzen/io.h>
+#include <libzen/zen.h>
 
 // forward declare private implementations
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace hps {
-		template <zg::Backend B>
+		template <zen::Backend B>
 		class HPR;
 	}; // namespace hps
 };     // namespace internal
-};     // namespace zg
+};     // namespace zen
 
-namespace zg {
+namespace zen {
 namespace hps {
-	template <zg::Backend B>
+	template <zen::Backend B>
 	class HPRIOffline {
 	public:
 		HPRIOffline(float fs,
@@ -56,15 +56,15 @@ namespace hps {
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
 		// offline iterative algorithm "HPR-I"
-		zg::internal::hps::HPR<B>* p_impl_h;
-		zg::internal::hps::HPR<B>* p_impl_p;
+		zen::internal::hps::HPR<B>* p_impl_h;
+		zen::internal::hps::HPR<B>* p_impl_p;
 
 		std::size_t hop_h, hop_p;
-		zg::io::IOGPU io_h;
-		zg::io::IOGPU io_p;
+		zen::io::IOGPU io_h;
+		zen::io::IOGPU io_p;
 	};
 
-	template <zg::Backend B>
+	template <zen::Backend B>
 	class PRealtime {
 	public:
 		PRealtime(float fs, std::size_t hop, float beta);
@@ -85,13 +85,13 @@ namespace hps {
 		// gpu benefits from some warmup, especially in real-time contexts
 		// where the slow early iterations cause latency issues
 		void warmup();
-		void warmup(zg::io::IOGPU& io);
+		void warmup(zen::io::IOGPU& io);
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
-		zg::internal::hps::HPR<B>* p_impl;
+		zen::internal::hps::HPR<B>* p_impl;
 	};
 }; // namespace hps
-}; // namespace zg
+}; // namespace zen
 
 #endif /* ZG_HPS_PUB_H */

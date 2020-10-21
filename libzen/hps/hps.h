@@ -14,7 +14,7 @@
 
 #include <core.h>
 
-namespace zg {
+namespace zen {
 namespace internal {
 	namespace hps {
 		static constexpr float Eps = std::numeric_limits<float>::epsilon();
@@ -102,20 +102,20 @@ namespace internal {
 		const unsigned int HPSS_PERCUSSIVE = 1 << 1;
 		const unsigned int HPSS_RESIDUAL = 1 << 2;
 
-		template <zg::Backend B>
+		template <zen::Backend B>
 		class HPR {
 
-			typedef typename zg::internal::core::TypeTraits<B>::InputPointer
+			typedef typename zen::internal::core::TypeTraits<B>::InputPointer
 			    InputPointer;
 			typedef
-			    typename zg::internal::core::TypeTraits<B>::RealVector RealVector;
-			typedef typename zg::internal::core::TypeTraits<B>::ComplexVector
+			    typename zen::internal::core::TypeTraits<B>::RealVector RealVector;
+			typedef typename zen::internal::core::TypeTraits<B>::ComplexVector
 			    ComplexVector;
-			typedef typename zg::internal::core::TypeTraits<B>::MedianFilter
+			typedef typename zen::internal::core::TypeTraits<B>::MedianFilter
 			    MedianFilter;
-			typedef typename zg::internal::core::TypeTraits<B>::FFTC2CWrapper
+			typedef typename zen::internal::core::TypeTraits<B>::FFTC2CWrapper
 			    FFTC2CWrapper;
-			typedef typename zg::internal::core::TypeTraits<B>::Window Window;
+			typedef typename zen::internal::core::TypeTraits<B>::Window Window;
 
 		public:
 			float fs;
@@ -251,6 +251,6 @@ namespace internal {
 		};
 	}; // namespace hps
 };     // namespace internal
-};     // namespace zg
+};     // namespace zen
 
 #endif /* ZG_HPS_INTERNAL_H */

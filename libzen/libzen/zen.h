@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 
-namespace zg {
+namespace zen {
 
 class ZgException : public std::runtime_error {
 public:
@@ -15,6 +15,6 @@ enum Backend { GPU, CPU };
 
 constexpr float Eps = std::numeric_limits<float>::epsilon();
 
-}; // namespace zg
+}; // namespace zen
 
 #endif /* ZG_PUB_H */

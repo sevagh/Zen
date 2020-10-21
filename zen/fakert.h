@@ -6,8 +6,8 @@
 #include <functional>
 #include <iostream>
 
-#include <libzengarden/hps.h>
-#include <libzengarden/io.h>
+#include <libzen/hps.h>
+#include <libzen/io.h>
 
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
@@ -33,7 +33,7 @@ get_chunk_limits(std::vector<float>& container, size_t k)
 	return ret;
 }
 
-namespace zg {
+namespace zen {
 namespace fakert {
 
 	struct FakeRtParams {
@@ -53,7 +53,7 @@ namespace fakert {
 
 		int validate_params()
 		{
-			std::cout << "Running zengarden-fakert with the following params:"
+			std::cout << "Running zen-fakert with the following params:"
 			          << "\n\tinfile: " << p.infile
 			          << "\n\toutfile: " << p.outfile;
 
@@ -128,7 +128,7 @@ namespace fakert {
 			float delta_t = 1000 * ( float )p.hop / file_data->sampleRate;
 
 			if (p.cpu) {
-				auto hpss = zg::hps::PRealtime<zg::Backend::CPU>(
+				auto hpss = zen::hps::PRealtime<zen::Backend::CPU>(
 				    file_data->sampleRate, p.hop, p.beta);
 
 				// not passing an IO object to warmup in the CPU case
@@ -171,11 +171,11 @@ namespace fakert {
 				          << ( float )time_tot / iters << std::endl;
 			}
 			else {
-				auto hpss = zg::hps::PRealtime<zg::Backend::GPU>(
+				auto hpss = zen::hps::PRealtime<zen::Backend::GPU>(
 				    file_data->sampleRate, p.hop, p.beta, p.nocopybord);
 
 				// need an io object to do some warming up
-				auto io = zg::io::IOGPU(p.hop);
+				auto io = zen::io::IOGPU(p.hop);
 
 				hpss.warmup(io);
 
@@ -259,6 +259,6 @@ namespace fakert {
 		FakeRtParams p;
 	};
 }; // namespace fakert
-}; // namespace zg
+}; // namespace zen
 
 #endif /* ZG_CLI_FAKERT */

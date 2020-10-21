@@ -12,7 +12,7 @@
 
 #include <cmath>
 
-using namespace zg::internal::fftw;
+using namespace zen::internal::fftw;
 
 static std::vector<thrust::complex<float>> generate_data(size_t size)
 {

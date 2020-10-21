@@ -7,14 +7,14 @@
 #include <iostream>
 #include <math.h>
 
-#include <libzengarden/hps.h>
-#include <libzengarden/io.h>
-#include <libzengarden/zg.h>
+#include <libzen/hps.h>
+#include <libzen/io.h>
+#include <libzen/zen.h>
 
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 
-namespace zg {
+namespace zen {
 namespace offline {
 	struct OfflineParams {
 		std::string infile = "";
@@ -35,7 +35,7 @@ namespace offline {
 
 		int validate_params()
 		{
-			std::cout << "Running zengarden-offline with the following params:"
+			std::cout << "Running zen-offline with the following params:"
 			          << "\n\tinfile: " << p.infile
 			          << "\n\toutfile_prefix: " << p.outfile_prefix;
 
@@ -110,7 +110,7 @@ namespace offline {
 				          << p.beta_p << std::endl;
 
 				if (p.cpu) {
-					auto hpss = zg::hps::HPRIOffline<zg::Backend::CPU>(
+					auto hpss = zen::hps::HPRIOffline<zen::Backend::CPU>(
 					    file_data->sampleRate, p.hop_h, p.hop_p, p.beta_h,
 					    p.beta_p);
 
@@ -126,7 +126,7 @@ namespace offline {
 					          << " ms" << std::endl;
 				}
 				else {
-					auto hpss = zg::hps::HPRIOffline<zg::Backend::GPU>(
+					auto hpss = zen::hps::HPRIOffline<zen::Backend::GPU>(
 					    file_data->sampleRate, p.hop_h, p.hop_p, p.beta_h,
 					    p.beta_p, p.nocopybord);
 
@@ -197,6 +197,6 @@ namespace offline {
 		OfflineParams p;
 	};
 }; // namespace offline
-}; // namespace zg
+}; // namespace zen
 
 #endif /* ZG_CLI_OFFLINE */
