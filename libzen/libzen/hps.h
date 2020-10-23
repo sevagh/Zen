@@ -52,6 +52,8 @@ namespace hps {
 		// of audio.size()
 		std::array<std::vector<float>, 3> process(std::vector<float> audio);
 
+		void use_sse_filter();
+
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
 		// we use 2 cascading HPR objects to implement driedger's
@@ -86,6 +88,8 @@ namespace hps {
 		// where the slow early iterations cause latency issues
 		void warmup();
 		void warmup(zen::io::IOGPU& io);
+
+		void use_sse_filter();
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl

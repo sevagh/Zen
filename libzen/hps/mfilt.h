@@ -83,7 +83,7 @@ namespace internal {
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
 						throw zen::ZgException("median filter bigger than "
-						                      "matrix dimension");
+						                       "matrix dimension");
 					}
 
 					filter_len += (1 - (filter_len % 2)); // make sure filter
@@ -299,7 +299,7 @@ namespace internal {
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
 						throw zen::ZgException("median filter bigger than "
-						                      "matrix dimension");
+						                       "matrix dimension");
 					}
 
 					filter_len += (1 - (filter_len % 2)); // make sure filter

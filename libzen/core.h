@@ -2,8 +2,8 @@
 #define ZG_CORE_H
 
 #include <fftw.h>
-#include <hps/mfilt.h>
 #include <hps/box.h>
+#include <hps/mfilt.h>
 #include <libzen/zen.h>
 #include <stdexcept>
 #include <thrust/complex.h>

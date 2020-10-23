@@ -22,6 +22,7 @@ namespace offline {
 		bool do_hps = false;
 		bool cpu = false;
 		bool nocopybord = false;
+		bool use_sse = false;
 		std::size_t hop_h = 4096;
 		std::size_t hop_p = 256;
 		float beta_h = 2.0;
@@ -114,6 +115,10 @@ namespace offline {
 					    file_data->sampleRate, p.hop_h, p.hop_p, p.beta_h,
 					    p.beta_p);
 
+					if (p.use_sse) {
+						hpss.use_sse_filter();
+					}
+
 					auto t1 = std::chrono::high_resolution_clock::now();
 					all_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
@@ -129,6 +134,10 @@ namespace offline {
 					auto hpss = zen::hps::HPRIOffline<zen::Backend::GPU>(
 					    file_data->sampleRate, p.hop_h, p.hop_p, p.beta_h,
 					    p.beta_p, p.nocopybord);
+
+					if (p.use_sse) {
+						hpss.use_sse_filter();
+					}
 
 					auto t1 = std::chrono::high_resolution_clock::now();
 					all_out = hpss.process(audio);

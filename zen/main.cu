@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
 	           & value("outfile_prefix", offline_params.outfile_prefix)
 	                 % "(optional) output wav file prefix",
 	       option("--cpu").set(offline_params.cpu, true),
+	       option("--sse").set(offline_params.use_sse, true),
 	       option("--nocopybord").set(offline_params.nocopybord, true))
 	      % "offline (process entire songs at a time)";
 
@@ -47,15 +48,16 @@ int main(int argc, char* argv[])
 	           & value("outfile", fakert_params.outfile)
 	                 % "(optional) output wav file",
 	       option("--cpu").set(fakert_params.cpu, true),
+	       option("--sse").set(fakert_params.use_sse, true),
 	       option("--nocopybord").set(fakert_params.nocopybord, true))
 	      % "fakert (use slim rt algorithms with wav files)";
 
 	auto zencli = (offline | fakert
-	              | command("help", "-h", "--help").set(selected, mode::help)
-	                    % "Show this screen."
-	              | command("version", "-v", "--version")([] {
-		                std::cout << "version 1.0\n";
-	                }) % "Show version.");
+	               | command("help", "-h", "--help").set(selected, mode::help)
+	                     % "Show this screen."
+	               | command("version", "-v", "--version")([] {
+		                 std::cout << "version 1.0\n";
+	                 }) % "Show version.");
 
 	auto fmt = doc_formatting{}
 	               .first_column(2)
@@ -69,8 +71,7 @@ int main(int argc, char* argv[])
 			break;
 		case mode::help: {
 			std::cout << "usage:\n\n"
-			          << usage_lines(zencli, "zen", fmt)
-			          << "\n\nOptions:\n"
+			          << usage_lines(zencli, "zen", fmt) << "\n\nOptions:\n"
 			          << documentation(zencli, fmt) << '\n';
 		} break;
 		case mode::offline: {
@@ -84,7 +85,6 @@ int main(int argc, char* argv[])
 		}
 	}
 	else {
-		std::cerr << "usage:\n\n"
-		          << usage_lines(zencli, "zen", fmt) << '\n';
+		std::cerr << "usage:\n\n" << usage_lines(zencli, "zen", fmt) << '\n';
 	}
 }

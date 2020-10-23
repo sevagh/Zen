@@ -42,6 +42,7 @@ namespace fakert {
 		bool do_hps = false;
 		bool cpu = false;
 		bool nocopybord = false;
+		bool use_sse = false;
 		std::size_t hop = 256;
 		float beta = 2.5;
 	};
@@ -131,6 +132,10 @@ namespace fakert {
 				auto hpss = zen::hps::PRealtime<zen::Backend::CPU>(
 				    file_data->sampleRate, p.hop, p.beta);
 
+				if (p.use_sse) {
+					hpss.use_sse_filter();
+				}
+
 				// not passing an IO object to warmup in the CPU case
 				hpss.warmup();
 
@@ -176,6 +181,10 @@ namespace fakert {
 
 				// need an io object to do some warming up
 				auto io = zen::io::IOGPU(p.hop);
+
+				if (p.use_sse) {
+					hpss.use_sse_filter();
+				}
 
 				hpss.warmup(io);
 

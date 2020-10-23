@@ -20,11 +20,11 @@
 
 template <zen::Backend B>
 zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
-                                     std::size_t hop_h,
-                                     std::size_t hop_p,
-                                     float beta_h,
-                                     float beta_p,
-                                     bool nocopybord)
+                                      std::size_t hop_h,
+                                      std::size_t hop_p,
+                                      float beta_h,
+                                      float beta_p,
+                                      bool nocopybord)
     : io_h(zen::io::IOGPU(hop_h))
     , io_p(zen::io::IOGPU(hop_p))
     , hop_h(hop_h)
@@ -32,7 +32,7 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
 {
 	if (hop_h % hop_p != 0) {
 		throw zen::ZgException("hop_h and hop_p should be evenly "
-		                      "divisible");
+		                       "divisible");
 	}
 
 	p_impl_h = new zen::internal::hps::HPR<B>(
@@ -50,10 +50,10 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
 
 template <zen::Backend B>
 zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
-                                     std::size_t hop_h,
-                                     std::size_t hop_p,
-                                     float beta_h,
-                                     float beta_p)
+                                      std::size_t hop_h,
+                                      std::size_t hop_p,
+                                      float beta_h,
+                                      float beta_p)
     : io_h(zen::io::IOGPU(hop_h))
     , io_p(zen::io::IOGPU(hop_p))
     , hop_h(hop_h)
@@ -61,7 +61,7 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
 {
 	if (hop_h % hop_p != 0) {
 		throw zen::ZgException("hop_h and hop_p should be evenly "
-		                      "divisible");
+		                       "divisible");
 	}
 
 	p_impl_h = new zen::internal::hps::HPR<B>(
@@ -84,13 +84,20 @@ zen::hps::HPRIOffline<B>::~HPRIOffline()
 
 template <zen::Backend B>
 zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
-                                     std::size_t hop_h,
-                                     std::size_t hop_p)
+                                      std::size_t hop_h,
+                                      std::size_t hop_p)
     : HPRIOffline(fs, hop_h, hop_p, 2.0, 2.0){};
 
 template <zen::Backend B>
 zen::hps::HPRIOffline<B>::HPRIOffline(float fs)
     : HPRIOffline(fs, 4096, 256, 2.0, 2.0){};
+
+template <zen::Backend B>
+void zen::hps::HPRIOffline<B>::use_sse_filter()
+{
+	p_impl_h->set_filter_type(zen::internal::hps::FilterType::SSE);
+	p_impl_p->set_filter_type(zen::internal::hps::FilterType::SSE);
+}
 
 static int
 hpss_chunk_padder(std::vector<float>& audio, std::size_t hop, std::size_t lag)
@@ -275,9 +282,9 @@ zen::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop, float beta)
 
 template <zen::Backend B>
 zen::hps::PRealtime<B>::PRealtime(float fs,
-                                 std::size_t hop,
-                                 float beta,
-                                 bool nocopybord)
+                                  std::size_t hop,
+                                  float beta,
+                                  bool nocopybord)
 {
 	p_impl = new zen::internal::hps::HPR<B>(
 	    fs, hop, beta, zen::internal::hps::HPSS_PERCUSSIVE,
@@ -300,6 +307,12 @@ template <zen::Backend B>
 zen::hps::PRealtime<B>::PRealtime(float fs)
     : PRealtime(fs, 256, 2.5){};
 
+template <zen::Backend B>
+void zen::hps::PRealtime<B>::use_sse_filter()
+{
+	p_impl->set_filter_type(zen::internal::hps::FilterType::SSE);
+}
+
 template <>
 void zen::hps::PRealtime<zen::Backend::GPU>::process_next_hop(
     thrust::device_ptr<float> in_hop,
@@ -312,7 +325,7 @@ void zen::hps::PRealtime<zen::Backend::GPU>::process_next_hop(
 
 template <>
 void zen::hps::PRealtime<zen::Backend::CPU>::process_next_hop(float* in_hop,
-                                                            float* out_hop)
+                                                              float* out_hop)
 {
 	p_impl->process_next_hop(in_hop);
 	std::copy(p_impl->percussive_out.begin(),
@@ -384,7 +397,8 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 
 	// populate curr_fft with input .* square root von hann window
 	thrust::transform(input.begin(), input.end(), window.window.begin(),
-	                  fft.fft_vec.begin(), zen::internal::hps::window_functor());
+	                  fft.fft_vec.begin(),
+	                  zen::internal::hps::window_functor());
 
 	// zero out the second half of the fft
 	thrust::fill(fft.fft_vec.begin() + nwin, fft.fft_vec.end(),
@@ -406,17 +420,24 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 
 	// up to this stage, median filter + SSE filter are identical
 	switch (filter_type) {
-		case FilterType::Median:
-			// apply median filter in horizontal and vertical directions with NPP
-			// to create percussive and harmonic spectra
-			apply_median_filter();
-			break;
-		case FilterType::SSE:
-			// apply a Stochastic Spectrum Estimation filter
-			// to create transient and steady state spectra
-			apply_sse_filter();
-			break;
+	case FilterType::Median:
+		// apply median filter in horizontal and vertical directions with NPP
+		// to create percussive and harmonic spectra
+		apply_median_filter();
+		break;
+	case FilterType::SSE:
+		// apply a Stochastic Spectrum Estimation filter
+		// to create transient and steady state spectra
+		apply_sse_filter();
+		break;
 	};
+}
+
+template <zen::Backend B>
+void zen::internal::hps::HPR<B>::apply_median_filter()
+{
+	time.filter(s_mag, harmonic_matrix);
+	frequency.filter(s_mag, percussive_matrix);
 
 	if (output_percussive) {
 		// compute percussive mask from harmonic + percussive magnitude spectra
@@ -482,13 +503,8 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 }
 
 template <zen::Backend B>
-void zen::internal::hps::HPR<B>::apply_median_filter() {
-	time.filter(s_mag, harmonic_matrix);
-	frequency.filter(s_mag, percussive_matrix);
-}
-
-template <zen::Backend B>
-void zen::internal::hps::HPR<B>::apply_sse_filter() {
+void zen::internal::hps::HPR<B>::apply_sse_filter()
+{
 	// calculate the reciprocal of the magnitude stft
 	// SSE paper calls it a power spectrogram but there's no ^2 factor
 	thrust::transform(s_mag.begin(), s_mag.end(), reciprocal.begin(),
@@ -500,12 +516,60 @@ void zen::internal::hps::HPR<B>::apply_sse_filter() {
 	time_sse.filter(reciprocal, harmonic_matrix);
 	frequency_sse.filter(reciprocal, percussive_matrix);
 
-	// take reciprocal again for the final percussive/harmonic magnitude spectra
-	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(), reciprocal.begin(),
+	// take reciprocal again for the final percussive/harmonic magnitude spectra in-place
+	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
+	                  percussive_matrix.begin(),
 	                  zen::internal::hps::reciprocal_functor());
-	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(), reciprocal.begin(),
+	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(),
+	                  harmonic_matrix.begin(),
 	                  zen::internal::hps::reciprocal_functor());
 
+	// apply Wiener filtering on the SSE-filtered spectrograms as detailed in the paper
+	if (output_percussive) {
+		// compute percussive mask from harmonic + percussive magnitude spectra
+		// these are soft wiener masks
+		thrust::transform(percussive_matrix.end() - lag * nfft,
+		                  percussive_matrix.end() - (lag - 1) * nfft,
+		                  harmonic_matrix.end() - lag * nfft,
+		                  percussive_mask.end() - lag * nfft,
+		                  zen::internal::hps::sse_mask_functor());
+
+		// apply lag column of percussive mask to recover percussive audio from
+		// original fft
+		thrust::transform(sliding_stft.end() - lag * nfft,
+		                  sliding_stft.end() - (lag - 1) * nfft,
+		                  percussive_mask.end() - lag * nfft,
+		                  fft.fft_vec.begin(),
+		                  zen::internal::hps::apply_mask_functor());
+		fft.backward();
+
+		// now curr_fft has the current iteration's fresh samples
+		// we overlap-add it the real part to the previous
+		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+		                  percussive_out.begin(), percussive_out.begin(),
+		                  zen::internal::hps::overlap_add_functor(COLA_factor));
+	}
+
+	if (output_harmonic) {
+		// compute harmonic mask from harmonic + percussive magnitude spectra
+		// these are soft wiener masks
+		thrust::transform(harmonic_matrix.end() - lag * nfft,
+		                  harmonic_matrix.end() - (lag - 1) * nfft,
+		                  percussive_matrix.end() - lag * nfft,
+		                  harmonic_mask.end() - lag * nfft,
+		                  zen::internal::hps::sse_mask_functor());
+
+		thrust::transform(sliding_stft.end() - lag * nfft,
+		                  sliding_stft.end() - (lag - 1) * nfft,
+		                  harmonic_mask.end() - lag * nfft, fft.fft_vec.begin(),
+		                  zen::internal::hps::apply_mask_functor());
+
+		fft.backward();
+
+		thrust::transform(fft.fft_vec.begin(), fft.fft_vec.begin() + nwin,
+		                  harmonic_out.begin(), harmonic_out.begin(),
+		                  zen::internal::hps::overlap_add_functor(COLA_factor));
+	}
 }
 
 template class zen::hps::HPRIOffline<zen::Backend::CPU>;
