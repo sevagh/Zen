@@ -18,11 +18,6 @@
 namespace zen {
 namespace internal {
 	namespace hps {
-		enum FilterType {
-			Median,
-			SSE,
-		};
-
 		static constexpr float Eps = std::numeric_limits<float>::epsilon();
 
 		// various thrust GPU functors, reused across HPRIOfflineGPU and PRealtimeGPU
@@ -47,11 +42,15 @@ namespace internal {
 		};
 
 		struct reciprocal_functor {
-			reciprocal_functor() {}
+			const float divide_factor;
+			reciprocal_functor(float _divide_factor)
+			    : divide_factor(_divide_factor)
+			{
+			}
 
 			__host__ __device__ float operator()(const float& x) const
 			{
-				return 1.0f / x;
+				return (1.0f / x) / divide_factor;
 			}
 		};
 
@@ -88,10 +87,10 @@ namespace internal {
 			}
 		};
 
-		struct mask_functor {
+		struct hard_mask_functor {
 			const float beta;
 
-			mask_functor(float _beta)
+			hard_mask_functor(float _beta)
 			    : beta(_beta)
 			{
 			}
@@ -100,6 +99,21 @@ namespace internal {
 			                                     const float& y) const
 			{
 				return float((x / (y + Eps)) >= beta);
+			}
+		};
+
+		// soft/weiner mask
+		struct soft_mask_functor {
+			const int power;
+			soft_mask_functor(int _power)
+			    : power(_power)
+			{
+			}
+
+			__host__ __device__ float operator()(const float& x,
+			                                     const float& y) const
+			{
+				return float(powf(x, power) / (powf(x, power) + powf(y, power)));
 			}
 		};
 
@@ -146,8 +160,6 @@ namespace internal {
 			typedef typename zen::internal::core::TypeTraits<B>::Window Window;
 
 		public:
-			FilterType filter_type;
-
 			float fs;
 			std::size_t hop;
 			std::size_t nwin;
@@ -155,9 +167,12 @@ namespace internal {
 			float beta;
 			int l_harm;
 			int l_perc;
+			int l_harm_sse;
+			int l_perc_sse;
 			int lag; // lag specifies how far behind the output frame is compared
 			    // to the tip in the anticausal case we're looking for l_harm
 			    // frames backwards
+			int lag_sse;
 			std::size_t stft_width;
 
 			RealVector input;
@@ -191,6 +206,8 @@ namespace internal {
 			bool output_percussive;
 			bool output_harmonic;
 			bool output_residual;
+			bool use_sse;
+			bool soft_mask;
 
 			HPR(float fs,
 			    std::size_t hop,
@@ -198,8 +215,7 @@ namespace internal {
 			    int output_flags,
 			    mfilt::MedianFilterDirection causality,
 			    bool copy_bord)
-			    : filter_type(FilterType::Median)
-			    , fs(fs)
+			    : fs(fs)
 			    , hop(hop)
 			    , nwin(2 * hop)
 			    , nfft(4 * hop)
@@ -238,6 +254,8 @@ namespace internal {
 			    , output_harmonic(false)
 			    , output_percussive(false)
 			    , output_residual(false)
+			    , use_sse(false)
+			    , soft_mask(false)
 			{
 				// causal = realtime
 				if (causality == mfilt::MedianFilterDirection::TimeCausal) {
@@ -260,12 +278,11 @@ namespace internal {
 				if (output_flags & HPSS_RESIDUAL) {
 					output_residual = true;
 				}
-			};
-
-			void set_filter_type(FilterType ext_filter_type)
-			{
-				filter_type = ext_filter_type;
 			}
+
+			void use_sse_filter() { use_sse = true; }
+
+			void use_soft_mask() { soft_mask = true; }
 
 			void process_next_hop(InputPointer in_hop);
 

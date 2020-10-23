@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 	                 % "(optional) output wav file prefix",
 	       option("--cpu").set(offline_params.cpu, true),
 	       option("--sse").set(offline_params.use_sse, true),
+	       option("--soft-mask").set(offline_params.soft_mask, true),
 	       option("--nocopybord").set(offline_params.nocopybord, true))
 	      % "offline (process entire songs at a time)";
 
@@ -43,12 +44,13 @@ int main(int argc, char* argv[])
 	       (option("--hps").set(fakert_params.do_hps, true)
 	        & opt_value("hop", fakert_params.hop)
 	        & opt_value("beta", fakert_params.beta))
-	           % "1-pass P-realtime, defaults: 256,2.5",
+	           % "1-pass P-realtime, defaults: 256,2.0",
 	       option("-o", "--output")
 	           & value("outfile", fakert_params.outfile)
 	                 % "(optional) output wav file",
 	       option("--cpu").set(fakert_params.cpu, true),
 	       option("--sse").set(fakert_params.use_sse, true),
+	       option("--soft-mask").set(fakert_params.soft_mask, true),
 	       option("--nocopybord").set(fakert_params.nocopybord, true))
 	      % "fakert (use slim rt algorithms with wav files)";
 

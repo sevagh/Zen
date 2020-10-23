@@ -95,8 +95,15 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs)
 template <zen::Backend B>
 void zen::hps::HPRIOffline<B>::use_sse_filter()
 {
-	p_impl_h->set_filter_type(zen::internal::hps::FilterType::SSE);
-	p_impl_p->set_filter_type(zen::internal::hps::FilterType::SSE);
+	p_impl_h->use_sse_filter();
+	p_impl_p->use_sse_filter();
+}
+
+template <zen::Backend B>
+void zen::hps::HPRIOffline<B>::use_soft_mask()
+{
+	p_impl_h->use_soft_mask();
+	p_impl_p->use_soft_mask();
 }
 
 static int
@@ -300,17 +307,23 @@ zen::hps::PRealtime<B>::~PRealtime()
 
 template <zen::Backend B>
 zen::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop)
-    : PRealtime(fs, hop, 2.5){};
+    : PRealtime(fs, hop, 2.0){};
 
 // (TODO: reassess) best-performing defaults
 template <zen::Backend B>
 zen::hps::PRealtime<B>::PRealtime(float fs)
-    : PRealtime(fs, 256, 2.5){};
+    : PRealtime(fs, 256, 2.0){};
 
 template <zen::Backend B>
 void zen::hps::PRealtime<B>::use_sse_filter()
 {
-	p_impl->set_filter_type(zen::internal::hps::FilterType::SSE);
+	p_impl->use_sse_filter();
+}
+
+template <zen::Backend B>
+void zen::hps::PRealtime<B>::use_soft_mask()
+{
+	p_impl->use_soft_mask();
 }
 
 template <>
@@ -419,18 +432,17 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 	                  zen::internal::hps::complex_abs_functor());
 
 	// up to this stage, median filter + SSE filter are identical
-	switch (filter_type) {
-	case FilterType::Median:
+
+	if (!use_sse) {
 		// apply median filter in horizontal and vertical directions with NPP
 		// to create percussive and harmonic spectra
 		apply_median_filter();
-		break;
-	case FilterType::SSE:
+	}
+	else {
 		// apply a Stochastic Spectrum Estimation filter
 		// to create transient and steady state spectra
 		apply_sse_filter();
-		break;
-	};
+	}
 }
 
 template <zen::Backend B>
@@ -441,11 +453,20 @@ void zen::internal::hps::HPR<B>::apply_median_filter()
 
 	if (output_percussive) {
 		// compute percussive mask from harmonic + percussive magnitude spectra
-		thrust::transform(percussive_matrix.end() - lag * nfft,
-		                  percussive_matrix.end() - (lag - 1) * nfft,
-		                  harmonic_matrix.end() - lag * nfft,
-		                  percussive_mask.end() - lag * nfft,
-		                  zen::internal::hps::mask_functor(beta));
+		if (!soft_mask) {
+			thrust::transform(percussive_matrix.end() - lag * nfft,
+			                  percussive_matrix.end() - (lag - 1) * nfft,
+			                  harmonic_matrix.end() - lag * nfft,
+			                  percussive_mask.end() - lag * nfft,
+			                  zen::internal::hps::hard_mask_functor(beta));
+		}
+		else {
+			thrust::transform(percussive_matrix.end() - lag * nfft,
+			                  percussive_matrix.end() - (lag - 1) * nfft,
+			                  harmonic_matrix.end() - lag * nfft,
+			                  percussive_mask.end() - lag * nfft,
+			                  zen::internal::hps::soft_mask_functor(beta));
+		}
 
 		// apply lag column of percussive mask to recover percussive audio from
 		// original fft
@@ -465,11 +486,22 @@ void zen::internal::hps::HPR<B>::apply_median_filter()
 
 	if (output_harmonic) {
 		// compute harmonic mask from harmonic + percussive magnitude spectra
-		thrust::transform(harmonic_matrix.end() - lag * nfft,
-		                  harmonic_matrix.end() - (lag - 1) * nfft,
-		                  percussive_matrix.end() - lag * nfft,
-		                  harmonic_mask.end() - lag * nfft,
-		                  zen::internal::hps::mask_functor(beta - Eps));
+
+		if (!soft_mask) {
+			thrust::transform(
+			    harmonic_matrix.end() - lag * nfft,
+			    harmonic_matrix.end() - (lag - 1) * nfft,
+			    percussive_matrix.end() - lag * nfft,
+			    harmonic_mask.end() - lag * nfft,
+			    zen::internal::hps::hard_mask_functor(beta - Eps));
+		}
+		else {
+			thrust::transform(harmonic_matrix.end() - lag * nfft,
+			                  harmonic_matrix.end() - (lag - 1) * nfft,
+			                  percussive_matrix.end() - lag * nfft,
+			                  harmonic_mask.end() - lag * nfft,
+			                  zen::internal::hps::soft_mask_functor(beta));
+		}
 
 		thrust::transform(sliding_stft.end() - lag * nfft,
 		                  sliding_stft.end() - (lag - 1) * nfft,
@@ -483,8 +515,9 @@ void zen::internal::hps::HPR<B>::apply_median_filter()
 		                  zen::internal::hps::overlap_add_functor(COLA_factor));
 	}
 
-	if (output_residual) {
+	if (output_residual && !soft_mask) {
 		// compute residual mask from harmonic and percussive masks
+		// only valid for hard mask case
 		thrust::transform(harmonic_mask.begin(), harmonic_mask.end(),
 		                  percussive_mask.begin(), residual_mask.begin(),
 		                  zen::internal::hps::residual_mask_functor());
@@ -508,7 +541,7 @@ void zen::internal::hps::HPR<B>::apply_sse_filter()
 	// calculate the reciprocal of the magnitude stft
 	// SSE paper calls it a power spectrogram but there's no ^2 factor
 	thrust::transform(s_mag.begin(), s_mag.end(), reciprocal.begin(),
-	                  zen::internal::hps::reciprocal_functor());
+	                  zen::internal::hps::reciprocal_functor(1.0F));
 
 	// now do SSE in the time and frequency directions
 	// causality affects whether we can go forward in the time direction
@@ -517,12 +550,13 @@ void zen::internal::hps::HPR<B>::apply_sse_filter()
 	frequency_sse.filter(reciprocal, percussive_matrix);
 
 	// take reciprocal again for the final percussive/harmonic magnitude spectra in-place
-	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
-	                  percussive_matrix.begin(),
-	                  zen::internal::hps::reciprocal_functor());
-	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(),
-	                  harmonic_matrix.begin(),
-	                  zen::internal::hps::reciprocal_functor());
+	thrust::transform(
+	    percussive_matrix.begin(), percussive_matrix.end(),
+	    percussive_matrix.begin(),
+	    zen::internal::hps::reciprocal_functor(1.0F / (l_perc + 1.0F)));
+	thrust::transform(
+	    harmonic_matrix.begin(), harmonic_matrix.end(), harmonic_matrix.begin(),
+	    zen::internal::hps::reciprocal_functor(1.0F / (l_harm + 1.0F)));
 
 	// apply Wiener filtering on the SSE-filtered spectrograms as detailed in the paper
 	if (output_percussive) {

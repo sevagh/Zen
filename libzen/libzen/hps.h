@@ -53,6 +53,7 @@ namespace hps {
 		std::array<std::vector<float>, 3> process(std::vector<float> audio);
 
 		void use_sse_filter();
+		void use_soft_mask();
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl
@@ -90,6 +91,7 @@ namespace hps {
 		void warmup(zen::io::IOGPU& io);
 
 		void use_sse_filter();
+		void use_soft_mask();
 
 	private:
 		// https://en.cppreference.com/w/cpp/language/pimpl

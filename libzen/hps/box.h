@@ -18,8 +18,8 @@
 #include <ippdefs.h>
 #include <ippi.h>
 
-#include <libzen/zen.h>
 #include <hps/mfilt.h>
+#include <libzen/zen.h>
 
 using namespace zen::internal::hps::mfilt;
 
@@ -53,9 +53,9 @@ namespace internal {
 
 				// use time and frequency as axis names
 				BoxFilterGPU(int time,
-				                int frequency,
-				                int filter_len,
-				                MedianFilterDirection dir)
+				             int frequency,
+				             int filter_len,
+				             MedianFilterDirection dir)
 				    : mydir(dir)
 				    , time(time)
 				    , frequency(frequency)
@@ -74,7 +74,7 @@ namespace internal {
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
 						throw zen::ZgException("box filter bigger than "
-						                      "matrix dimension");
+						                       "matrix dimension");
 					}
 
 					filter_len += (1 - (filter_len % 2)); // make sure filter
@@ -96,7 +96,7 @@ namespace internal {
 						//
 						// our mask should extend backwards, i.e. have the anchor
 						// at the tip of the mask this is because the current frame
-						// is the last frame, and should have the most box 
+						// is the last frame, and should have the most box
 						// filtering - the earlier frames, or past, lose importance
 						// rapidly
 						smaller_roi.height -= filter_len;
@@ -165,9 +165,9 @@ namespace internal {
 					auto dst_ptr = ( Npp32f* )thrust::raw_pointer_cast(dst);
 
 					nppiFilterBox_32f_C1R(
-					    src_ptr + smaller_start_pixel_offset,
-					    smaller_nstep, dst_ptr + smaller_start_pixel_offset,
-					    smaller_nstep, smaller_roi, mask, anchor);
+					    src_ptr + smaller_start_pixel_offset, smaller_nstep,
+					    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
+					    smaller_roi, mask, anchor);
 				}
 			};
 
@@ -187,9 +187,9 @@ namespace internal {
 
 				// use time and frequency as axis names
 				BoxFilterCPU(int time,
-				                int frequency,
-				                int filter_len,
-				                MedianFilterDirection dir)
+				             int frequency,
+				             int filter_len,
+				             MedianFilterDirection dir)
 				    : time(time)
 				    , frequency(frequency)
 				    , filter_len(filter_len)
@@ -202,7 +202,7 @@ namespace internal {
 					    || (dir == MedianFilterDirection::Frequency
 					        && filter_len > frequency)) {
 						throw zen::ZgException("box filter bigger than "
-						                      "matrix dimension");
+						                       "matrix dimension");
 					}
 
 					filter_len += (1 - (filter_len % 2)); // make sure filter

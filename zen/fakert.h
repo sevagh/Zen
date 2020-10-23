@@ -43,8 +43,9 @@ namespace fakert {
 		bool cpu = false;
 		bool nocopybord = false;
 		bool use_sse = false;
+		bool soft_mask = false;
 		std::size_t hop = 256;
-		float beta = 2.5;
+		float beta = 2.0;
 	};
 
 	class FakeRtCommand {
@@ -61,6 +62,18 @@ namespace fakert {
 			if (p.do_hps) {
 				std::cout << "\n\tdo hps: yes"
 				          << "\n\t\thop: " << p.hop << "\n\t\tbeta: " << p.beta;
+				if (p.soft_mask) {
+					std::cout << "\n\t\tmask: soft/Wiener";
+				}
+				else {
+					std::cout << "\n\t\tmask: hard/binary";
+				}
+				if (p.use_sse) {
+					std::cout << "\n\t\tfilter: sse";
+				}
+				else {
+					std::cout << "\n\t\tfilter: median";
+				}
 			}
 			else {
 				std::cout << "\n\tdo hps: no";
@@ -136,6 +149,10 @@ namespace fakert {
 					hpss.use_sse_filter();
 				}
 
+				if (p.soft_mask) {
+					hpss.use_soft_mask();
+				}
+
 				// not passing an IO object to warmup in the CPU case
 				hpss.warmup();
 
@@ -184,6 +201,10 @@ namespace fakert {
 
 				if (p.use_sse) {
 					hpss.use_sse_filter();
+				}
+
+				if (p.soft_mask) {
+					hpss.use_soft_mask();
 				}
 
 				hpss.warmup(io);

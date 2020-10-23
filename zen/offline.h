@@ -23,6 +23,7 @@ namespace offline {
 		bool cpu = false;
 		bool nocopybord = false;
 		bool use_sse = false;
+		bool soft_mask = false;
 		std::size_t hop_h = 4096;
 		std::size_t hop_p = 256;
 		float beta_h = 2.0;
@@ -46,6 +47,18 @@ namespace offline {
 				          << "\n\t\tharmonic beta: " << p.beta_h
 				          << "\n\t\tpercussive hop: " << p.hop_p
 				          << "\n\t\tpercussive beta: " << p.beta_p;
+				if (p.soft_mask) {
+					std::cout << "\n\t\tmask: soft/Wiener";
+				}
+				else {
+					std::cout << "\n\t\tmask: hard/binary";
+				}
+				if (p.use_sse) {
+					std::cout << "\n\t\tfilter: sse";
+				}
+				else {
+					std::cout << "\n\t\tfilter: median";
+				}
 			}
 			else {
 				std::cout << "\n\tdo hps: no";
@@ -119,6 +132,10 @@ namespace offline {
 						hpss.use_sse_filter();
 					}
 
+					if (p.soft_mask) {
+						hpss.use_soft_mask();
+					}
+
 					auto t1 = std::chrono::high_resolution_clock::now();
 					all_out = hpss.process(audio);
 					auto t2 = std::chrono::high_resolution_clock::now();
@@ -137,6 +154,10 @@ namespace offline {
 
 					if (p.use_sse) {
 						hpss.use_sse_filter();
+					}
+
+					if (p.soft_mask) {
+						hpss.use_soft_mask();
 					}
 
 					auto t1 = std::chrono::high_resolution_clock::now();
