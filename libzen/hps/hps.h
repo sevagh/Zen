@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <fftw.h>
 #include <hps/mfilt.h>
+#include <hps/box.h>
 #include <vector>
 #include <win.h>
 
@@ -17,6 +18,11 @@
 namespace zen {
 namespace internal {
 	namespace hps {
+		enum FilterType {
+			Median,
+			SSE,
+		};
+
 		static constexpr float Eps = std::numeric_limits<float>::epsilon();
 
 		// various thrust GPU functors, reused across HPRIOfflineGPU and PRealtimeGPU
@@ -37,6 +43,15 @@ namespace internal {
 			                                     const float& y) const
 			{
 				return 1 - (x + y);
+			}
+		};
+
+		struct reciprocal_functor {
+			reciprocal_functor() {}
+
+			__host__ __device__ float operator()(const float& x) const
+			{
+				return 1.0f/x;
 			}
 		};
 
@@ -113,11 +128,15 @@ namespace internal {
 			    ComplexVector;
 			typedef typename zen::internal::core::TypeTraits<B>::MedianFilter
 			    MedianFilter;
+			typedef typename zen::internal::core::TypeTraits<B>::BoxFilter
+			    BoxFilter;
 			typedef typename zen::internal::core::TypeTraits<B>::FFTC2CWrapper
 			    FFTC2CWrapper;
 			typedef typename zen::internal::core::TypeTraits<B>::Window Window;
 
 		public:
+			FilterType filter_type;
+
 			float fs;
 			std::size_t hop;
 			std::size_t nwin;
@@ -136,6 +155,7 @@ namespace internal {
 			ComplexVector sliding_stft;
 
 			RealVector s_mag;
+			RealVector reciprocal;
 			RealVector harmonic_matrix;
 			RealVector percussive_matrix;
 
@@ -152,6 +172,9 @@ namespace internal {
 			MedianFilter time;
 			MedianFilter frequency;
 
+			BoxFilter time_sse;
+			BoxFilter frequency_sse;
+
 			FFTC2CWrapper fft;
 
 			bool output_percussive;
@@ -164,7 +187,8 @@ namespace internal {
 			    int output_flags,
 			    mfilt::MedianFilterDirection causality,
 			    bool copy_bord)
-			    : fs(fs)
+			    : filter_type(FilterType::Median)
+			    , fs(fs)
 			    , hop(hop)
 			    , nwin(2 * hop)
 			    , nfft(4 * hop)
@@ -178,6 +202,7 @@ namespace internal {
 			    , sliding_stft(stft_width * nfft,
 			                   thrust::complex<float>{0.0F, 0.0F})
 			    , s_mag(stft_width * nfft, 0.0F)
+			    , reciprocal(stft_width * nfft, 0.0F)
 			    , percussive_matrix(stft_width * nfft, 0.0F)
 			    , harmonic_matrix(stft_width * nfft, 0.0F)
 			    , percussive_mask(stft_width * nfft, 0.0F)
@@ -193,6 +218,11 @@ namespace internal {
 			                l_perc,
 			                mfilt::MedianFilterDirection::Frequency,
 			                copy_bord)
+			    , time_sse(stft_width, nfft, l_harm, causality)
+			    , frequency_sse(stft_width,
+			                nfft,
+			                l_perc,
+			                mfilt::MedianFilterDirection::Frequency)
 			    , fft(nfft)
 			    , output_harmonic(false)
 			    , output_percussive(false)
@@ -221,7 +251,14 @@ namespace internal {
 				}
 			};
 
+			void set_filter_type(FilterType ext_filter_type) {
+				filter_type = filter_type;
+			}
+
 			void process_next_hop(InputPointer in_hop);
+
+			void apply_median_filter();
+			void apply_sse_filter();
 
 			void reset_buffers()
 			{

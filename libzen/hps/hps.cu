@@ -404,10 +404,19 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
 	                  zen::internal::hps::complex_abs_functor());
 
-	// apply median filter in horizontal and vertical directions with NPP
-	// to create percussive and harmonic spectra
-	time.filter(s_mag, harmonic_matrix);
-	frequency.filter(s_mag, percussive_matrix);
+	// up to this stage, median filter + SSE filter are identical
+	switch (filter_type) {
+		case FilterType::Median:
+			// apply median filter in horizontal and vertical directions with NPP
+			// to create percussive and harmonic spectra
+			apply_median_filter();
+			break;
+		case FilterType::SSE:
+			// apply a Stochastic Spectrum Estimation filter
+			// to create transient and steady state spectra
+			apply_sse_filter();
+			break;
+	};
 
 	if (output_percussive) {
 		// compute percussive mask from harmonic + percussive magnitude spectra
@@ -470,6 +479,33 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 		                  residual_out.begin(), residual_out.begin(),
 		                  zen::internal::hps::overlap_add_functor(COLA_factor));
 	}
+}
+
+template <zen::Backend B>
+void zen::internal::hps::HPR<B>::apply_median_filter() {
+	time.filter(s_mag, harmonic_matrix);
+	frequency.filter(s_mag, percussive_matrix);
+}
+
+template <zen::Backend B>
+void zen::internal::hps::HPR<B>::apply_sse_filter() {
+	// calculate the reciprocal of the magnitude stft
+	// SSE paper calls it a power spectrogram but there's no ^2 factor
+	thrust::transform(s_mag.begin(), s_mag.end(), reciprocal.begin(),
+	                  zen::internal::hps::reciprocal_functor());
+
+	// now do SSE in the time and frequency directions
+	// causality affects whether we can go forward in the time direction
+	// same as median filtering
+	time_sse.filter(reciprocal, harmonic_matrix);
+	frequency_sse.filter(reciprocal, percussive_matrix);
+
+	// take reciprocal again for the final percussive/harmonic magnitude spectra
+	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(), reciprocal.begin(),
+	                  zen::internal::hps::reciprocal_functor());
+	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(), reciprocal.begin(),
+	                  zen::internal::hps::reciprocal_functor());
+
 }
 
 template class zen::hps::HPRIOffline<zen::Backend::CPU>;
