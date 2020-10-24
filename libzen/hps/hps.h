@@ -42,15 +42,15 @@ namespace internal {
 		};
 
 		struct reciprocal_functor {
-			const float divide_factor;
-			reciprocal_functor(float _divide_factor)
-			    : divide_factor(_divide_factor)
+			const float factor;
+			reciprocal_functor(float _factor)
+			    : factor(_factor)
 			{
 			}
 
 			__host__ __device__ float operator()(const float& x) const
 			{
-				return (1.0f / x) / divide_factor;
+				return (1.0f / x) * factor;
 			}
 		};
 
@@ -167,12 +167,9 @@ namespace internal {
 			float beta;
 			int l_harm;
 			int l_perc;
-			int l_harm_sse;
-			int l_perc_sse;
 			int lag; // lag specifies how far behind the output frame is compared
 			    // to the tip in the anticausal case we're looking for l_harm
 			    // frames backwards
-			int lag_sse;
 			std::size_t stft_width;
 
 			RealVector input;
@@ -304,6 +301,7 @@ namespace internal {
 				             thrust::complex<float>{0.0F, 0.0F});
 
 				thrust::fill(s_mag.begin(), s_mag.end(), 0.0F);
+				thrust::fill(reciprocal.begin(), reciprocal.end(), 0.0F);
 				thrust::fill(
 				    harmonic_matrix.begin(), harmonic_matrix.end(), 0.0F);
 				thrust::fill(

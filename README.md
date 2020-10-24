@@ -10,13 +10,13 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ## Results
 
+### Performance
+
 ### Accuracy improvements
 
-#### BTrack
+#### Beat tracking (BTrack)
 
-#### Aubio
-
-### Performance
+#### Pitch tracking (McLeod Pitch Method)
 
 ## Examples
 

@@ -544,19 +544,16 @@ void zen::internal::hps::HPR<B>::apply_sse_filter()
 	                  zen::internal::hps::reciprocal_functor(1.0F));
 
 	// now do SSE in the time and frequency directions
-	// causality affects whether we can go forward in the time direction
-	// same as median filtering
 	time_sse.filter(reciprocal, harmonic_matrix);
 	frequency_sse.filter(reciprocal, percussive_matrix);
 
 	// take reciprocal again for the final percussive/harmonic magnitude spectra in-place
-	thrust::transform(
-	    percussive_matrix.begin(), percussive_matrix.end(),
-	    percussive_matrix.begin(),
-	    zen::internal::hps::reciprocal_functor(1.0F / (l_perc + 1.0F)));
-	thrust::transform(
-	    harmonic_matrix.begin(), harmonic_matrix.end(), harmonic_matrix.begin(),
-	    zen::internal::hps::reciprocal_functor(1.0F / (l_harm + 1.0F)));
+	thrust::transform(percussive_matrix.begin(), percussive_matrix.end(),
+	                  percussive_matrix.begin(),
+	                  zen::internal::hps::reciprocal_functor(l_perc + 1.0F));
+	thrust::transform(harmonic_matrix.begin(), harmonic_matrix.end(),
+	                  harmonic_matrix.begin(),
+	                  zen::internal::hps::reciprocal_functor(l_harm + 1.0F));
 
 	// apply Wiener filtering on the SSE-filtered spectrograms as detailed in the paper
 	if (output_percussive) {

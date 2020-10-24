@@ -80,6 +80,7 @@ if(BUILD_TESTS)
 	message("LIBZENGARDEN: Building unit tests")
 
 	zen_unittest(hps mfilt 1)
+	zen_unittest(hps box 1)
 	zen_unittest(hps hps 0) # very slow, disable cuda-memcheck
 	zen_unittest(. fftw 0) # very slow, disable cuda-memcheck
 	zen_unittest(hps hps_gpu_public 0) # e2e test for cuda memcheck

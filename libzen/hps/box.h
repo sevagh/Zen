@@ -150,6 +150,33 @@ namespace internal {
 
 						break;
 					}
+
+					tmp_bigger_src = nppiMalloc_32f_C1(
+					    bigger_roi.width, bigger_roi.height, &bigger_nstep);
+					if (tmp_bigger_src == 0) {
+						std::cerr << "nppiMalloc error" << std::endl;
+						std::exit(1);
+					}
+					tmp_bigger_dst = nppiMalloc_32f_C1(
+					    bigger_roi.width, bigger_roi.height, &bigger_nstep);
+					if (tmp_bigger_dst == 0) {
+						std::cerr << "nppiMalloc error" << std::endl;
+						std::exit(1);
+					}
+
+					// adjust starting offset for padded/border-copied bigger
+					// line size
+					if (dir == MedianFilterDirection::Frequency) {
+						bigger_start_pixel_offset = 0;
+					}
+					else if (dir == MedianFilterDirection::TimeCausal) {
+						bigger_start_pixel_offset
+						    = filter_len * bigger_nstep / sizeof(Npp32f);
+					}
+					else if (dir == MedianFilterDirection::TimeAnticausal) {
+						bigger_start_pixel_offset
+						    = filter_mid * bigger_nstep / sizeof(Npp32f);
+					}
 				};
 
 				void filter(thrust::device_vector<float>& src,
@@ -164,10 +191,36 @@ namespace internal {
 					auto src_ptr = ( Npp32f* )thrust::raw_pointer_cast(src);
 					auto dst_ptr = ( Npp32f* )thrust::raw_pointer_cast(dst);
 
-					nppiFilterBox_32f_C1R(
+					if (mydir == MedianFilterDirection::Frequency) {
+						nppiCopyWrapBorder_32f_C1R(
+						    src_ptr, smaller_nstep, roi, tmp_bigger_src,
+						    bigger_nstep, bigger_roi, 0, filter_mid);
+					}
+					else {
+						nppiCopyWrapBorder_32f_C1R(
+						    src_ptr, smaller_nstep, roi, tmp_bigger_src,
+						    bigger_nstep, bigger_roi, filter_mid, 0);
+					}
+
+					nppiFilterBoxBorder_32f_C1R(
+					    tmp_bigger_src + bigger_start_pixel_offset,
+					    bigger_nstep, roi, NppiPoint{0, 0},
+					    tmp_bigger_dst + bigger_start_pixel_offset,
+					    bigger_nstep, roi, mask, anchor, NPP_BORDER_REPLICATE);
+
+					nppiCopy_32f_C1R(tmp_bigger_dst + bigger_start_pixel_offset,
+					                 bigger_nstep, dst_ptr, smaller_nstep, roi);
+
+					//nppiFilterBox_32f_C1R(
+					//    src_ptr + smaller_start_pixel_offset, smaller_nstep,
+					//    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
+					//    smaller_roi, mask, anchor);
+
+					nppiFilterBoxBorder_32f_C1R(
 					    src_ptr + smaller_start_pixel_offset, smaller_nstep,
+					    roi, NppiPoint{0, 0},
 					    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
-					    smaller_roi, mask, anchor);
+					    smaller_roi, mask, anchor, NPP_BORDER_REPLICATE);
 				}
 			};
 
