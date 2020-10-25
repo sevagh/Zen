@@ -59,11 +59,6 @@ int main(int argc, char** argv)
 	std::cout << "\tseconds: " << file_data->lengthSeconds << std::endl;
 	std::cout << "\tchannels: " << file_data->channelCount << std::endl;
 
-	//std::transform(
-	//    file_data->samples.begin(), file_data->samples.end(),
-	//    file_data->samples.begin(),
-	//    std::bind(std::multiplies<float>(), std::placeholders::_1, 10000));
-
 	std::vector<float> audio;
 
 	if (file_data->channelCount == 2) {
@@ -104,8 +99,6 @@ int main(int argc, char** argv)
 				         chunk_it
 				     = chunk_limits.begin();
 				     chunk_it != chunk_limits.end(); ++chunk_it) {
-		//auto t1 = std::chrono::high_resolution_clock::now();
-
 		// copy input samples into io object
 		std::copy(audio.data() + chunk_it->first,
 			  audio.data() + chunk_it->second, io.host_in);

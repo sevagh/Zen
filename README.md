@@ -13,7 +13,7 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 | [pitch-tracking](./pitch-tracking) | MIT | Demo of real-time pitch tracking ([McLeod Pitch Method](http://www.cs.otago.ac.nz/tartini/papers/A_Smarter_Way_to_Find_Pitch.pdf)) with **harmonic separation pre-processing**. Includes an optimized implementation of MPM using IPP FFT | IPP, CUDA Toolkit, [libnyquist](https://github.com/ddiakopoulos/libnyquist) |
 | [beat-tracking](./beat-tracking) | GPLv3 | Demo of real-time beat tracking ([BTrack](https://github.com/adamstark/BTrack)) with **percussive separation pre-processing**. Includes an optimized implementation of BTrack using IPP FFT. | IPP, CUDA Toolkit, [libnyquist](https://github.com/ddiakopoulos/libnyquist) |
 
-**NB** The algorithms supports a causal real-time input stream. For simplicity, all real-time demo code uses offline wav files, but steps through them in hops to simulate real-time.
+**NB** The algorithms are intended to be used with a causal real-time input stream. For simplicity, all real-time demo code uses offline wav files, but steps through them in hops to simulate real-time.
 
 ## Block diagrams
 
@@ -49,17 +49,11 @@ t: 2.41,        pitch (+HPR): 163.08,   pitch (-HPR): -1.00
 
 #### Beat tracking (BTrack)
 
-## Examples
-
 ## Origin
 
 This is a followup to my project [Real-time Harmonic-Percussive Source Separation](https://github.com/sevagh/Real-Time-HPSS). In the previous project, I showed that Fitzgerald's 2010 algorithm for median-filtering harmonic-percussive source separation (and Drieger et al's subequent 2014 modification) could be adapted to work in real-time. However, my simple MATLAB and Python implementations were too slow to be feasible (~5-10ms of processing per 10ms hop in a real-time stream).
 
-Using CUDA and NPP to implement median-filtering-based HPR (harmonic-percussive-residual) separation, I got the computation time down to ~160us for a 10ms input buffer in this library, making it viable as an early stage in a real-time processing chain. The name is Zen because I wrote it on a Ry**zen**-based computer and tested it on Meshuggah's album Ob**zen**.
-
-## Usefulness
-
-Harmonic separation in real-time is worse than offline. This is due to the large hop size (4096 samples, 85ms @ 48kHz) required for good harmonic separation. However, a small hop size (256/512 samples, 5-10ms) is suitable for percussive separation. Therefore, one could (or should) use this library as a real-time pre-processing step before applying percussion analysis algorithms (e.g. beat tracking, tempo tracking). Also note that code for better quality (but lower performance) offline variants of the algorithms are also included.
+Using CUDA and NPP to implement median-filtering-based HPR (harmonic-percussive-residual) separation, I got the computation time down to ~160us for a 10ms input buffer in this library, making it viable as an early stage in a real-time processing chain.
 
 ### Usage
 
