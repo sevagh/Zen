@@ -1,10 +1,17 @@
 # Zen
 
-Zen is a real-time CUDA-accelerated harmonic/percussive (or steady-state/transient) source separation library. More specifically, it implements:
+Zen is a real-time capable, CUDA-accelerated harmonic/percussive source separation library, which implements:
 * Harmonic-percussive source separation using median filtering ([Fitzgerald 2010](http://dafx10.iem.at/papers/DerryFitzGerald_DAFx10_P15.pdf), [Drieger et al 2014](https://archives.ismir.net/ismir2014/paper/000127.pdf))
 * Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
 
 Zen was written from the ground up to support dual CPU/GPU implementations of algorithms by using policy-based template metaprogramming. For specialized subroutines (e.g. cuFFT, Npp/Ipp), there are abstraction wrappers.
+
+| Component | License | Description | Dependencies |
+|-----------|---------|-------------|--------------|
+| [libzen](./libzen/) | MIT | Core C++ library | IPP, CUDA Toolkit [+ gtest, benchmark for tests] |
+| [zen](./zen/) | MIT | Reference command-line tool | IPP, CUDA Toolkit, [libnyquist](https://github.com/ddiakopoulos/libnyquist), [clipp](https://github.com/muellan/clipp) |
+| [pitch-tracking](./pitch-tracking) | MIT | Demo of real-time pitch tracking ([McLeod Pitch Method](http://www.cs.otago.ac.nz/tartini/papers/A_Smarter_Way_to_Find_Pitch.pdf)) with **harmonic separation pre-processing**. Includes an optimized implementation of MPM using IPP FFT | IPP, CUDA Toolkit |
+| [beat-tracking](./beat-tracking) | GPLv3 | Demo of real-time beat tracking ([BTrack](https://github.com/adamstark/BTrack)) with **percussive separation pre-processing**. Includes an optimized implementation of BTrack using IPP FFT. | IPP, CUDA Toolkit |
 
 ## Block diagrams
 
@@ -14,9 +21,9 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ### Accuracy improvements
 
-#### Beat tracking (BTrack)
-
 #### Pitch tracking (McLeod Pitch Method)
+
+#### Beat tracking (BTrack)
 
 ## Examples
 
@@ -32,19 +39,15 @@ Harmonic separation in real-time is worse than offline. This is due to the large
 
 ### Usage
 
-Zen consists of:
-* libzen, a C++ library that depends on CUDA and IPP
-* zen, a reference command-line client, also written in C++
-
 #### libzen library examples
 
 #### zen command-line tool usage
 
 ## Development
 
-I currently build and compile zengarden on Linux (Fedora 32) using GCC 8, CUDA Toolkit 10.2, and nvcc on an amd64 Ryzen host with an NVIDIA RTX 2070 SUPER. All NVIDIA libraries were installed and managed using negativo17's Fedora nvidia repository.
+I currently build and compile Zen on Linux (Fedora 32) using GCC 8, CUDA Toolkit 10.2, and nvcc on an amd64 Ryzen host with an NVIDIA RTX 2070 SUPER. All NVIDIA libraries were installed and managed using negativo17's Fedora nvidia repository.
 
-There are unit tests in the libzengarden source tree. Memory and UB checks can be run during the test suite as follows. I favor asan over valgrind, but we need some special ASAN options to not clash with CUDA. I also try to use cuda-memcheck, but it slows execution down too much in some cases.
+There are unit tests in the libzen source tree. Memory and UB checks can be run during the test suite as follows. I favor asan over valgrind, but we need some special ASAN options to not clash with CUDA. I also try to use cuda-memcheck, but it slows execution down too much in some cases.
 
 ```
 $ mkdir -p build && cd build && cmake .. -GNinja -DENABLE_UBSAN=ON -DENABLE_ASAN=ON

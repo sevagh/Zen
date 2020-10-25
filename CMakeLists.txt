@@ -13,7 +13,7 @@ set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor CACHE INTERNAL "vendored libar
 # TOP-LEVEL PROJECT
 # ------------------------------------------------------------------------------#
 
-project(ZENGARDEN LANGUAGES CXX CUDA)
+project(ZEN LANGUAGES CXX CUDA)
 set(VERSION 0.0.1)
 
 include(GNUInstallDirs)
@@ -54,6 +54,7 @@ include(FindPkgConfig)
 
 add_subdirectory(libzen)
 add_subdirectory(zen)
+add_subdirectory(pitch-tracking)
 
 # ------------------------------------------------------------------------------#
 # CLANG-FORMAT
@@ -65,7 +66,9 @@ file(
   libzen/*.cu
   libzen/*.h
   zen/*.cu
-  zen/*.h)
+  zen/*.h
+  pitch-tracking/*.cpp
+  pitch-tracking/*.h)
 
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")

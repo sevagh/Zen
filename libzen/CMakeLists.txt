@@ -24,10 +24,10 @@ include_directories(
 )
 
 # ------------------------------------------------------------------------------#
-# LIBZENGARDEN
+# LIBZEN
 # ------------------------------------------------------------------------------#
 
-set(LIBZENGARDEN_SOURCES
+set(LIBZEN_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/hps/hps.cu
 	${CMAKE_CURRENT_SOURCE_DIR}/core.cu
 	#${CMAKE_CURRENT_SOURCE_DIR}/onset/onset.cu
@@ -35,15 +35,15 @@ set(LIBZENGARDEN_SOURCES
 
 file(
 	GLOB_RECURSE
-	LIBZENGARDEN_PUBLIC_HEADERS
+	LIBZEN_PUBLIC_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/libzen/*.h)
 
-set(LIBZENGARDEN_DEPS CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
+set(LIBZEN_DEPS CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
-message("LIBZENGARDEN: Building dynamic library")
-add_library(libzen SHARED ${LIBZENGARDEN_SOURCES})
-set_target_properties(libzen PROPERTIES PUBLIC_HEADER "${LIBZENGARDEN_PUBLIC_HEADERS}")
-target_link_libraries(libzen ${LIBZENGARDEN_DEPS})
+message("LIBZEN: Building dynamic library")
+add_library(libzen SHARED ${LIBZEN_SOURCES})
+set_target_properties(libzen PROPERTIES PUBLIC_HEADER "${LIBZEN_PUBLIC_HEADERS}")
+target_link_libraries(libzen ${LIBZEN_DEPS})
 target_include_directories(libzen PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS libzen
@@ -64,7 +64,7 @@ endif()
 
 function(zen_unittest path name do_cumemchk)
   add_executable(${name}.test ${path}/${name}.test.cu)
-  target_link_libraries(${name}.test libzen ${LIBZENGARDEN_DEPS} gtest gtest_main pthread -static-libstdc++)
+  target_link_libraries(${name}.test libzen ${LIBZEN_DEPS} gtest gtest_main pthread -static-libstdc++)
 
   add_test(${name}_test ${name}.test)
   set_tests_properties(${name}_test PROPERTIES LABELS "test")
@@ -77,7 +77,7 @@ endfunction()
 
 if(BUILD_TESTS)
 	find_package(GTest REQUIRED)
-	message("LIBZENGARDEN: Building unit tests")
+	message("LIBZEN: Building unit tests")
 
 	zen_unittest(hps mfilt 1)
 	zen_unittest(hps box 1)
@@ -86,22 +86,22 @@ if(BUILD_TESTS)
 	zen_unittest(hps hps_gpu_public 0) # e2e test for cuda memcheck
 	zen_unittest(hps hps_cpu_public 0) # cpu only, no need for cuda memcheck
 else()
-	message("LIBZENGARDEN: Skipping unit tests")
+	message("LIBZEN: Skipping unit tests")
 endif()
 
 function(zen_bench path name)
 	add_executable(${name}.bench ${path}/${name}.bench.cu)
-	target_link_libraries(${name}.bench libzen ${LIBZENGARDEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
+	target_link_libraries(${name}.bench libzen ${LIBZEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
 endfunction()
 
 if(BUILD_BENCHES)
 	find_package(benchmark REQUIRED)
-	message("LIBZENGARDEN: Building benches")
+	message("LIBZEN: Building benches")
 
 	zen_bench(hps mfilt)
 	zen_bench(. fftw)
 else()
-	message("LIBZENGARDEN: Skipping benches")
+	message("LIBZEN: Skipping benches")
 endif()
 
 # ------------------------------------------------------------------------------#
