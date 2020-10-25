@@ -69,7 +69,11 @@ file(
   zen/*.cu
   zen/*.h
   pitch-tracking/*.cpp
-  pitch-tracking/*.h)
+  pitch-tracking/*.cu
+  pitch-tracking/*.h
+  beat-tracking/*.cpp
+  beat-tracking/*.cu
+  beat-tracking/*.h)
 
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")

@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <functional>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 #include "BTrack.h"
 #include <libnyquist/Decoders.h>
@@ -83,41 +83,42 @@ int main(int argc, char** argv)
 	auto btrack2 = BTrack(sample_rate);
 
 	std::cout << "Slicing buffer size " << audio.size() << " into "
-	          << chunk_limits.size() << " chunks of size " << chunk_size << std::endl;
+	          << chunk_limits.size() << " chunks of size " << chunk_size
+	          << std::endl;
 
 	double t = 0.;
 	float timeslice = (( float )chunk_size) / (( float )sample_rate);
 
 	auto hpss = zen::hps::HPRRealtime<zen::Backend::GPU>(
-	    file_data->sampleRate, chunk_size, 2.5,
-	    zen::hps::OUTPUT_PERCUSSIVE);
+	    file_data->sampleRate, chunk_size, 2.5, zen::hps::OUTPUT_PERCUSSIVE);
 
 	// need an io object to do some warming up
 	auto io = zen::io::IOGPU(chunk_size);
 	hpss.warmup(io);
 	std::size_t n = 0;
 
-	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator
-				         chunk_it
-				     = chunk_limits.begin();
-				     chunk_it != chunk_limits.end(); ++chunk_it) {
+	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it
+	     = chunk_limits.begin();
+	     chunk_it != chunk_limits.end(); ++chunk_it) {
 		// copy input samples into io object
 		std::copy(audio.data() + chunk_it->first,
-			  audio.data() + chunk_it->second, io.host_in);
+		          audio.data() + chunk_it->second, io.host_in);
 
 		// process input samples
 		hpss.process_next_hop(io.device_in);
 		hpss.copy_percussive(io.device_out);
 
 		// copy output samples from io object
-		std::copy(io.host_out, io.host_out + chunk_size,
-			  percussive_out.begin() + n);
+		std::copy(
+		    io.host_out, io.host_out + chunk_size, percussive_out.begin() + n);
 
 		btrack1.processHop(percussive_out.data() + chunk_it->first);
 
 		btrack2.processHop(audio.data() + chunk_it->first);
 
-		std::cout << "t: " << t << ",\t" << "beat? (+HPR): "  << btrack1.beatDueInFrame() << ",\tbeat? (-HPR): " << btrack2.beatDueInFrame << "\n";
+		std::cout << "t: " << t << ",\t"
+		          << "beat? (+HPR): " << btrack1.beatDueInFrame
+		          << ",\tbeat? (-HPR): " << btrack2.beatDueInFrame << "\n";
 
 		t += timeslice;
 		n += chunk_size;

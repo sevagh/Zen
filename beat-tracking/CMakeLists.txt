@@ -23,7 +23,7 @@ include_directories(
 # BEAT TRACKING DEMO
 # ------------------------------------------------------------------------------#
 
-set(BEAT_TRACKING_SOURCES OnsetDetection.cpp main.cu)
+set(BEAT_TRACKING_SOURCES OnsetDetection.cpp BTrack.cpp main.cu)
 set(BEAT_TRACKING_DEPS libzen libnyquist libopus libwavpack CUDA::cufft CUDA::nppif CUDA::nppisu CUDA::npps CUDA::nppidei ${IPP_LIBRARY})
 
 message("ZEN: Building beat tracking tool")

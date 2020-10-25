@@ -1,9 +1,9 @@
 #include "OnsetDetection.h"
 #include "Window.h"
 #include <array>
-#include <math.h>
 #include <cstring>
 #include <iostream>
+#include <math.h>
 
 OnsetDetectionFunction::OnsetDetectionFunction()
     : fft_order(( int )log2(FrameSize))
@@ -13,14 +13,13 @@ OnsetDetectionFunction::OnsetDetectionFunction()
     , size_spec(0)
     , size_init(0)
     , size_buffer(0)
-
 {
-	IppStatus ipp_status = ippsFFTGetSize_C_32f(
-	    fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone, &size_spec,
-	    &size_init, &size_buffer);
+	IppStatus ipp_status
+	    = ippsFFTGetSize_C_32f(fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
+	                           &size_spec, &size_init, &size_buffer);
 	if (ipp_status != ippStsNoErr) {
 		std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
-			  << ippGetStatusString(ipp_status) << std::endl;
+		          << ippGetStatusString(ipp_status) << std::endl;
 		std::exit(-1);
 	}
 
@@ -37,12 +36,11 @@ OnsetDetectionFunction::OnsetDetectionFunction()
 	if (size_spec > 0)
 		p_mem_spec = ( Ipp8u* )ippMalloc(size_spec);
 
-	ipp_status
-	    = ippsFFTInit_C_32f(&fft_spec, fft_order, IPP_FFT_NODIV_BY_ANY,
-				ippAlgHintNone, p_mem_spec, p_mem_init);
+	ipp_status = ippsFFTInit_C_32f(&fft_spec, fft_order, IPP_FFT_NODIV_BY_ANY,
+	                               ippAlgHintNone, p_mem_spec, p_mem_init);
 	if (ipp_status != ippStsNoErr) {
 		std::cerr << "ippFFTInit error: " << ipp_status << ", "
-			  << ippGetStatusString(ipp_status) << std::endl;
+		          << ippGetStatusString(ipp_status) << std::endl;
 		std::exit(-1);
 	}
 
@@ -79,9 +77,9 @@ void OnsetDetectionFunction::perform_FFT()
 		frame[i + fsize2] *= window.data[i];
 	}
 
-	ippsFFTFwd_CToC_32f(
-	    ( Ipp32f* )frame.data(), ( Ipp32f* )imIn.data(), ( Ipp32f* )realOut.data(), ( Ipp32f* )imOut.data(), fft_spec, p_mem_buffer);
-
+	ippsFFTFwd_CToC_32f(( Ipp32f* )frame.data(), ( Ipp32f* )imIn.data(),
+	                    ( Ipp32f* )realOut.data(), ( Ipp32f* )imOut.data(),
+	                    fft_spec, p_mem_buffer);
 };
 
 float OnsetDetectionFunction::complex_spectral_difference_hwr()
@@ -102,8 +100,7 @@ float OnsetDetectionFunction::complex_spectral_difference_hwr()
 		phase[i] = atan2f(imOut[i], realOut[i]);
 
 		// calculate magnitude value
-		magSpec[i] = sqrtf(powf(realOut[i], 2)
-		                        + powf(imOut[i], 2));
+		magSpec[i] = sqrtf(powf(realOut[i], 2) + powf(imOut[i], 2));
 
 		// phase deviation
 		phaseDeviation = phase[i] - (2 * prevPhase[i]) + prevPhase2[i];
@@ -116,9 +113,9 @@ float OnsetDetectionFunction::complex_spectral_difference_hwr()
 		// otherwise ignore (half-wave rectification)
 		if (magnitudeDifference > 0) {
 			// calculate complex spectral difference for the current spectral bin
-			csd = sqrtf(
-			    powf(magSpec[i], 2) + powf(prevMagSpec[i], 2)
-			    - 2 * magSpec[i] * prevMagSpec[i] * cosf(phaseDeviation));
+			csd = sqrtf(powf(magSpec[i], 2) + powf(prevMagSpec[i], 2)
+			            - 2 * magSpec[i] * prevMagSpec[i]
+			                  * cosf(phaseDeviation));
 
 			// add to sum
 			sum = sum + csd;

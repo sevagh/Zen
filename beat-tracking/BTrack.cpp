@@ -2,10 +2,10 @@
 #include "BTrackPrecomputed.h"
 #include "CircularBuffer.h"
 #include "OnsetDetection.h"
-#include "logging_macros.h"
 #include <array>
 #include <complex>
 #include <cstddef>
+#include <math.h>
 #include <vector>
 
 static float
@@ -20,8 +20,6 @@ static void createWindow(std::array<float, 512>& w1,
 
 BTrack::BTrack(int sampleRate)
     : sampleRate(sampleRate)
-    , acfIFFT(ne10_fft_alloc_c2c_float32_neon(FFTLengthForACFCalculation))
-    , acfFFT(ne10_fft_alloc_r2c_float32(FFTLengthForACFCalculation))
     , tempoToLagFactor(60.0F * (( float )sampleRate) / ( float )HopSize)
     , latestCumulativeScoreValue(0.0F)
     , lastOnset(0.0F)
@@ -33,6 +31,19 @@ BTrack::BTrack(int sampleRate)
     , discardSamples(sampleRate / 2)
     , beatDueInFrame(false)
     , estimatedTempo(120.0F)
+    , fft_order(( int )log2(FrameSize))
+    , p_mem_spec1(nullptr)
+    , p_mem_spec2(nullptr)
+    , p_mem_init1(nullptr)
+    , p_mem_init2(nullptr)
+    , p_mem_buffer1(nullptr)
+    , p_mem_buffer2(nullptr)
+    , size_spec1(0)
+    , size_spec2(0)
+    , size_init1(0)
+    , size_init2(0)
+    , size_buffer1(0)
+    , size_buffer2(0)
 {
 	std::fill(prevDelta.begin(), prevDelta.end(), 1.0F);
 
@@ -42,13 +53,79 @@ BTrack::BTrack(int sampleRate)
 			onsetDF[i] = 1.0F;
 		}
 	}
+
+	// first r2c fft
+	IppStatus ipp_status
+	    = ippsFFTGetSize_C_32f(fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
+	                           &size_spec1, &size_init1, &size_buffer1);
+	if (ipp_status != ippStsNoErr) {
+		std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
+		          << ippGetStatusString(ipp_status) << std::endl;
+		std::exit(-1);
+	}
+
+	if (size_init > 0)
+		p_mem_init1 = ( Ipp8u* )ippMalloc(size_init1);
+	if (size_buffer > 0)
+		p_mem_buffer1 = ( Ipp8u* )ippMalloc(size_buffer1);
+	if (size_spec > 0)
+		p_mem_spec1 = ( Ipp8u* )ippMalloc(size_spec1);
+
+	ipp_status = ippsFFTInit_C_32f(&fft_spec1, fft_order, IPP_FFT_NODIV_BY_ANY,
+	                               ippAlgHintNone, p_mem_spec1, p_mem_init1);
+	if (ipp_status != ippStsNoErr) {
+		std::cerr << "ippFFTInit error: " << ipp_status << ", "
+		          << ippGetStatusString(ipp_status) << std::endl;
+		std::exit(-1);
+	}
+
+	if (size_init > 0)
+		ippFree(p_mem_init1);
+
+	// second c2c fft
+	IppStatus ipp_status
+	    = ippsFFTGetSize_C_32f(fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
+	                           &size_spec2, &size_init2, &size_buffer2);
+	if (ipp_status != ippStsNoErr) {
+		std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
+		          << ippGetStatusString(ipp_status) << std::endl;
+		std::exit(-1);
+	}
+
+	if (size_init > 0)
+		p_mem_init2 = ( Ipp8u* )ippMalloc(size_init2);
+	if (size_buffer > 0)
+		p_mem_buffer2 = ( Ipp8u* )ippMalloc(size_buffer2);
+	if (size_spec > 0)
+		p_mem_spec2 = ( Ipp8u* )ippMalloc(size_spec2);
+
+	ipp_status = ippsFFTInit_C_32f(&fft_spec2, fft_order, IPP_FFT_NODIV_BY_ANY,
+	                               ippAlgHintNone, p_mem_spec2, p_mem_init2);
+	if (ipp_status != ippStsNoErr) {
+		std::cerr << "ippFFTInit error: " << ipp_status << ", "
+		          << ippGetStatusString(ipp_status) << std::endl;
+		std::exit(-1);
+	}
+
+	if (size_init > 0)
+		ippFree(p_mem_init2);
+
+	for (std::size_t i = 0; i < FrameSize; ++i) {
+		imIn[i] = 0.0f;
+	}
 };
 
 BTrack::~BTrack()
 {
-	// destroy FFT things here
-	ne10_fft_destroy_c2c_float32(acfIFFT);
-	ne10_fft_destroy_r2c_float32(acfFFT);
+	if (size_buffer1 > 0)
+		ippFree(p_mem_buffer1);
+	if (size_spec1 > 0)
+		ippFree(p_mem_spec1);
+
+	if (size_buffer2 > 0)
+		ippFree(p_mem_buffer2);
+	if (size_spec2 > 0)
+		ippFree(p_mem_spec2);
 };
 
 void BTrack::processHop(const float* samples)
@@ -246,23 +323,21 @@ void BTrack::calculateBalancedACF()
 	// zero pad the remaining 512
 	std::fill(onsetDFContiguous.begin() + 512, onsetDFContiguous.end(), 0.0F);
 
-	ne10_fft_r2c_1d_float32_neon(
-	    complexIm.data(), onsetDFContiguous.data(), acfFFT);
+	ippsFFTFwd_CToC_32f(( Ipp32f* )onsetDFContiguous.data(),
+	                    ( Ipp32f* )imIn.data(), ( Ipp32f* )realOut.data(),
+	                    ( Ipp32f* )imOut.data(), fft_spec1, p_mem_buffer1);
 
 	// multiply by complex conjugate
 	for (int i = 0; i < FFTLengthForACFCalculation; i++) {
-		complexIm[i].r = complexIm[i].r * complexIm[i].r
-		                 + complexIm[i].i * complexIm[i].i;
-		complexIm[i].i = 0.0F;
+		realOut[i] = realOut[i] * realOut[i] + imOut[i] * imOut[i];
+		imOut[i] = 0.0F;
 	}
 
-	// perform the ifft
-	ne10_fft_c2c_1d_float32_neon(
-	    complexOut.data(), complexIm.data(), acfIFFT, 1);
+	ippsFFTInv_CToC_32f_I(( Ipp32f* )realOut.data(), ( Ipp32f* )imOut.data(),
+	                      fft_spec2, p_mem_buffer2);
 
 	for (size_t i = 0; i < OnsetDFBufferSize; i++) {
-		acf[i] = std::sqrtf(complexOut[i].r * complexOut[i].r
-		                    + complexOut[i].i * complexOut[i].i)
+		acf[i] = sqrtf(realOut[i] * realOut[i] + imOut[i] * imOut[i])
 		         / ( float )(OnsetDFBufferSize - i);
 	}
 };

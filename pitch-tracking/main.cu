@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <functional>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 #include "pitch_detection.h"
 #include <libnyquist/Decoders.h>
@@ -81,40 +81,41 @@ int main(int argc, char** argv)
 	auto mpm = MPM(chunk_size, sample_rate);
 
 	std::cout << "Slicing buffer size " << audio.size() << " into "
-	          << chunk_limits.size() << " chunks of size " << chunk_size << std::endl;
+	          << chunk_limits.size() << " chunks of size " << chunk_size
+	          << std::endl;
 
 	double t = 0.;
 	float timeslice = (( float )chunk_size) / (( float )sample_rate);
 
 	auto hpss = zen::hps::HPRRealtime<zen::Backend::GPU>(
-	    file_data->sampleRate, chunk_size, 2.5,
-	    zen::hps::OUTPUT_HARMONIC);
+	    file_data->sampleRate, chunk_size, 2.5, zen::hps::OUTPUT_HARMONIC);
 
 	// need an io object to do some warming up
 	auto io = zen::io::IOGPU(chunk_size);
 	hpss.warmup(io);
 	std::size_t n = 0;
 
-	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator
-				         chunk_it
-				     = chunk_limits.begin();
-				     chunk_it != chunk_limits.end(); ++chunk_it) {
+	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it
+	     = chunk_limits.begin();
+	     chunk_it != chunk_limits.end(); ++chunk_it) {
 		// copy input samples into io object
 		std::copy(audio.data() + chunk_it->first,
-			  audio.data() + chunk_it->second, io.host_in);
+		          audio.data() + chunk_it->second, io.host_in);
 
 		// process input samples
 		hpss.process_next_hop(io.device_in);
 		hpss.copy_harmonic(io.device_out);
 
 		// copy output samples from io object
-		std::copy(io.host_out, io.host_out + chunk_size,
-			  harmonic_out.begin() + n);
+		std::copy(
+		    io.host_out, io.host_out + chunk_size, harmonic_out.begin() + n);
 
 		auto pitch_harm = mpm.pitch(harmonic_out.data() + chunk_it->first);
 		auto pitch_noharm = mpm.pitch(audio.data() + chunk_it->first);
 
-		std::cout << "t: " << t << ",\t" << "pitch (+HPR): "  << pitch_harm << ",\tpitch (-HPR): " << pitch_noharm << "\n";
+		std::cout << "t: " << t << ",\t"
+		          << "pitch (+HPR): " << pitch_harm
+		          << ",\tpitch (-HPR): " << pitch_noharm << "\n";
 
 		t += timeslice;
 		n += chunk_size;

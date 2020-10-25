@@ -29,8 +29,7 @@ private:
 	float complex_spectral_difference_hwr();
 
 	// compute windows at compile time
-	Window<FrameSize> window
-	    = get_window<FrameSize, windowType>();
+	Window<FrameSize> window = get_window<FrameSize, windowType>();
 
 	int fft_order;
 

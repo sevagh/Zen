@@ -22,12 +22,22 @@ private:
 
 	int sampleRate;
 
-	std::array<float, FFTLengthForACFCalculation> complexIm
+	std::array<float, FFTLengthForACFCalculation> imIn // imaginaryInput = imIn
 	    = {};
-	std::array<float, FFTLengthForACFCalculation> complexOut
-	    = {};
-	ne10_fft_cfg_float32_t acfIFFT;
-	ne10_fft_r2c_cfg_float32_t acfFFT;
+	std::array<float, FFTLengthForACFCalculation> realOut = {};
+	std::array<float, FFTLengthForACFCalculation> ImOut = {};
+
+	int fft_order;
+
+	IppsFFTSpec_C_32f *fft_spec1, *fft_spec2;
+
+	Ipp8u *p_mem_spec1, p_mem_spec2;
+	Ipp8u *p_mem_init1, p_mem_init2;
+	Ipp8u *p_mem_buffer1, p_mem_buffer2;
+
+	int size_spec1, size_spec2;
+	int size_init1, size_init2;
+	int size_buffer1, size_buffer2;
 
 	float tempoToLagFactor;
 	float beatPeriod;
