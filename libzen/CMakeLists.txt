@@ -30,7 +30,6 @@ include_directories(
 set(LIBZEN_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/hps/hps.cu
 	${CMAKE_CURRENT_SOURCE_DIR}/core.cu
-	#${CMAKE_CURRENT_SOURCE_DIR}/onset/onset.cu
 	)
 
 file(

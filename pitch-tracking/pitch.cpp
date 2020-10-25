@@ -35,13 +35,10 @@ std::pair<float, float> parabolic_interpolation(const std::vector<float>& array,
 	return std::make_pair(x_adjusted, array[x_adjusted]);
 }
 
-void real_autocorrelation(const std::vector<float>& audio_buffer, MPM* mpm)
+void real_autocorrelation(const float* audio_buffer, MPM* mpm)
 {
-	if (audio_buffer.size() == 0)
-		throw std::invalid_argument("audio_buffer shouldn't be empty");
-
-	std::transform(audio_buffer.begin(), audio_buffer.begin() + mpm->N,
-	               mpm->out_im.begin(), [](float x) -> std::complex<float> {
+	std::transform(audio_buffer, audio_buffer + mpm->N, mpm->out_im.begin(),
+	               [](float x) -> std::complex<float> {
 		               return std::complex<float>(x, static_cast<float>(0.0));
 	               });
 
@@ -99,7 +96,7 @@ static std::vector<int> peak_picking(const std::vector<float>& nsdf)
 	return max_positions;
 }
 
-float MPM::pitch(const std::vector<float>& audio_buffer)
+float MPM::pitch(const float* audio_buffer)
 {
 	real_autocorrelation(audio_buffer, this);
 

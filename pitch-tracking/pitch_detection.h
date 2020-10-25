@@ -76,7 +76,7 @@ public:
 			ippFree(p_mem_init);
 	}
 
-	float pitch(const std::vector<float>&);
+	float pitch(const float*);
 
 	~MPM()
 	{
