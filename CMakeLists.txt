@@ -55,6 +55,7 @@ include(FindPkgConfig)
 add_subdirectory(libzen)
 add_subdirectory(zen)
 add_subdirectory(pitch-tracking)
+add_subdirectory(beat-tracking)
 
 # ------------------------------------------------------------------------------#
 # CLANG-FORMAT
