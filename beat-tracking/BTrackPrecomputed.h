@@ -1,8 +1,8 @@
-#ifndef ELECTROPARTYOGRAM_PRECOMPUTED_H
-#define ELECTROPARTYOGRAM_PRECOMPUTED_H
+#ifndef BTRACK_PRECOMPUTED_H
+#define BTRACK_PRECOMPUTED_H
 
 // bunch of precomputed arrays, matrices, etc. done with numpy
-namespace btrack::precomputed {
+namespace precomputed {
 static constexpr float RayleighWeightingVector128[128] = {
     0.0f,
     0.0005406866523082265f,
@@ -1079,6 +1079,6 @@ static constexpr float TempoTransitionMatrix[41][41] = {
         0.0797884538769722f,
     },
 };
-}; // namespace btrack::precomputed
+} // namespace precomputed
 
-#endif // ELECTROPARTYOGRAM_PRECOMPUTED_H
+#endif

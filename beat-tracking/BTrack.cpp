@@ -5,6 +5,7 @@
 #include <array>
 #include <complex>
 #include <cstddef>
+#include <iostream>
 #include <math.h>
 #include <vector>
 
@@ -32,18 +33,12 @@ BTrack::BTrack(int sampleRate)
     , beatDueInFrame(false)
     , estimatedTempo(120.0F)
     , fft_order(( int )log2(FrameSize))
-    , p_mem_spec1(nullptr)
-    , p_mem_spec2(nullptr)
-    , p_mem_init1(nullptr)
-    , p_mem_init2(nullptr)
-    , p_mem_buffer1(nullptr)
-    , p_mem_buffer2(nullptr)
-    , size_spec1(0)
-    , size_spec2(0)
-    , size_init1(0)
-    , size_init2(0)
-    , size_buffer1(0)
-    , size_buffer2(0)
+    , p_mem_spec(nullptr)
+    , p_mem_init(nullptr)
+    , p_mem_buffer(nullptr)
+    , size_spec(0)
+    , size_init(0)
+    , size_buffer(0)
 {
 	std::fill(prevDelta.begin(), prevDelta.end(), 1.0F);
 
@@ -57,7 +52,7 @@ BTrack::BTrack(int sampleRate)
 	// first r2c fft
 	IppStatus ipp_status
 	    = ippsFFTGetSize_C_32f(fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
-	                           &size_spec1, &size_init1, &size_buffer1);
+	                           &size_spec, &size_init, &size_buffer);
 	if (ipp_status != ippStsNoErr) {
 		std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
 		          << ippGetStatusString(ipp_status) << std::endl;
@@ -65,14 +60,14 @@ BTrack::BTrack(int sampleRate)
 	}
 
 	if (size_init > 0)
-		p_mem_init1 = ( Ipp8u* )ippMalloc(size_init1);
+		p_mem_init = ( Ipp8u* )ippMalloc(size_init);
 	if (size_buffer > 0)
-		p_mem_buffer1 = ( Ipp8u* )ippMalloc(size_buffer1);
+		p_mem_buffer = ( Ipp8u* )ippMalloc(size_buffer);
 	if (size_spec > 0)
-		p_mem_spec1 = ( Ipp8u* )ippMalloc(size_spec1);
+		p_mem_spec = ( Ipp8u* )ippMalloc(size_spec);
 
-	ipp_status = ippsFFTInit_C_32f(&fft_spec1, fft_order, IPP_FFT_NODIV_BY_ANY,
-	                               ippAlgHintNone, p_mem_spec1, p_mem_init1);
+	ipp_status = ippsFFTInit_C_32f(&fft_spec, fft_order, IPP_FFT_NODIV_BY_ANY,
+	                               ippAlgHintNone, p_mem_spec, p_mem_init);
 	if (ipp_status != ippStsNoErr) {
 		std::cerr << "ippFFTInit error: " << ipp_status << ", "
 		          << ippGetStatusString(ipp_status) << std::endl;
@@ -80,35 +75,7 @@ BTrack::BTrack(int sampleRate)
 	}
 
 	if (size_init > 0)
-		ippFree(p_mem_init1);
-
-	// second c2c fft
-	IppStatus ipp_status
-	    = ippsFFTGetSize_C_32f(fft_order, IPP_FFT_NODIV_BY_ANY, ippAlgHintNone,
-	                           &size_spec2, &size_init2, &size_buffer2);
-	if (ipp_status != ippStsNoErr) {
-		std::cerr << "ippFFTGetSize error: " << ipp_status << ", "
-		          << ippGetStatusString(ipp_status) << std::endl;
-		std::exit(-1);
-	}
-
-	if (size_init > 0)
-		p_mem_init2 = ( Ipp8u* )ippMalloc(size_init2);
-	if (size_buffer > 0)
-		p_mem_buffer2 = ( Ipp8u* )ippMalloc(size_buffer2);
-	if (size_spec > 0)
-		p_mem_spec2 = ( Ipp8u* )ippMalloc(size_spec2);
-
-	ipp_status = ippsFFTInit_C_32f(&fft_spec2, fft_order, IPP_FFT_NODIV_BY_ANY,
-	                               ippAlgHintNone, p_mem_spec2, p_mem_init2);
-	if (ipp_status != ippStsNoErr) {
-		std::cerr << "ippFFTInit error: " << ipp_status << ", "
-		          << ippGetStatusString(ipp_status) << std::endl;
-		std::exit(-1);
-	}
-
-	if (size_init > 0)
-		ippFree(p_mem_init2);
+		ippFree(p_mem_init);
 
 	for (std::size_t i = 0; i < FrameSize; ++i) {
 		imIn[i] = 0.0f;
@@ -117,15 +84,10 @@ BTrack::BTrack(int sampleRate)
 
 BTrack::~BTrack()
 {
-	if (size_buffer1 > 0)
-		ippFree(p_mem_buffer1);
-	if (size_spec1 > 0)
-		ippFree(p_mem_spec1);
-
-	if (size_buffer2 > 0)
-		ippFree(p_mem_buffer2);
-	if (size_spec2 > 0)
-		ippFree(p_mem_spec2);
+	if (size_buffer > 0)
+		ippFree(p_mem_buffer);
+	if (size_spec > 0)
+		ippFree(p_mem_spec);
 };
 
 void BTrack::processHop(const float* samples)
@@ -325,7 +287,7 @@ void BTrack::calculateBalancedACF()
 
 	ippsFFTFwd_CToC_32f(( Ipp32f* )onsetDFContiguous.data(),
 	                    ( Ipp32f* )imIn.data(), ( Ipp32f* )realOut.data(),
-	                    ( Ipp32f* )imOut.data(), fft_spec1, p_mem_buffer1);
+	                    ( Ipp32f* )imOut.data(), fft_spec, p_mem_buffer);
 
 	// multiply by complex conjugate
 	for (int i = 0; i < FFTLengthForACFCalculation; i++) {
@@ -334,7 +296,7 @@ void BTrack::calculateBalancedACF()
 	}
 
 	ippsFFTInv_CToC_32f_I(( Ipp32f* )realOut.data(), ( Ipp32f* )imOut.data(),
-	                      fft_spec2, p_mem_buffer2);
+	                      fft_spec, p_mem_buffer);
 
 	for (size_t i = 0; i < OnsetDFBufferSize; i++) {
 		acf[i] = sqrtf(realOut[i] * realOut[i] + imOut[i] * imOut[i])

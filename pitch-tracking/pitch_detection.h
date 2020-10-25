@@ -93,4 +93,4 @@ protected:
 	}
 };
 
-#endif /* PITCH_DETECTION_H */
+#endif
