@@ -40,14 +40,14 @@ public:
 	std::size_t n_small_hops;
 
 	HPRIOffline<Backend::GPU> hpri_offline;
-	PRealtime<Backend::GPU> p_rt;
+	HPRRealtime<Backend::GPU> p_rt;
 
 	std::vector<float> testdata;
 
 	HPRIOfflineGPUTest()
 	    : n_big_hops(20)
 	    , hpri_offline(48000.0F, big_hop, small_hop, 2.0, 2.0)
-	    , p_rt(48000.0F, small_hop, 2.0)
+	    , p_rt(48000.0F, small_hop, 2.0, OUTPUT_PERCUSSIVE)
 	    , testdata(generate_data_normalized(n_big_hops * big_hop))
 	{
 		n_small_hops = (std::size_t)(
@@ -70,7 +70,10 @@ TEST_F(HPRIOfflineGPUTest, Basic)
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
 		thrust::copy(testdata.begin() + i * small_hop,
 		             testdata.begin() + (i + 1) * small_hop, io_obj.host_in);
-		p_rt.process_next_hop(io_obj.device_in, io_obj.device_out);
+
+		p_rt.process_next_hop(io_obj.device_in);
+		p_rt.copy_percussive(io_obj.device_out);
+
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(io_obj.host_out[j], io_obj.host_in[j]);
 		}
@@ -93,7 +96,10 @@ TEST_F(HPRIOfflineGPUTest, WithPadding)
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
 		thrust::copy(testdata.begin() + i * small_hop,
 		             testdata.begin() + (i + 1) * small_hop, io_obj.host_in);
-		p_rt.process_next_hop(io_obj.device_in, io_obj.device_out);
+
+		p_rt.process_next_hop(io_obj.device_in);
+		p_rt.copy_percussive(io_obj.device_out);
+
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(io_obj.host_out[j], io_obj.host_in[j]);
 		}

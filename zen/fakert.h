@@ -142,8 +142,9 @@ namespace fakert {
 			float delta_t = 1000 * ( float )p.hop / file_data->sampleRate;
 
 			if (p.cpu) {
-				auto hpss = zen::hps::PRealtime<zen::Backend::CPU>(
-				    file_data->sampleRate, p.hop, p.beta);
+				auto hpss = zen::hps::HPRRealtime<zen::Backend::CPU>(
+				    file_data->sampleRate, p.hop, p.beta,
+				    zen::hps::OUTPUT_PERCUSSIVE);
 
 				if (p.use_sse) {
 					hpss.use_sse_filter();
@@ -167,8 +168,8 @@ namespace fakert {
 
 					if (p.do_hps) {
 						// process input samples
-						hpss.process_next_hop(audio.data() + chunk_it->first,
-						                      percussive_out.data() + n);
+						hpss.process_next_hop(audio.data() + chunk_it->first);
+						hpss.copy_percussive(percussive_out.data() + n);
 					}
 					else {
 						// just loop input back into output
@@ -193,8 +194,9 @@ namespace fakert {
 				          << ( float )time_tot / iters << std::endl;
 			}
 			else {
-				auto hpss = zen::hps::PRealtime<zen::Backend::GPU>(
-				    file_data->sampleRate, p.hop, p.beta, p.nocopybord);
+				auto hpss = zen::hps::HPRRealtime<zen::Backend::GPU>(
+				    file_data->sampleRate, p.hop, p.beta,
+				    zen::hps::OUTPUT_PERCUSSIVE, p.nocopybord);
 
 				// need an io object to do some warming up
 				auto io = zen::io::IOGPU(p.hop);
@@ -224,7 +226,8 @@ namespace fakert {
 						          audio.begin() + chunk_it->second, io.host_in);
 
 						// process input samples
-						hpss.process_next_hop(io.device_in, io.device_out);
+						hpss.process_next_hop(io.device_in);
+						hpss.copy_percussive(io.device_out);
 
 						// copy output samples from io object
 						std::copy(io.host_out, io.host_out + p.hop,

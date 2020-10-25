@@ -39,7 +39,7 @@ public:
 	std::size_t n_small_hops;
 
 	HPRIOffline<Backend::CPU> hpri_offline;
-	PRealtime<Backend::CPU> p_rt;
+	HPRRealtime<Backend::CPU> p_rt;
 
 	std::vector<float> testdata;
 	std::vector<float> prt_result;
@@ -47,7 +47,7 @@ public:
 	HPRIOfflineCPUTest()
 	    : n_big_hops(20)
 	    , hpri_offline(48000.0F, big_hop, small_hop, 2.0, 2.0)
-	    , p_rt(48000.0F, small_hop, 2.0)
+	    , p_rt(48000.0F, small_hop, 2.0, OUTPUT_PERCUSSIVE)
 	    , testdata(generate_data_normalized(n_big_hops * big_hop))
 	    , prt_result(n_big_hops * big_hop)
 	{
@@ -69,8 +69,8 @@ TEST_F(HPRIOfflineCPUTest, Basic)
 		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
-		p_rt.process_next_hop(testdata.data() + i * small_hop,
-		                      prt_result.data() + i * small_hop);
+		p_rt.process_next_hop(testdata.data() + i * small_hop);
+		p_rt.copy_percussive(prt_result.data() + i * small_hop);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(
 			    testdata[i * small_hop + j], prt_result[i * small_hop + j]);
@@ -91,8 +91,8 @@ TEST_F(HPRIOfflineCPUTest, WithPadding)
 		EXPECT_NE(ret[1][i], testdata[i]);
 	}
 	for (std::size_t i = 0; i < n_small_hops; ++i) {
-		p_rt.process_next_hop(testdata.data() + i * small_hop,
-		                      prt_result.data() + i * small_hop);
+		p_rt.process_next_hop(testdata.data() + i * small_hop);
+		p_rt.copy_percussive(prt_result.data() + i * small_hop);
 		for (std::size_t j = 0; j < small_hop; ++j) {
 			EXPECT_NE(
 			    testdata[i * small_hop + j], prt_result[i * small_hop + j]);

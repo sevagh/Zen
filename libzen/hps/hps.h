@@ -14,6 +14,7 @@
 #include <thrust/host_vector.h>
 
 #include <core.h>
+#include <libzen/hps.h>
 
 namespace zen {
 namespace internal {
@@ -87,6 +88,15 @@ namespace internal {
 			}
 		};
 
+		struct complex_abs_squared_functor {
+			template <typename ValueType>
+			__host__ __device__ ValueType
+			operator()(const thrust::complex<ValueType>& z)
+			{
+				return powf(thrust::abs(z), 2.0f);
+			}
+		};
+
 		struct hard_mask_functor {
 			const float beta;
 
@@ -137,10 +147,6 @@ namespace internal {
 				return x + y;
 			}
 		};
-
-		const unsigned int HPSS_HARMONIC = 1;
-		const unsigned int HPSS_PERCUSSIVE = 1 << 1;
-		const unsigned int HPSS_RESIDUAL = 1 << 2;
 
 		template <zen::Backend B>
 		class HPR {
@@ -209,7 +215,7 @@ namespace internal {
 			HPR(float fs,
 			    std::size_t hop,
 			    float beta,
-			    int output_flags,
+			    unsigned int output_flags,
 			    mfilt::MedianFilterDirection causality,
 			    bool copy_bord)
 			    : fs(fs)
@@ -266,13 +272,13 @@ namespace internal {
 				}
 				COLA_factor = nfft / COLA_factor;
 
-				if (output_flags & HPSS_HARMONIC) {
+				if (output_flags & zen::hps::OUTPUT_HARMONIC) {
 					output_harmonic = true;
 				}
-				if (output_flags & HPSS_PERCUSSIVE) {
+				if (output_flags & zen::hps::OUTPUT_PERCUSSIVE) {
 					output_percussive = true;
 				}
-				if (output_flags & HPSS_RESIDUAL) {
+				if (output_flags & zen::hps::OUTPUT_RESIDUAL) {
 					output_residual = true;
 				}
 			}

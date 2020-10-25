@@ -22,6 +22,10 @@ namespace internal {
 
 namespace zen {
 namespace hps {
+	const unsigned int OUTPUT_HARMONIC = 1;
+	const unsigned int OUTPUT_PERCUSSIVE = 1 << 1;
+	const unsigned int OUTPUT_RESIDUAL = 1 << 2;
+
 	template <zen::Backend B>
 	class HPRIOffline {
 	public:
@@ -68,22 +72,37 @@ namespace hps {
 	};
 
 	template <zen::Backend B>
-	class PRealtime {
+	class HPRRealtime {
 	public:
-		PRealtime(float fs, std::size_t hop, float beta);
+		HPRRealtime(float fs,
+		            std::size_t hop,
+		            float beta,
+		            unsigned int output_flags);
 
 		// set nocopybord=true to disable NPP's internal copyborder for median filter
 		// gain some performance, lose some quality
-		PRealtime(float fs, std::size_t hop, float beta, bool nocopybord);
-		PRealtime(float fs, std::size_t hop);
-		PRealtime(float fs);
-		~PRealtime();
+		HPRRealtime(float fs,
+		            std::size_t hop,
+		            float beta,
+		            unsigned int output_flags,
+		            bool nocopybord);
+		HPRRealtime(float fs, std::size_t hop, unsigned int output_flags);
+		HPRRealtime(float fs, unsigned int output_flags);
+		~HPRRealtime();
 
 		// copies from the io in vec, writes to the io out vec
 		// pass in a real-time stream of the input, one hop at a time
-		void process_next_hop(thrust::device_ptr<float> in,
-		                      thrust::device_ptr<float> out);
-		void process_next_hop(float* in, float* out);
+		void process_next_hop(thrust::device_ptr<float> in);
+
+		void copy_harmonic(thrust::device_ptr<float> out);
+		void copy_percussive(thrust::device_ptr<float> out);
+		void copy_residual(thrust::device_ptr<float> out);
+
+		void process_next_hop(float* in);
+
+		void copy_harmonic(float* out);
+		void copy_percussive(float* out);
+		void copy_residual(float* out);
 
 		// gpu benefits from some warmup, especially in real-time contexts
 		// where the slow early iterations cause latency issues

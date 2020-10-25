@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <hps/hps.h>
 #include <iostream>
+#include <libzen/hps.h>
 #include <libzen/io.h>
 #include <random>
 
@@ -138,7 +139,11 @@ public:
 class HPRAllOutputTest : public HPRTest {
 protected:
 	HPRAllOutputTest()
-	    : HPRTest(256, 100, true, HPSS_HARMONIC | HPSS_PERCUSSIVE | HPSS_RESIDUAL)
+	    : HPRTest(256,
+	              100,
+	              true,
+	              zen::hps::OUTPUT_HARMONIC | zen::hps::OUTPUT_PERCUSSIVE
+	                  | zen::hps::OUTPUT_RESIDUAL)
 	{
 	}
 };
@@ -147,7 +152,7 @@ protected:
 class HPRPercTest : public HPRTest {
 protected:
 	HPRPercTest()
-	    : HPRTest(256, 100, true, HPSS_PERCUSSIVE)
+	    : HPRTest(256, 100, true, zen::hps::OUTPUT_PERCUSSIVE)
 	{
 	}
 };

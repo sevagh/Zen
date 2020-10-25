@@ -37,13 +37,13 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
 
 	p_impl_h = new zen::internal::hps::HPR<B>(
 	    fs, hop_h, beta_h,
-	    zen::internal::hps::HPSS_HARMONIC | zen::internal::hps::HPSS_PERCUSSIVE
-	        | zen::internal::hps::HPSS_RESIDUAL,
+	    zen::hps::OUTPUT_HARMONIC | zen::hps::OUTPUT_PERCUSSIVE
+	        | zen::hps::OUTPUT_RESIDUAL,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal,
 	    !nocopybord);
 
 	p_impl_p = new zen::internal::hps::HPR<B>(
-	    fs, hop_p, beta_p, zen::internal::hps::HPSS_PERCUSSIVE,
+	    fs, hop_p, beta_p, zen::hps::OUTPUT_PERCUSSIVE,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal,
 	    !nocopybord);
 }
@@ -66,12 +66,12 @@ zen::hps::HPRIOffline<B>::HPRIOffline(float fs,
 
 	p_impl_h = new zen::internal::hps::HPR<B>(
 	    fs, hop_h, beta_h,
-	    zen::internal::hps::HPSS_HARMONIC | zen::internal::hps::HPSS_PERCUSSIVE
-	        | zen::internal::hps::HPSS_RESIDUAL,
+	    zen::hps::OUTPUT_HARMONIC | zen::hps::OUTPUT_PERCUSSIVE
+	        | zen::hps::OUTPUT_RESIDUAL,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 
 	p_impl_p = new zen::internal::hps::HPR<B>(
-	    fs, hop_p, beta_p, zen::internal::hps::HPSS_PERCUSSIVE,
+	    fs, hop_p, beta_p, zen::hps::OUTPUT_PERCUSSIVE,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeAnticausal, true);
 }
 
@@ -280,73 +280,117 @@ zen::hps::HPRIOffline<zen::Backend::CPU>::process(std::vector<float> audio)
 }
 
 template <zen::Backend B>
-zen::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop, float beta)
+zen::hps::HPRRealtime<B>::HPRRealtime(float fs,
+                                      std::size_t hop,
+                                      float beta,
+                                      unsigned int output_flags)
 {
 	p_impl = new zen::internal::hps::HPR<B>(
-	    fs, hop, beta, zen::internal::hps::HPSS_PERCUSSIVE,
+	    fs, hop, beta, output_flags,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeCausal, true);
 }
 
 template <zen::Backend B>
-zen::hps::PRealtime<B>::PRealtime(float fs,
-                                  std::size_t hop,
-                                  float beta,
-                                  bool nocopybord)
+zen::hps::HPRRealtime<B>::HPRRealtime(float fs,
+                                      std::size_t hop,
+                                      float beta,
+                                      unsigned int output_flags,
+                                      bool nocopybord)
 {
 	p_impl = new zen::internal::hps::HPR<B>(
-	    fs, hop, beta, zen::internal::hps::HPSS_PERCUSSIVE,
+	    fs, hop, beta, output_flags,
 	    zen::internal::hps::mfilt::MedianFilterDirection::TimeCausal,
 	    !nocopybord);
 }
 
 template <zen::Backend B>
-zen::hps::PRealtime<B>::~PRealtime()
+zen::hps::HPRRealtime<B>::~HPRRealtime()
 {
 	delete p_impl;
 }
 
 template <zen::Backend B>
-zen::hps::PRealtime<B>::PRealtime(float fs, std::size_t hop)
-    : PRealtime(fs, hop, 2.0){};
-
-// (TODO: reassess) best-performing defaults
-template <zen::Backend B>
-zen::hps::PRealtime<B>::PRealtime(float fs)
-    : PRealtime(fs, 256, 2.0){};
+zen::hps::HPRRealtime<B>::HPRRealtime(float fs,
+                                      std::size_t hop,
+                                      unsigned int output_flags)
+    : HPRRealtime(fs, hop, 2.0, output_flags){};
 
 template <zen::Backend B>
-void zen::hps::PRealtime<B>::use_sse_filter()
+zen::hps::HPRRealtime<B>::HPRRealtime(float fs, unsigned int output_flags)
+    : HPRRealtime(fs, 256, 2.0, output_flags){};
+
+template <zen::Backend B>
+void zen::hps::HPRRealtime<B>::use_sse_filter()
 {
 	p_impl->use_sse_filter();
 }
 
 template <zen::Backend B>
-void zen::hps::PRealtime<B>::use_soft_mask()
+void zen::hps::HPRRealtime<B>::use_soft_mask()
 {
 	p_impl->use_soft_mask();
 }
 
 template <>
-void zen::hps::PRealtime<zen::Backend::GPU>::process_next_hop(
-    thrust::device_ptr<float> in_hop,
-    thrust::device_ptr<float> out_hop)
+void zen::hps::HPRRealtime<zen::Backend::GPU>::process_next_hop(
+    thrust::device_ptr<float> in_hop)
 {
 	p_impl->process_next_hop(in_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::GPU>::copy_harmonic(
+    thrust::device_ptr<float> out_hop)
+{
+	thrust::copy(p_impl->harmonic_out.begin(),
+	             p_impl->harmonic_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::GPU>::copy_percussive(
+    thrust::device_ptr<float> out_hop)
+{
 	thrust::copy(p_impl->percussive_out.begin(),
 	             p_impl->percussive_out.begin() + p_impl->hop, out_hop);
 }
 
 template <>
-void zen::hps::PRealtime<zen::Backend::CPU>::process_next_hop(float* in_hop,
-                                                              float* out_hop)
+void zen::hps::HPRRealtime<zen::Backend::GPU>::copy_residual(
+    thrust::device_ptr<float> out_hop)
+{
+	thrust::copy(p_impl->residual_out.begin(),
+	             p_impl->residual_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::CPU>::process_next_hop(float* in_hop)
 {
 	p_impl->process_next_hop(in_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::CPU>::copy_harmonic(float* out_hop)
+{
+	std::copy(p_impl->harmonic_out.begin(),
+	          p_impl->harmonic_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::CPU>::copy_percussive(float* out_hop)
+{
 	std::copy(p_impl->percussive_out.begin(),
 	          p_impl->percussive_out.begin() + p_impl->hop, out_hop);
 }
 
 template <>
-void zen::hps::PRealtime<zen::Backend::GPU>::warmup(zen::io::IOGPU& io)
+void zen::hps::HPRRealtime<zen::Backend::CPU>::copy_residual(float* out_hop)
+{
+	std::copy(p_impl->residual_out.begin(),
+	          p_impl->residual_out.begin() + p_impl->hop, out_hop);
+}
+
+template <>
+void zen::hps::HPRRealtime<zen::Backend::GPU>::warmup(zen::io::IOGPU& io)
 {
 	int test_iters = 1000; // this is good enough in my experience
 	std::vector<float> testdata(test_iters * p_impl->hop);
@@ -365,7 +409,7 @@ void zen::hps::PRealtime<zen::Backend::GPU>::warmup(zen::io::IOGPU& io)
 }
 
 template <>
-void zen::hps::PRealtime<zen::Backend::CPU>::warmup()
+void zen::hps::HPRRealtime<zen::Backend::CPU>::warmup()
 {
 	int test_iters = 1000; // this is good enough in my experience
 	std::vector<float> testdata(test_iters * p_impl->hop);
@@ -427,10 +471,6 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 	thrust::copy(
 	    fft.fft_vec.begin(), fft.fft_vec.end(), sliding_stft.end() - nfft);
 
-	// calculate the magnitude of the stft
-	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
-	                  zen::internal::hps::complex_abs_functor());
-
 	// up to this stage, median filter + SSE filter are identical
 
 	if (!use_sse) {
@@ -448,6 +488,10 @@ void zen::internal::hps::HPR<B>::process_next_hop(InputPointer in_hop)
 template <zen::Backend B>
 void zen::internal::hps::HPR<B>::apply_median_filter()
 {
+	// calculate the magnitude of the stft
+	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
+	                  zen::internal::hps::complex_abs_functor());
+
 	time.filter(s_mag, harmonic_matrix);
 	frequency.filter(s_mag, percussive_matrix);
 
@@ -538,6 +582,10 @@ void zen::internal::hps::HPR<B>::apply_median_filter()
 template <zen::Backend B>
 void zen::internal::hps::HPR<B>::apply_sse_filter()
 {
+	// calculate the power spectrogram of the stft (i.e. magnitude^2)
+	thrust::transform(sliding_stft.begin(), sliding_stft.end(), s_mag.begin(),
+	                  zen::internal::hps::complex_abs_squared_functor());
+
 	// calculate the reciprocal of the magnitude stft
 	// SSE paper calls it a power spectrogram but there's no ^2 factor
 	thrust::transform(s_mag.begin(), s_mag.end(), reciprocal.begin(),
@@ -606,5 +654,5 @@ void zen::internal::hps::HPR<B>::apply_sse_filter()
 template class zen::hps::HPRIOffline<zen::Backend::CPU>;
 template class zen::hps::HPRIOffline<zen::Backend::GPU>;
 
-template class zen::hps::PRealtime<zen::Backend::CPU>;
-template class zen::hps::PRealtime<zen::Backend::GPU>;
+template class zen::hps::HPRRealtime<zen::Backend::CPU>;
+template class zen::hps::HPRRealtime<zen::Backend::GPU>;
