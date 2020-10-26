@@ -123,7 +123,8 @@ namespace internal {
 			__host__ __device__ float operator()(const float& x,
 			                                     const float& y) const
 			{
-				return float(powf(x, power) / (powf(x, power) + powf(y, power)));
+				return float(powf(x, power)
+				             / (powf(x, power) + powf(y, power) + Eps));
 			}
 		};
 
@@ -134,7 +135,7 @@ namespace internal {
 			__host__ __device__ float operator()(const float& x,
 			                                     const float& y) const
 			{
-				return float(x * x / (x * x + y * y));
+				return float(x * x / (x * x + y * y + Eps));
 			}
 		};
 
