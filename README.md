@@ -21,9 +21,7 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ### Performance
 
-### Accuracy improvements
-
-#### Pitch tracking
+### Pitch tracking
 
 The [pitch-tracking](./pitch-tracking) demo applies real-time harmonic separation with a hop size of 4096 (optimal for harmonic results), and applies the McLeod Pitch Method on a stream of 4096-sized chunks from a wav file.
 
@@ -47,7 +45,7 @@ t: 2.32,        pitch (+HPR): 163.46,   pitch (-HPR): -1.00
 t: 2.41,        pitch (+HPR): 163.08,   pitch (-HPR): -1.00
 ```
 
-#### Beat tracking
+### Beat tracking
 
 The [beat-tracking](./beat-tracking) demo applies real-time percussive separation with a hop size of 256 (optimal for percussive results), and applies BTrack on a stream of 256-sized chunks from a wav file.
 
