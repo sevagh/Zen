@@ -64,8 +64,8 @@ private:
 	void calculateBalancedACF();
 
 public:
-	static constexpr std::size_t FrameSize = 1024;
-	static constexpr std::size_t HopSize = 512;
+	static constexpr std::size_t FrameSize = 512;
+	static constexpr std::size_t HopSize = 256;
 
 	bool beatDueInFrame;
 	float estimatedTempo;

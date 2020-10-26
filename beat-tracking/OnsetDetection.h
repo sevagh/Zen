@@ -12,7 +12,7 @@
 
 class OnsetDetectionFunction {
 public:
-	static constexpr std::size_t FrameSize = 1024;
+	static constexpr std::size_t FrameSize = 512;
 	std::array<float, FrameSize> imIn = {};
 	std::array<float, FrameSize> realOut = {};
 	std::array<float, FrameSize> imOut = {};
@@ -23,7 +23,7 @@ public:
 	float calculate_sample(const float* buffer);
 
 private:
-	static constexpr std::size_t HopSize = 512;
+	static constexpr std::size_t HopSize = 256;
 	static constexpr WindowType windowType = HanningWindow;
 	void perform_FFT();
 	float complex_spectral_difference_hwr();

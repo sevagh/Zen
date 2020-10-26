@@ -33,9 +33,9 @@ get_chunk_limits(std::vector<float>& container, size_t k)
 int main(int argc, char** argv)
 {
 	std::cout << std::fixed;
-	std::cout << std::setprecision(2);
+	std::cout << std::setprecision(4);
 
-	std::size_t chunk_size = 512;
+	std::size_t chunk_size = 256;
 
 	std::cout << "Slicing wav file into chunks of " << chunk_size
 	          << " samples..." << std::endl;
@@ -97,6 +97,9 @@ int main(int argc, char** argv)
 	hpss.warmup(io);
 	std::size_t n = 0;
 
+	std::vector<float> beats1;
+	std::vector<float> beats2;
+
 	for (std::vector<std::pair<std::size_t, std::size_t>>::const_iterator chunk_it
 	     = chunk_limits.begin();
 	     chunk_it != chunk_limits.end(); ++chunk_it) {
@@ -116,13 +119,28 @@ int main(int argc, char** argv)
 
 		btrack2.processHop(audio.data() + chunk_it->first);
 
-		std::cout << "t: " << t << ",\t"
-		          << "beat? (+HPR): " << btrack1.beatDueInFrame
-		          << ",\tbeat? (-HPR): " << btrack2.beatDueInFrame << "\n";
+		if (btrack1.beatDueInFrame) {
+			beats1.push_back(t);
+		}
+		if (btrack2.beatDueInFrame) {
+			beats2.push_back(t);
+		}
 
 		t += timeslice;
 		n += chunk_size;
 	}
+
+	std::cout << "+HPR beat timestamps: ";
+	for (auto elem : beats1) {
+		std::cout << elem << " ";
+	}
+	std::cout << "\n";
+
+	std::cout << "-HPR beat timestamps: ";
+	for (auto elem : beats2) {
+		std::cout << elem << " ";
+	}
+	std::cout << "\n";
 
 	return 0;
 }
