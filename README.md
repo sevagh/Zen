@@ -15,13 +15,25 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 **NB** The algorithms are intended to be used with a causal real-time input stream. For simplicity, all real-time demo code uses offline wav files, but steps through them in hops to simulate real-time.
 
-## Block diagrams
+## Block diagram
 
 ## Results
 
+### Waveforms
+
+Visual demonstration using HPRIOfflineGPU, the CUDA implementation of the best-performing offline separation class:
+
+![waveforms](./docs/waveforms.png)
+
+### Spectrograms
+
+Same as the above in the spectral domain:
+
+![spectrograms](./docs/spectrograms.png)
+
 ### Performance
 
-### Pitch tracking
+### Pre-processing for pitch tracking
 
 The [pitch-tracking](./pitch-tracking) demo applies real-time harmonic separation with a hop size of 4096 (optimal for harmonic results), and applies the McLeod Pitch Method on a stream of 4096-sized chunks from a wav file.
 
@@ -45,7 +57,7 @@ t: 2.32,        pitch (+HPR): 163.46,   pitch (-HPR): -1.00
 t: 2.41,        pitch (+HPR): 163.08,   pitch (-HPR): -1.00
 ```
 
-### Beat tracking
+### Pre-processing for beat tracking
 
 The [beat-tracking](./beat-tracking) demo applies real-time percussive separation with a hop size of 256 (optimal for percussive results), and applies BTrack on a stream of 256-sized chunks from a wav file.
 
