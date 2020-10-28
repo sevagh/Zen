@@ -2,7 +2,9 @@
 
 Zen is a real-time capable, CUDA-accelerated harmonic/percussive source separation library, which implements:
 * Harmonic-percussive source separation using median filtering ([Fitzgerald 2010](http://dafx10.iem.at/papers/DerryFitzGerald_DAFx10_P15.pdf), [Drieger et al 2014](https://archives.ismir.net/ismir2014/paper/000127.pdf))
-* Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
+* **[INCOMPLETE\*]** Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
+
+*: Npp/Ipp FilterBox/moving average filter functions in the SSE filtering case are not as well-behaved as the FilterMedian functions.
 
 Zen was written from the ground up to support dual CPU/GPU implementations of algorithms by using policy-based template metaprogramming. For specialized subroutines (e.g. cuFFT, Npp/Ipp), there are abstraction wrappers.
 
@@ -18,6 +20,10 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 ## Block diagram
 
 ## Results
+
+1024-hop GPU HPR is the sweet spot of performance:
+
+![gpuvcpu](./docs/cpu_vs_gpu.png) ![gpuoverhead](./docs/gpu_overhead.png)
 
 ### Waveforms
 

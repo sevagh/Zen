@@ -192,6 +192,7 @@ namespace internal {
 					auto dst_ptr = ( Npp32f* )thrust::raw_pointer_cast(dst);
 
 					if (mydir == MedianFilterDirection::Frequency) {
+						std::cout << "COPY WRAP BORD FOR FREQUENCY CASE!\n";
 						nppiCopyWrapBorder_32f_C1R(
 						    src_ptr, smaller_nstep, roi, tmp_bigger_src,
 						    bigger_nstep, bigger_roi, 0, filter_mid);
@@ -202,25 +203,15 @@ namespace internal {
 						    bigger_nstep, bigger_roi, filter_mid, 0);
 					}
 
-					nppiFilterBoxBorder_32f_C1R(
+					nppiFilterBox_32f_C1R(
 					    tmp_bigger_src + bigger_start_pixel_offset,
-					    bigger_nstep, roi, NppiPoint{0, 0},
+					    bigger_nstep, //roi, NppiPoint{0, 0},
 					    tmp_bigger_dst + bigger_start_pixel_offset,
-					    bigger_nstep, roi, mask, anchor, NPP_BORDER_REPLICATE);
+					    bigger_nstep, roi, mask,
+					    anchor); //, NPP_BORDER_REPLICATE);
 
 					nppiCopy_32f_C1R(tmp_bigger_dst + bigger_start_pixel_offset,
 					                 bigger_nstep, dst_ptr, smaller_nstep, roi);
-
-					//nppiFilterBox_32f_C1R(
-					//    src_ptr + smaller_start_pixel_offset, smaller_nstep,
-					//    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
-					//    smaller_roi, mask, anchor);
-
-					nppiFilterBoxBorder_32f_C1R(
-					    src_ptr + smaller_start_pixel_offset, smaller_nstep,
-					    roi, NppiPoint{0, 0},
-					    dst_ptr + smaller_start_pixel_offset, smaller_nstep,
-					    smaller_roi, mask, anchor, NPP_BORDER_REPLICATE);
 				}
 			};
 
