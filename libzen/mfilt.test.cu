@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <hps/mfilt.h>
 #include <iostream>
+#include <mfilt.h>
 
 #include <npp.h>
 #include <nppdefs.h>

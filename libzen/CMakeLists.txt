@@ -28,7 +28,7 @@ include_directories(
 # ------------------------------------------------------------------------------#
 
 set(LIBZEN_SOURCES
-	${CMAKE_CURRENT_SOURCE_DIR}/hps/hps.cu
+	${CMAKE_CURRENT_SOURCE_DIR}/hps.cu
 	${CMAKE_CURRENT_SOURCE_DIR}/core.cu
 	)
 
@@ -61,8 +61,8 @@ else()
   message("CUMEMCHK: DISABLED - install cuda-memcheck to enable")
 endif()
 
-function(zen_unittest path name do_cumemchk)
-  add_executable(${name}.test ${path}/${name}.test.cu)
+function(zen_unittest name do_cumemchk)
+  add_executable(${name}.test ${name}.test.cu)
   target_link_libraries(${name}.test libzen ${LIBZEN_DEPS} gtest gtest_main pthread -static-libstdc++)
 
   add_test(${name}_test ${name}.test)
@@ -78,18 +78,18 @@ if(BUILD_TESTS)
 	find_package(GTest REQUIRED)
 	message("LIBZEN: Building unit tests")
 
-	zen_unittest(hps mfilt 1)
-	zen_unittest(hps box 1)
-	zen_unittest(hps hps 0) # very slow, disable cuda-memcheck
-	zen_unittest(. fftw 0) # very slow, disable cuda-memcheck
-	zen_unittest(hps hps_gpu_public 0) # e2e test for cuda memcheck
-	zen_unittest(hps hps_cpu_public 0) # cpu only, no need for cuda memcheck
+	zen_unittest(mfilt 1)
+	zen_unittest(box 1)
+	zen_unittest(hps 0) # very slow, disable cuda-memcheck
+	zen_unittest(fftw 0) # very slow, disable cuda-memcheck
+	zen_unittest(hps_gpu_public 0) # e2e test for cuda memcheck
+	zen_unittest(hps_cpu_public 0) # cpu only, no need for cuda memcheck
 else()
 	message("LIBZEN: Skipping unit tests")
 endif()
 
-function(zen_bench path name)
-	add_executable(${name}.bench ${path}/${name}.bench.cu)
+function(zen_bench name)
+	add_executable(${name}.bench ${name}.bench.cu)
 	target_link_libraries(${name}.bench libzen ${LIBZEN_DEPS} benchmark benchmark_main pthread -static-libstdc++)
 endfunction()
 
@@ -97,8 +97,8 @@ if(BUILD_BENCHES)
 	find_package(benchmark REQUIRED)
 	message("LIBZEN: Building benches")
 
-	zen_bench(hps mfilt)
-	zen_bench(. fftw)
+	zen_bench(mfilt)
+	zen_bench(fftw)
 else()
 	message("LIBZEN: Skipping benches")
 endif()

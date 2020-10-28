@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <hps/hps.h>
+#include <hps.h>
 #include <iostream>
 #include <libzen/hps.h>
 #include <libzen/io.h>

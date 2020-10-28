@@ -1,11 +1,11 @@
 #ifndef ZG_HPS_INTERNAL_H
 #define ZG_HPS_INTERNAL_H
 
+#include <box.h>
 #include <complex>
 #include <cstddef>
 #include <fftw.h>
-#include <hps/box.h>
-#include <hps/mfilt.h>
+#include <mfilt.h>
 #include <vector>
 #include <win.h>
 

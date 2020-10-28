@@ -18,8 +18,8 @@
 #include <ippdefs.h>
 #include <ippi.h>
 
-#include <hps/mfilt.h>
 #include <libzen/zen.h>
+#include <mfilt.h>
 
 using namespace zen::internal::hps::mfilt;
 

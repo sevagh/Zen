@@ -12,11 +12,11 @@
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
 
-#include <hps/hps.h>
-#include <hps/mfilt.h>
+#include <hps.h>
 #include <libzen/hps.h>
 #include <libzen/io.h>
 #include <libzen/zen.h>
+#include <mfilt.h>
 
 template <zen::Backend B>
 zen::hps::HPRIOffline<B>::HPRIOffline(float fs,

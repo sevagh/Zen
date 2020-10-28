@@ -66,6 +66,7 @@ file(
   ALL_CXX_SOURCE_FILES
   libzen/*.cu
   libzen/*.h
+  libzen/libzen/*.h
   zen/*.cu
   zen/*.h
   pitch-tracking/*.cpp

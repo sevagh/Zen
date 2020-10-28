@@ -1,8 +1,8 @@
+#include <box.h>
 #include <gtest/gtest.h>
-#include <hps/box.h>
-#include <hps/hps.h>
-#include <hps/mfilt.h>
+#include <hps.h>
 #include <iostream>
+#include <mfilt.h>
 
 #include <npp.h>
 #include <nppdefs.h>

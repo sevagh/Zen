@@ -1,10 +1,10 @@
 #ifndef ZG_CORE_H
 #define ZG_CORE_H
 
+#include <box.h>
 #include <fftw.h>
-#include <hps/box.h>
-#include <hps/mfilt.h>
 #include <libzen/zen.h>
+#include <mfilt.h>
 #include <stdexcept>
 #include <thrust/complex.h>
 #include <thrust/device_vector.h>
