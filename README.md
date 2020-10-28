@@ -2,9 +2,9 @@
 
 Zen is a real-time capable, CUDA-accelerated harmonic/percussive source separation library, which implements:
 * Harmonic-percussive source separation using median filtering ([Fitzgerald 2010](http://dafx10.iem.at/papers/DerryFitzGerald_DAFx10_P15.pdf), [Drieger et al 2014](https://archives.ismir.net/ismir2014/paper/000127.pdf))
-* **[INCOMPLETE\*]** Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
+* Steady-state/transient source separation using SSE (stochastic spectrum estimation) filtering ([Bayarres 2014](https://iie.fing.edu.uy/publicaciones/2014/Iri14/Iri14.pdf))
 
-*: Npp/Ipp FilterBox/moving average filter functions in the SSE filtering case are not as well-behaved as the FilterMedian functions.
+Note that the Npp/Ipp FilterBox (moving average filter) functions in the SSE filtering case are not as well-behaved as the FilterMedian functions - use caution with the SSE implementation.
 
 Zen was written from the ground up to support dual CPU/GPU implementations of algorithms by using policy-based template metaprogramming. For specialized subroutines (e.g. cuFFT, Npp/Ipp), there are abstraction wrappers.
 
@@ -19,6 +19,8 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ## Block diagram
 
+![block](./docs/block.png)
+
 ## Results
 
 1024-hop GPU HPR is the sweet spot of performance:
@@ -27,13 +29,9 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ### Waveforms
 
-Visual demonstration using HPRIOfflineGPU, the CUDA implementation of the best-performing offline separation class:
-
 ![waveforms](./docs/waveforms.png)
 
 ### Spectrograms
-
-Same as the above in the spectral domain:
 
 ![spectrograms](./docs/spectrograms.png)
 
@@ -78,9 +76,87 @@ Using CUDA and NPP to implement median-filtering-based HPR (harmonic-percussive-
 
 ### Usage
 
+#### Build
+
+Zen uses CMake (and is not simple to build). You need to adjust [CMakeLists.txt](./CMakeLists.txt) to specify locations for your custom GCC (for nvcc), CUDA toolkit libraries, and IPP libraries. I suggest using Ninja:
+
+```
+$ mkdir -p build && cd build && cmake .. -GNinja && ninja -j16
+```
+
 #### libzen library examples
 
+The [pitch-tracking main.cu](./pitch-tracking/main.cu) and [beat-tracking main.cu](./beat-tracking/main.cu) files show example usages of `HPRRealtime<Backend::GPU>` for creating real-time pure harmonic and pure percussive separations.
+
 #### zen command-line tool usage
+
+The [zen](./zen) command line tool implements all of the classes and algorithms of Zen:
+```
+usage:
+
+  zen offline -i, --input <infile> [--hps [<hop-h>] [<beta-h>] [<hop-p>] [<beta-p>]] [-o,
+      --out-prefix <outfile_prefix>] [--cpu] [--sse] [--soft-mask] [--nocopybord]
+
+  zen fakert -i, --input <infile> [--hps [<hop>] [<beta>]] [-o, --output <outfile>] [--cpu] [--sse]
+      [--soft-mask] [--nocopybord]
+
+  zen help | -h | --help
+  zen version | -v | --version
+```
+
+By default, `beta` is the separation factor of Drieger et al's Harmonic-Percussive-Residual technique. If using `--soft-mask`, `beta` is the raised power of the Wiener soft mask. If using `--sse`, the parameter `beta` is ignored.
+
+Example of the iterative offline separation into 3 components, harmonic/percussive/residual:
+```
+$ ./zen offline --hps 4096 2.5 256 2.5 --input ../samples/mixed.wav --out-prefix offline-sep
+Running zen-offline with the following params:
+        infile: ../samples/mixed.wav
+        outfile_prefix: offline-sep
+        do hps: yes
+                harmonic hop: 4096
+                harmonic beta: 2.5
+                percussive hop: 256
+                percussive beta: 2.5
+                mask: hard/binary
+                filter: median
+        compute: gpu (cuda/npp)
+Audio file info:
+        sample rate: 44100
+        len samples: 161571
+        frame size: 2
+        seconds: 3.66374
+        channels: 1
+Processing input signal of size 161571 with HPR-I separation using harmonic params: 4096,2.5, percussive params: 256,2.5
+GPU/CUDA/thrust: 2-pass HPR-I-Offline took 487 ms
+$
+$ ls offline-sep*
+offline-sep_harm.wav  offline-sep_perc.wav  offline-sep_residual.wav
+```
+
+Example of fakert (aka "fake-real-time" using streaming wav files) separation into a single percussive component:
+```
+$ ./zen fakert --input ../samples/mixed.wav -o perc.wav --hps 256 2.5
+Running zen-fakert with the following params:
+        infile: ../samples/mixed.wav
+        outfile: perc.wav
+        do hps: yes
+                hop: 256
+                beta: 2.5
+                mask: hard/binary
+                filter: median
+        compute: gpu (cuda/npp)
+Audio file info:
+        sample rate: 44100
+        len samples: 161571
+        frame size: 2
+        seconds: 3.66374
+        channels: 1
+Slicing buffer size 161571 into 631 chunks of size 256
+PRealtime GPU:  Δn = 256, Δt(ms) = 5.80499, average processing duration(us) = 173.99
+$
+$ ls perc.wav
+perc.wav
+```
 
 ## Development
 
