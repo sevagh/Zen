@@ -21,6 +21,12 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ![block](./docs/block.png)
 
+## Example
+
+Click this to see an example on my Soundcloud page:
+
+[<img src="./docs/soundcloud.png" width=600px>](https://soundcloud.com/user-167126026/sets/harmonic-percussive-source-separation)
+
 ## Results
 
 1024-hop GPU HPR is the sweet spot of performance:
