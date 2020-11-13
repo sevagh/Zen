@@ -21,6 +21,10 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ![block](./docs/block.png)
 
+Based on the insight of the sliding causal STFT from [Real-Time-HPSS](https://github.com/sevagh/Real-Time-HPSS):
+
+<img src="./docs/rt_hpss_diagram.png" width="600px">
+
 ## Example
 
 Click this to see an example on my Soundcloud page:
