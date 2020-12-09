@@ -24,6 +24,7 @@ namespace offline {
 		bool nocopybord = false;
 		bool use_sse = false;
 		bool soft_mask = false;
+		bool only_percussive = false;
 		std::size_t hop_h = 4096;
 		std::size_t hop_p = 256;
 		float beta_h = 2.0;
@@ -39,7 +40,8 @@ namespace offline {
 		{
 			std::cout << "Running zen-offline with the following params:"
 			          << "\n\tinfile: " << p.infile
-			          << "\n\toutfile_prefix: " << p.outfile_prefix;
+			          << "\n\toutfile_prefix: " << p.outfile_prefix
+			          << "\n\tonly_percussive: " << p.only_percussive;
 
 			if (p.do_hps) {
 				std::cout << "\n\tdo hps: yes"
@@ -175,7 +177,7 @@ namespace offline {
 				all_out = {audio, audio, audio};
 			}
 
-			if (p.outfile_prefix != "") {
+			if ((p.outfile_prefix != "") && !(p.only_percussive)) {
 				for (int i = 0; i < 3; ++i) {
 					auto limits = std::minmax_element(
 					    std::begin(all_out[i]), std::end(all_out[i]));
@@ -218,6 +220,36 @@ namespace offline {
 					nqr::encode_wav_to_disk(
 					    encoder_params, &audio_out, filename);
 				}
+			}
+			else if ((p.outfile_prefix != "") && p.only_percussive) {
+				auto limits = std::minmax_element(
+				    std::begin(all_out[1]), std::end(all_out[1]));
+
+				float real_max = std::max(-1 * (*limits.first), *limits.second);
+
+				// normalize between -1.0 and 1.0
+				for (std::size_t i = 0; i < audio.size(); ++i) {
+					all_out[1][i] /= real_max;
+				}
+
+				nqr::EncoderParams encoder_params{
+				    1,
+				    nqr::PCMFormat::PCM_16,
+				    nqr::DitherType::DITHER_NONE,
+				};
+
+				const nqr::AudioData audio_out{
+				    1,
+				    file_data->sampleRate,
+				    file_data->lengthSeconds,
+				    file_data->frameSize,
+				    all_out[1],
+				    file_data->sourceFormat,
+				};
+
+				std::string filename = p.outfile_prefix + "_perc.wav";
+
+				nqr::encode_wav_to_disk(encoder_params, &audio_out, filename);
 			}
 
 			return 0;

@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 	                 % "(optional) output wav file prefix",
 	       option("--cpu").set(offline_params.cpu, true),
 	       option("--sse").set(offline_params.use_sse, true),
+	       option("--only-percussive").set(offline_params.only_percussive, true),
 	       option("--soft-mask").set(offline_params.soft_mask, true),
 	       option("--nocopybord").set(offline_params.nocopybord, true))
 	      % "offline (process entire songs at a time)";

@@ -192,7 +192,6 @@ namespace internal {
 					auto dst_ptr = ( Npp32f* )thrust::raw_pointer_cast(dst);
 
 					if (mydir == MedianFilterDirection::Frequency) {
-						std::cout << "COPY WRAP BORD FOR FREQUENCY CASE!\n";
 						nppiCopyWrapBorder_32f_C1R(
 						    src_ptr, smaller_nstep, roi, tmp_bigger_src,
 						    bigger_nstep, bigger_roi, 0, filter_mid);
