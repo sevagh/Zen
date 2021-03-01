@@ -54,8 +54,8 @@ include(FindPkgConfig)
 
 add_subdirectory(libzen)
 add_subdirectory(zen)
-add_subdirectory(pitch-tracking)
-add_subdirectory(beat-tracking)
+add_subdirectory(demos/pitch-tracking)
+add_subdirectory(demos/beat-tracking)
 
 # ------------------------------------------------------------------------------#
 # CLANG-FORMAT
@@ -69,12 +69,12 @@ file(
   libzen/libzen/*.h
   zen/*.cu
   zen/*.h
-  pitch-tracking/*.cpp
-  pitch-tracking/*.cu
-  pitch-tracking/*.h
-  beat-tracking/*.cpp
-  beat-tracking/*.cu
-  beat-tracking/*.h)
+  demos/pitch-tracking/*.cpp
+  demos/pitch-tracking/*.cu
+  demos/pitch-tracking/*.h
+  demos/beat-tracking/*.cpp
+  demos/beat-tracking/*.cu
+  demos/beat-tracking/*.h)
 
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")
