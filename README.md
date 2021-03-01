@@ -65,7 +65,7 @@ $ mkdir -p build && cd build && cmake .. -GNinja && ninja -j16
 
 ### libzen library examples
 
-The [pitch-tracking main.cu](./pitch-tracking/main.cu) and [beat-tracking main.cu](./beat-tracking/main.cu) files show example usages of `HPRRealtime<Backend::GPU>` for creating real-time pure harmonic and pure percussive separations.
+The [pitch-tracking main.cu](./demos/pitch-tracking/main.cu) and [beat-tracking main.cu](./demos/beat-tracking/main.cu) files show example usages of `HPRRealtime<Backend::GPU>` for creating real-time pure harmonic and pure percussive separations.
 
 ### zen command-line tool usage
 
