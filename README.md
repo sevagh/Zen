@@ -21,13 +21,9 @@ Zen was written from the ground up to support dual CPU/GPU implementations of al
 
 ![block1](./docs/block.png)
 
-Zen is the fastest implementation of the idea for realtime median-filtering HPSS with a sliding STFT, initially developed at https://github.com/sevagh/Real-Time-HPSS:
+Zen is the fastest implementation of realtime median-filtering HPSS with a sliding causal STFT, first shown in https://github.com/sevagh/Real-Time-HPSS:
 
 <img src="./docs/rt_hpss_diagram.png" width=678px>
-
-Based on the insight of the sliding causal STFT from [Real-Time-HPSS](https://github.com/sevagh/Real-Time-HPSS):
-
-<img src="./docs/rt_hpss_diagram.png" width="600px">
 
 ## Example
 
