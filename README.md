@@ -39,7 +39,7 @@ Click this to see an example on my Soundcloud page:
 
 ## Quality of separation
 
-See a newer project of mine, https://gitlab.com/sevagh/Music-Separation-TF, for some separation audio quality measurements. The new project further develops an idea for using the CQT instead of the STFT in the single-pass median-filtering HPSS algorithm for a higher quality separation.
+See a newer project of mine, <https://github.com/sevagh/Music-Separation-TF>, for some separation audio quality measurements. The new project further develops an idea for using the CQT instead of the STFT in the single-pass median-filtering HPSS algorithm for a higher quality separation.
 
 This should be implementable in Zen, if a good CUDA NSGT or CQT library is found.
 
